@@ -23,8 +23,13 @@ def openpaths(inpaths):
     for inpath in inpaths:
         omfi = pnc.pncopen(inpath, format='netcdf')[datagrp]
         omgfi = pnc.pncopen(inpath, format='netcdf')[geogrp]
+        omgfi = pnc.PseudoNetCDFFile.from_ncf(omgfi)
+        if geovars is not None:
+            omgfi = pnc.PseudoNetCDFFile.from_ncvs(
+                **omgfi.subsetVariables(geovars).variables
+            )
         omfs.append(pnc.PseudoNetCDFFile.from_ncf(omfi))
-        omgfs.append(pnc.PseudoNetCDFFile.from_ncf(omgfi))
+        omgfs.append(omgfi)
     omf = omfs[0].stack(omfs[1:], datatgtdim)
     omgf = omgfs[0].stack(omgfs[1:], geotgtdim)
     return omf, omgf
@@ -116,7 +121,7 @@ def process():
         nvar[:] = c[0]
     delattr(outf, 'VAR-LIST')
     p = omf.variables[pressurekey][:]
-    pedges = np.append(np.append(p[:-1] - np.diff(p)/2, p[-1] + np.diff(p)[-1]/2), 0)
+    pedges = np.append(np.append(p[..., :-1] - np.diff(p)/2, p[..., -1] + np.diff(p)[..., -1]/2), 0)
     ptop = outf.VGTOP = pedges[-1]
     psrf = pedges[0]
     sigma = (pedges[:] - ptop) / (psrf - ptop)

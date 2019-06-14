@@ -3,6 +3,7 @@ datagrp = 'HDFEOS/SWATHS/ColumnAmountNO2/Data Fields'
 datatgtdim = 'phony_dim_0'
 geotgtdim = 'phony_dim_7'
 geogrp = 'HDFEOS/SWATHS/ColumnAmountNO2/Geolocation Fields'
+geovars = None
 pressurekey = 'ScatteringWtPressure'
 grndfilterexpr = (
     '(SolarZenithAngle >= 70)'
