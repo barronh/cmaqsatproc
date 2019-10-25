@@ -121,10 +121,27 @@ def process():
         nvar[:] = c[0]
     delattr(outf, 'VAR-LIST')
     p = omf.variables[pressurekey][:]
-    pedges = np.append(np.append(p[..., :-1] - np.diff(p)/2, p[..., -1] + np.diff(p)[..., -1]/2), 0)
-    ptop = outf.VGTOP = pedges[-1]
-    psrf = pedges[0]
-    sigma = (pedges[:] - ptop) / (psrf - ptop)
+    pedges = np.ma.masked_less(
+        np.concatenate(
+            [
+                p[..., :-1] - np.diff(p)/2,
+                p[..., [-1]] - np.diff(p)[..., [-1]]/2,
+                p[..., [-1]] + np.diff(p)[..., [-1]]/2,
+            ],
+            axis=-1
+        ),
+        0
+    )
+    if pedges.ndim > 1:
+        meanaxes = tuple(list(range(pedges.ndim-1)))
+        pedges1d = pedges.mean(axis=meanaxes)
+    else:
+        pedges1d = pedges
+
+    ptop = outf.VGTOP = pedges1d[-1]
+    psrf = pedges1d[0]
+    sigma = (pedges1d[:] - ptop) / (psrf - ptop)
+
     outf.VGLVLS = sigma[:]
     outf.VGTYP = 7
     outf.subsetVariables(varkeys + ['N' + varkey for varkey in varkeys]).save(outpath, verbose=1)
