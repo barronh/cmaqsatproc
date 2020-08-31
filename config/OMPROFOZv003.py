@@ -1,11 +1,11 @@
-varkeys = ['O3APrioriProfile', 'O3RetrievedProfile', 'O3AveragingKernel', 'TropopauseIndex']
+varkeys = ['O3TroposphericColumn', 'O3APrioriProfile', 'O3RetrievedProfile', 'O3AveragingKernel', 'TropopauseIndex']
 
 datagrp = 'HDFEOS/SWATHS/OMI Vertical Ozone Profile/Data Fields'
 geogrp = 'HDFEOS/SWATHS/OMI Vertical Ozone Profile/Geolocation Fields'
 geovars = ['SolarZenithAngle', 'Latitude', 'Longitude']
 
-datatgtdim = 'phony_dim_0'
-geotgtdim = 'phony_dim_8'
+datatgtdim = None # 'phony_dim_0'
+geotgtdim = None # 'phony_dim_9'
 pressurekey = 'ProfileLevelPressure'
 grndfilterexpr = (
     '(SolarZenithAngle >= 70)'

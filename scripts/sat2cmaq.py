@@ -18,6 +18,8 @@ gf = pnc.pncopen(gdpath, format='griddesc', GDNAM=gdnam)
 exec(open(optpath, 'r').read())
 
 def openpaths(inpaths):
+    global datatgtdim, geotgtdim
+    from collections import OrderedDict
     omfs = []
     omgfs = []
     for inpath in inpaths:
@@ -30,6 +32,25 @@ def openpaths(inpaths):
             )
         omfs.append(pnc.PseudoNetCDFFile.from_ncf(omfi))
         omgfs.append(omgfi)
+
+    if isinstance(omfs[0].dimensions, OrderedDict):
+        ddims = list(omfs[0].dimensions)
+        if datatgtdim is None:
+            datatgtdim = ddims[0]
+            print('Data target dim using', datatgtdim)
+        elif isinstance (datatgtdim, int):
+            datatgtdim = ddims[datatgtdim]
+            print('Data target dim using', datatgtdim)
+
+    if isinstance(omgfs[0].dimensions, OrderedDict):
+        gdims = list(omgfs[0].dimensions)
+        if geotgtdim is None:
+            geotgtdim = gdims[0]
+            print('Geo target dim using', geotgtdim)
+        elif isinstance (geotgtdim, int):
+            geotgtdim = gdims[geotgtdim]
+            print('Geo target dim using', geotgtdim)
+
     omf = omfs[0].stack(omfs[1:], datatgtdim)
     omgf = omgfs[0].stack(omgfs[1:], geotgtdim)
     return omf, omgf
