@@ -1,9 +1,9 @@
 KEY=NO2
-AKPATH=outsat/OMI-Aura_L2-OMNO2_2016m0101_v003.nc
+AKPATH=outsat/OMI-Aura_L3_108NHEMI2-OMNO2_2016m0101_v003.nc
 AKKEY="ScatteringWeight[:]/AmfTrop[:]"
-KEY=O3
-AKPATH=outsat/OMI-Aura_L2-OMPROFOZ_2016m0101_v003.nc
-AKKEY="O3AveragingKernel[:]"
+# KEY=O3
+# AKPATH=outsat/OMI-Aura_L3_108NHEMI2-OMPROFOZ_2016m0101_v003.nc
+# AKKEY="O3AveragingKernel[:]"
 YYYYhMMhDD=2016-01-01
 YYYYmMMDD=$(date -ud "${YYYYhMMhDD}" +%Ym%m%d)
 YYYYMMDD=$(date -ud "${YYYYhMMhDD}" +%Y%m%d)
