@@ -1,11 +1,14 @@
 KEY=NO2
+AKPATH=outsat/OMI-Aura_L2-OMNO2_2016m0101_v003.nc
+AKKEY="ScatteringWeight[:]/AmfTrop[:]"
+KEY=O3
+AKPATH=outsat/OMI-Aura_L2-OMPROFOZ_2016m0101_v003.nc
+AKKEY="O3AveragingKernel[:]"
 YYYYhMMhDD=2016-01-01
 YYYYmMMDD=$(date -ud "${YYYYhMMhDD}" +%Ym%m%d)
 YYYYMMDD=$(date -ud "${YYYYhMMhDD}" +%Y%m%d)
 YYMMDD=$(date -ud "${YYYYhMMhDD}" +%y%m%d)
 OUTPATH=outcmaq/CCTM_CONC_v521_intel17.0_HEMIS_cb6_${YYYYMMDD}.${KEY}.nc
-AKPATH=outsat/OMI-Aura_L2-OMNO2_2016m0101_v003.nc
-AKKEY="ScatteringWeight[:]/AmfTrop[:]"
 echo ${OUTPATH}
 if [ ! -e ${OUTPATH} ]; then
 mkdir -p $(dirname ${OUTPATH})
