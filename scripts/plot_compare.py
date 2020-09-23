@@ -1,7 +1,6 @@
 import PseudoNetCDF as pnc
 import matplotlib.pyplot as plt
 import matplotlib.colors as mc
-import numpy as np
 import sys
 
 
@@ -21,10 +20,16 @@ print('opt', optpath)
 print('out', outpath)
 
 opts = dict(norm=mc.LogNorm())
-ropts = dict(norm=mc.BoundaryNorm([-200, -100, -50, -25, 25, 50, 100, 200], 256), cmap='bwr')
+ropts = dict(norm=mc.BoundaryNorm(
+    [-200, -100, -50, -25, 25, 50, 100, 200],
+    256
+), cmap='bwr')
 copts = dict(orientation='horizontal', pad=0.05)
 
-fig, axx = plt.subplots(1, 3, figsize=(12, 4), gridspec_kw=dict(left=.05, right=.95, bottom=0.05, top=0.975), dpi=200)
+fig, axx = plt.subplots(
+    1, 3, figsize=(12, 4), dpi=200,
+    gridspec_kw=dict(left=.05, right=.95, bottom=0.05, top=0.975)
+)
 plt.setp(axx, facecolor='grey')
 
 satf = pnc.pncopen(satpath, format='ioapi').copy().eval(

@@ -20,7 +20,11 @@
     },
     "pressurekey": "ScatteringWtPressure",
     "grndfilterexpr": "(SolarZenithAngle >= 70)",
-    "datafilterexpr": "(CloudFraction >= 300) | (np.bitwise_and(XTrackQualityFlags[:].filled(0), 1) == 1) | (np.bitwise_and(VcdQualityFlags, 1) == 1)",
+    "datafilterexpr": (
+        "(CloudFraction >= 300) | " +
+        "(np.bitwise_and(XTrackQualityFlags[:].filled(0), 1) == 1) | " +
+        "(np.bitwise_and(VcdQualityFlags, 1) == 1)"
+    ),
     "renamevars": {
         "ScatteringWeight": "ScatWgt",
         "ColumnAmountNO2": "VCD_NO2_Total",

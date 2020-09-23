@@ -1,6 +1,4 @@
-from glob import glob
 import os
-from datetime import datetime, timedelta
 import numpy as np
 from scipy.stats import binned_statistic_dd
 import PseudoNetCDF as pnc
@@ -9,6 +7,7 @@ import argparse
 import sys
 import json
 from warnings import warn
+
 
 def getargs(inargs):
     parser = argparse.ArgumentParser()
@@ -41,6 +40,7 @@ def openpaths(inpaths, opts):
     omf = omfs[0].stack(omfs[1:], 'nTimes')
     return omf
 
+
 def opendapquery(gf, short_name, daterange):
     """
     Returns a list of opendap paths in time/space domain
@@ -62,7 +62,8 @@ def opendapquery(gf, short_name, daterange):
     bbox = f'{glon.min()},{glat.min()},{glon.max()},{glat.max()}'
     url = (
         'https://cmr.earthdata.nasa.gov/search/granules.json?' +
-        f'short_name={short_name}&temporal[]={daterange}&bounding_box={bbox}&' +
+        f'short_name={short_name}' +
+        f'&temporal[]={daterange}&bounding_box={bbox}&' +
         'page_size=1000&pretty=true'
     )
     r = urlopen(url)
@@ -72,8 +73,8 @@ def opendapquery(gf, short_name, daterange):
     opendappaths = [entry['links'][1]['href'] for entry in entries]
     return opendappaths
 
+
 def opendappaths(inpaths, opts):
-    from collections import OrderedDict
     omfs = []
     for inpath in inpaths:
         tmpf = pnc.pncopen(inpath, format='netcdf')
@@ -87,16 +88,22 @@ def opendappaths(inpaths, opts):
 
     return omfs
 
+
 def openhe5(inpaths, opts):
-    from collections import OrderedDict
     omfs = []
     for inpath in inpaths:
         tmpf = pnc.pncopen(inpath, format='netcdf')
         omfi = pnc.PseudoNetCDFFile.from_ncvs(
-            **{varkey: tmpf[opts['datagrp']].variables[varkey] for varkey in opts['datakeys']}
+            **{
+                varkey: tmpf[opts['datagrp']].variables[varkey]
+                for varkey in opts['datakeys']
+            }
         )
         omgfi = pnc.PseudoNetCDFFile.from_ncvs(
-            **{varkey: tmpf[opts['geogrp']].variables[varkey] for varkey in opts['geokeys']}
+            **{
+                varkey: tmpf[opts['geogrp']].variables[varkey]
+                for varkey in opts['geokeys']
+            }
         )
         datadims = opts.get('datadims', None)
         geodims = opts.get('geodims', None)
@@ -119,11 +126,12 @@ def openhe5(inpaths, opts):
 
         for geokey in opts['geokeys']:
             omfi.copyVariable(omgfi.variables[geokey], key=geokey)
-            
+
         omfs.append(omfi)
 
     return omfs
-   
+
+
 def getunit(varv):
     attrs = varv.getncatts()
     for ukey in ('Units', 'units'):
@@ -131,6 +139,7 @@ def getunit(varv):
             return attrs[ukey].strip()
     else:
         return 'unknown'
+
 
 def process(args):
     gf = pnc.pncopen(args.GRIDDESC, format='griddesc', GDNAM=args.GDNAM)
@@ -150,7 +159,9 @@ def process(args):
     for timekey in ['Time', 'time', 'TIME']:
         if timekey in omf.variables:
             tf = omf.subsetVariables([timekey]).renameVariable(timekey, 'time')
-            tf.variables['time'].units = "seconds since 1993-01-01 00:00:00+0000"
+            tf.variables['time'].units = (
+                "seconds since 1993-01-01 00:00:00+0000"
+            )
             break
     else:
         tf = pnc.PseudoNetCDFFile()
@@ -160,7 +171,7 @@ def process(args):
 
     date = tf.getTimes()[0]
     gf.SDATE = int(date.strftime('%Y%j'))
-    gf.STIME = 0 # int(date.strftime('%H%M%S'))
+    gf.STIME = 0
     gf.TSTEP = 240000
     LAT = omf.variables['Latitude'][:]
     LON = omf.variables['Longitude'][:]
@@ -176,7 +187,7 @@ def process(args):
     # isedge did not change main problem..
     # isedge = np.ones_like(i.mask)
     # isedge[..., 3:-3] = False
-    mask2d = baddata.filled(True) | i.mask | j.mask # | isedge
+    mask2d = baddata.filled(True) | i.mask | j.mask
     if mask2d.all():
         print('No data; skipping', outpath, flush=True)
         return
@@ -184,7 +195,7 @@ def process(args):
         print('Making', outpath, flush=True)
 
     outf = gf.copy().subsetVariables(['DUMMY'])
-    ndim, outshape =  sorted([(varo.ndim, varo.shape) for varo in varos])[-1]
+    ndim, outshape = sorted([(varo.ndim, varo.shape) for varo in varos])[-1]
     if ndim > 2:
         nk = outshape[-1]
     else:
@@ -208,29 +219,40 @@ def process(args):
             myk = myj * 0 + .5
             twodkeys.append(outvarkey)
         else:
-            myk = np.ma.masked_where(mask, np.indices(mask.shape)[-1]).compressed() + 0.5
+            myk = np.ma.masked_where(
+                mask, np.indices(mask.shape)[-1]
+            ).compressed() + 0.5
 
         if varo.ndim <= 3:
             loc = [myk, myj, myi]
             outdims = ('TSTEP', 'LAY', 'ROW', 'COL')
-            bins = (np.arange(nk + 1), np.arange(gf.NROWS+1), np.arange(gf.NCOLS+1))
+            bins = (
+                np.arange(nk + 1), np.arange(gf.NROWS+1), np.arange(gf.NCOLS+1)
+            )
         else:
             myk1, myk2 = np.indices(mask.shape)[-2:]
             myk1 = np.ma.masked_where(mask, myk1).compressed() + 0.5
             myk2 = np.ma.masked_where(mask, myk2).compressed() + 0.5
             loc = [myk1, myk2, myj, myi]
             outdims = ('TSTEP', 'LAY', 'LAY', 'ROW', 'COL')
-            bins = (np.arange(nk + 1), np.arange(nk + 1), np.arange(gf.NROWS+1), np.arange(gf.NCOLS+1))
+            bins = (
+                np.arange(nk + 1), np.arange(nk + 1),
+                np.arange(gf.NROWS+1), np.arange(gf.NCOLS+1)
+            )
 
         myvcd = np.ma.masked_where(mask, varo[:]).compressed()
         r = binned_statistic_dd(loc, myvcd, 'mean', bins=bins)
         c = binned_statistic_dd(loc, myvcd, 'count', bins=bins)
-        var = outf.createVariable(outvarkey, 'f', outdims, missing_value=-9.000E36)
+        var = outf.createVariable(
+            outvarkey, 'f', outdims, missing_value=-9.000E36
+        )
         var.var_desc = varkey.ljust(80)
         var.long_name = outvarkey.ljust(16)
         var.units = getunit(varv)
         var[:] = np.ma.masked_invalid(r[0])
-        nvar = outf.createVariable('N' + outvarkey, 'f', outdims, missing_value=-9.000E36)
+        nvar = outf.createVariable(
+            'N' + outvarkey, 'f', outdims, missing_value=-9.000E36
+        )
         nvar.var_desc = ('Count ' + varkey).ljust(80)
         nvar.long_name = ('N' + outvarkey).ljust(16)
         nvar.units = 'none'
@@ -306,6 +328,7 @@ def process(args):
     outf.HISTORY = sys.argv[0] + ': ' + str(args)
     outf.save(outpath, verbose=1, complevel=1)
     gc.collect()
+
 
 if __name__ == '__main__':
     args = getargs(None)
