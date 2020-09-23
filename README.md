@@ -7,14 +7,17 @@ Satellite Processors designed for simple CMAQ comparisons.
 * convert L2 satellite products to L3 on CMAQ grids
 * convert CMAQ concentrations to L3
 
-## What make it simple?
+## What makes it simple?
 
-* Converting L2 satellite products takes raw L2 inputs
+* Converting L2 satellite products takes:
+  * raw L2 inputs in HDF-EOS5 (.he5), or
+  * opendap urls (requires user opendap configuration), or
+  * Common Metadata Repository short_name and daterange
 * Converting CMAQ uses raw inputs and outputs.
   * Output: 3D CONC file
   * Inputs:
-    * METCRO2D (CFRAC, PRSFC)
-    * METCRO3D (PV)
+    * METCRO2D (only CFRAC, PRSFC)
+    * METCRO3D (only PV)
 * It makes some simplifying assumptions.
 
 ## What assumptions are being made?
@@ -28,6 +31,8 @@ Satellite Processors designed for simple CMAQ comparisons.
 * CMAQ stratosphere is removed according to potential vorticity.
 
 ## How to?
+
+Edit the scripts below and run them
 
 * ./convertsat.sh
 * ./convertcmaq.sh
