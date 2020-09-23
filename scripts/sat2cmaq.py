@@ -54,12 +54,18 @@ def opendapquery(gf, short_name, daterange):
     daterange : str
         temporal range as defined by CMR
     """
-    import urllib
+    from urllib.request import urlopen
+    from urllib.parse import quote
     glon = gf.variables['longitude']
     glat = gf.variables['latitude']
+    daterange = quote(daterange)
     bbox = f'{glon.min()},{glat.min()},{glon.max()},{glat.max()}'
-    url = f'https://cmr.earthdata.nasa.gov/search/granules.json?short_name={short_name}&temporal[]={daterange}&bounding_box={bbox}&page_size=1000&pretty=true'
-    r = urllib.request.urlopen(url)
+    url = (
+        'https://cmr.earthdata.nasa.gov/search/granules.json?' +
+        f'short_name={short_name}&temporal[]={daterange}&bounding_box={bbox}&' +
+        'page_size=1000&pretty=true'
+    )
+    r = urlopen(url)
     txt = r.read()
     results = json.loads(txt)
     entries = results['feed']['entry']
