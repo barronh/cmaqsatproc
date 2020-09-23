@@ -5,66 +5,87 @@ import numpy as np
 from scipy.stats import binned_statistic_dd
 import PseudoNetCDF as pnc
 import gc
+import argparse
 import sys
+from warnings import warn
 
 
-gdpath = sys.argv[1]
-gdnam = sys.argv[2]
-outpath = sys.argv[3]
-optpath = sys.argv[4]
-inpaths = sys.argv[5:]
+parser = argparse.ArgumentParser()
+parser.add_argument('GRIDDESC', help='Path to GRIDDESC')
+parser.add_argument('GDNAM', help='Grid name in GRIDDESC')
+parser.add_argument('outpath', help='Output path')
+parser.add_argument('optpath', help='Options path for satellite product')
+parser.add_argument('inpaths', nargs='+', help='L2 input files')
 
-gf = pnc.pncopen(gdpath, format='griddesc', GDNAM=gdnam)
-exec(open(optpath, 'r').read())
+args = parser.parse_args()
+
+gf = pnc.pncopen(args.GRIDDESC, format='griddesc', GDNAM=args.GDNAM)
+exec(open(args.optpath, 'r').read())
 
 def openpaths(inpaths):
-    global datatgtdim, geotgtdim
+    """
+    Return satellite retrieval file and geolocation file
+
+    Arguments
+    ---------
+    inpaths : list
+        paths to satellite files
+
+    Returns
+    -------
+    omf, omgf : PseudoNetCDFFile
+
+    """
+    global datadims, geodims
     from collections import OrderedDict
     omfs = []
-    omgfs = []
     for inpath in inpaths:
-        omfi = pnc.pncopen(inpath, format='netcdf')[datagrp]
-        omgfi = pnc.pncopen(inpath, format='netcdf')[geogrp]
-        omgfi = pnc.PseudoNetCDFFile.from_ncf(omgfi)
-        if geovars is not None:
-            omgfi = pnc.PseudoNetCDFFile.from_ncvs(
-                **omgfi.subsetVariables(geovars).variables
-            )
-        omfs.append(pnc.PseudoNetCDFFile.from_ncf(omfi))
-        omgfs.append(omgfi)
+        tmpf = pnc.pncopen(inpath, format='netcdf')
+        omfi = pnc.PseudoNetCDFFile.from_ncvs(
+            **{varkey: tmpf[datagrp].variables[varkey] for varkey in datakeys}
+        )
+        omgfi = pnc.PseudoNetCDFFile.from_ncvs(
+            **{varkey: tmpf[geogrp].variables[varkey] for varkey in geokeys}
+        )
+        if datadims is None:
+            ddims = list(omfi.dimensions)
+            datadims = dict(zip(ddims, ['nTimes', 'nXtrack', 'nLevels']))
+            print('Dimension mapping heuristically')
+            print({dk: len(dv) for dk, dv in omfi.dimensions.items()})
+            print('Selected dimension mapping:', datadims)
 
-    if isinstance(omfs[0].dimensions, OrderedDict):
-        ddims = list(omfs[0].dimensions)
-        if datatgtdim is None:
-            datatgtdim = ddims[0]
-            print('Data target dim using', datatgtdim)
-        elif isinstance (datatgtdim, int):
-            datatgtdim = ddims[datatgtdim]
-            print('Data target dim using', datatgtdim)
+        if geodims is None:
+            gdims = list(omgfi.dimensions)
+            geodims = dict(zip(gdims, ['nTimes', 'nXtrack', 'nLevels']))
+            print('Dimension mapping heuristically')
+            print({dk: len(dv) for dk, dv in omgfi.dimensions.items()})
+            print('Selected dimension mapping:', geodims)
 
-    if isinstance(omgfs[0].dimensions, OrderedDict):
-        gdims = list(omgfs[0].dimensions)
-        if geotgtdim is None:
-            geotgtdim = gdims[0]
-            print('Geo target dim using', geotgtdim)
-        elif isinstance (geotgtdim, int):
-            geotgtdim = gdims[geotgtdim]
-            print('Geo target dim using', geotgtdim)
+        omfi.renameDimensions(**datadims, inplace=True)
+        omgfi.renameDimensions(**geodims, inplace=True)
 
-    omf = omfs[0].stack(omfs[1:], datatgtdim)
-    omgf = omgfs[0].stack(omgfs[1:], geotgtdim)
-    return omf, omgf
+        for geokey in geokeys:
+            omfi.copyVariable(omgfi.variables[geokey], key=geokey)
+            
+        omfs.append(omfi)
+
+
+    omf = omfs[0].stack(omfs[1:], 'nTimes')
+
+    return omf
     
 def process():
-    omf, omgf = openpaths(inpaths)
+    outpath = args.outpath
+    omf = openpaths(args.inpaths)
     if os.path.exists(outpath):
         print('Using cached', outpath, flush=True)
         return
 
     for timekey in ['Time', 'time', 'TIME']:
-        if timekey in omgf.variables:
-            tf = omgf.subsetVariables([timekey]).renameVariable(timekey, 'time')
+        if timekey in omf.variables:
+            tf = omf.subsetVariables([timekey]).renameVariable(timekey, 'time')
             tf.variables['time'].units = "seconds since 1993-01-01 00:00:00+0000"
+            break
     else:
         tf = pnc.PseudoNetCDFFile()
         tf.createDimension('time', 1)
@@ -73,15 +94,15 @@ def process():
 
     date = tf.getTimes()[0]
     gf.SDATE = int(date.strftime('%Y%j'))
-    gf.STIME = int(date.strftime('%H%M%S'))
+    gf.STIME = 0 # int(date.strftime('%H%M%S'))
     gf.TSTEP = 240000
-    LAT = omgf.variables['Latitude'][:]
-    LON = omgf.variables['Longitude'][:]
+    LAT = omf.variables['Latitude'][:]
+    LON = omf.variables['Longitude'][:]
     i, j = gf.ll2ij(LON, LAT, clean='mask')
 
-    varos = [omf.variables[varkey] for varkey in varkeys]
+    varos = [omf.variables[varkey] for varkey in datakeys]
 
-    gbaddata = eval(grndfilterexpr, None, omgf.variables)
+    gbaddata = eval(grndfilterexpr, None, omf.variables)
     dbaddata = eval(datafilterexpr, None, omf.variables)
     baddata = gbaddata | dbaddata
 
@@ -102,17 +123,23 @@ def process():
         nk = outshape[-1]
     else:
         nk = 1
+
     outf.createDimension('LAY', nk)
-    for ki, varkey in enumerate(varkeys):
+    twodkeys = []
+    for ki, varkey in enumerate(datakeys):
+        outvarkey = renamevars.get(varkey, varkey)
         varv = omf.variables[varkey]
+        if 'nTimes' not in varv.dimensions:
+            continue
         varo = np.ma.masked_invalid(varv[:])
-        print(varkey, flush=True)
+        print(varkey, outvarkey, flush=True)
         mask = (mask2d.T | varo.mask.T).T
         ol = np.ones(mask.shape)
         myi = np.ma.masked_where(mask, (i.T * ol.T).T).compressed() + 0.5
         myj = np.ma.masked_where(mask, (j.T * ol.T).T).compressed() + 0.5
         if varo.ndim == 2:
             myk = myj * 0 + .5
+            twodkeys.append(outvarkey)
         else:
             myk = np.ma.masked_where(mask, np.indices(mask.shape)[-1]).compressed() + 0.5
 
@@ -127,45 +154,87 @@ def process():
             loc = [myk1, myk2, myj, myi]
             outdims = ('TSTEP', 'LAY', 'LAY', 'ROW', 'COL')
             bins = (np.arange(nk + 1), np.arange(nk + 1), np.arange(gf.NROWS+1), np.arange(gf.NCOLS+1))
+
         myvcd = np.ma.masked_where(mask, varo[:]).compressed()
         r = binned_statistic_dd(loc, myvcd, 'mean', bins=bins)
         c = binned_statistic_dd(loc, myvcd, 'count', bins=bins)
-        var = outf.createVariable(varkey, 'f', outdims, missing_value=-999)
+        var = outf.createVariable(outvarkey, 'f', outdims, missing_value=-9.000E36)
         var.var_desc = varkey.ljust(80)
-        var.long_name = varkey.ljust(16)
-        var.units = varv.Units.ljust(16)
+        var.long_name = outvarkey.ljust(16)
+        var.units = getattr(varv, 'Units', 'unknown').ljust(16)
         var[:] = np.ma.masked_invalid(r[0])
-        nvar = outf.createVariable('N' + varkey, 'f', outdims, missing_value=-999)
-        nvar.var_desc = ('N' + varkey).ljust(80)
-        nvar.long_name = ('N' + varkey).ljust(16)
+        nvar = outf.createVariable('N' + outvarkey, 'f', outdims, missing_value=-9.000E36)
+        nvar.var_desc = ('Count ' + varkey).ljust(80)
+        nvar.long_name = ('N' + outvarkey).ljust(16)
         nvar.units = 'none'
         nvar[:] = c[0]
+
     delattr(outf, 'VAR-LIST')
-    p = omf.variables[pressurekey][:]
-    pedges = np.ma.masked_less(
-        np.concatenate(
-            [
-                p[..., :-1] - np.diff(p)/2,
-                p[..., [-1]] - np.diff(p)[..., [-1]]/2,
-                p[..., [-1]] + np.diff(p)[..., [-1]]/2,
-            ],
-            axis=-1
-        ),
-        0
+    # {dk: slice(None, None, -1) for dk in invertdims}
+    pv = omf.variables[pressurekey]
+    pu =pv.Units.lower().strip()
+    if pu in ("hpa", "mb"):
+        pfactor = 100.
+    elif pu == ("pa", "pascal"):
+        pfactor = 1.
+    else:
+        warn('Unknown unit {}; scale factor = 1'.format(pu))
+        pfactor = 1.
+
+    p = pv[:]
+    dp = np.diff(p, axis=-1)
+    if dp.ndim > 1:
+        meanaxis = tuple(range(p.ndim - 1))
+        meandp = dp.mean(meanaxis)
+    else:
+        meandp = dp
+
+    if meandp.mean() > 0:
+        p = p[..., ::-1]
+        dp = np.diff(p, axis=-1)
+        outf = outf.slice(LAY=slice(None, None, -1))
+        # 2-D variables have data in layer 0
+        # after inverting, it is in layerN
+        # it must be inverted again
+        for varkey in twodkeys:
+            tmpv = outf.variables[varkey]
+            tmpv[:] = tmpv[:, ::-1]
+
+    hdp = dp / 2
+    pedges = np.ma.concatenate(
+        [
+            p[..., :-1] - hdp,
+            p[..., [-1]] - hdp[..., [-1]],
+            p[..., [-1]] + hdp[..., [-1]],
+        ],
+        axis=-1
     )
+
     if pedges.ndim > 1:
         meanaxes = tuple(list(range(pedges.ndim-1)))
         pedges1d = pedges.mean(axis=meanaxes)
     else:
         pedges1d = pedges
 
+    pedges1d = np.maximum(0, pedges1d) * pfactor
     ptop = outf.VGTOP = pedges1d[-1]
     psrf = pedges1d[0]
     sigma = (pedges1d[:] - ptop) / (psrf - ptop)
 
-    outf.VGLVLS = sigma[:]
+    outf.VGLVLS = sigma[:].astype('f')
     outf.VGTYP = 7
-    outf.subsetVariables(varkeys + ['N' + varkey for varkey in varkeys]).save(outpath, verbose=1)
+    del outf.variables['DUMMY']
+    for k in list(outf.variables):
+        klen = len(k)
+        if klen > 15:
+            print(k, 'too long', len(k))
+
+    if hasattr(outf, 'VAR-LIST'):
+        delattr(outf, 'VAR-LIST')
+
+    outf.updatemeta()
+    outf.HISTORY = sys.argv[0] + ': ' + str(args)
+    outf.save(outpath, verbose=1, complevel=1)
     gc.collect()
 
 if __name__ == '__main__':

@@ -1,16 +1,24 @@
-varkeys = ['O3TroposphericColumn', 'O3APrioriProfile', 'O3RetrievedProfile', 'O3AveragingKernel', 'TropopauseIndex']
-
 datagrp = 'HDFEOS/SWATHS/OMI Vertical Ozone Profile/Data Fields'
-geogrp = 'HDFEOS/SWATHS/OMI Vertical Ozone Profile/Geolocation Fields'
-geovars = ['SolarZenithAngle', 'Latitude', 'Longitude']
+datakeys = [
+    'O3TroposphericColumn', 'O3APrioriProfile', 'O3RetrievedProfile',
+    'O3AveragingKernel', 'TropopauseIndex', 'ProfileLevelPressure', 'RMS',
+    'ExitStatus', 'AverageResiduals', 'EffectiveCloudFraction'
+]
+#   '1234567890123456'
 
-datatgtdim = 'phony_dim_0'
-geotgtdim = 'phony_dim_9'
+geogrp = 'HDFEOS/SWATHS/OMI Vertical Ozone Profile/Geolocation Fields'
+geokeys = ['Time', 'SolarZenithAngle', 'Latitude', 'Longitude']
+datadims = {
+    'phony_dim_0': 'nTimes',
+    'phony_dim_1': 'nXtrack',
+    'phony_dim_4': 'nLevels'
+}
+geodims = {
+    'phony_dim_9': 'nTimes',
+    'phony_dim_10': 'nXtrack'
+}
+
 pressurekey = 'ProfileLevelPressure'
-inverdims = []
-grndfilterexpr = (
-    '(SolarZenithAngle >= 70)'
-)
 
 # Data filtering is unclear.
 #
@@ -31,11 +39,29 @@ grndfilterexpr = (
 # [1] https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/OMPROFOZ_readme-v3.pdf
 # [2] https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/programs/extract_omi_PROFOZhe5.pro
 
+grndfilterexpr = (
+    '(SolarZenithAngle >= 70)'
+)
+
 datafilterexpr = (
-    '(RMS[:].max(-1) > 3) | ' +
     '(ExitStatus[:] <= 0) | ' +
     '(ExitStatus[:] >= 10) | ' +
+    '(RMS[:].max(-1) > 3) | ' +
     '(AverageResiduals[:].max(-1) >= 3) | ' +
     '(EffectiveCloudFraction >= 0.3)'
+)
+
+# Reduce name lengths to 14 or lower
+# IOAPI can be 16, but 15 is better
+# N<name> is one more
+renamevars = dict(
+    O3TroposphericColumn='VCD_O3_Trop',
+    O3APrioriProfile='O3APriori',
+    O3RetrievedProfile='O3Retrieved',
+    O3AveragingKernel='AvgKernel',
+    TropopauseIndex='TropopauseIdx',
+    ProfileLevelPressure='ProfilePress',
+    AverageResiduals='AvgResiduals',
+    EffectiveCloudFraction='EffectCldFrac',
 )
 
