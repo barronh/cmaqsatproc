@@ -7,24 +7,23 @@ import PseudoNetCDF as pnc
 import gc
 import argparse
 import sys
+import json
 from warnings import warn
 
+def getargs(inargs):
+    parser = argparse.ArgumentParser()
+    parser.add_argument('GRIDDESC', help='Path to GRIDDESC')
+    parser.add_argument('GDNAM', help='Grid name in GRIDDESC')
+    parser.add_argument('outpath', help='Output path')
+    parser.add_argument('optpath', help='Options path for satellite product')
+    parser.add_argument('inpaths', nargs='+', help='L2 input files')
+    args = parser.parse_args(inargs)
+    return args
 
-parser = argparse.ArgumentParser()
-parser.add_argument('GRIDDESC', help='Path to GRIDDESC')
-parser.add_argument('GDNAM', help='Grid name in GRIDDESC')
-parser.add_argument('outpath', help='Output path')
-parser.add_argument('optpath', help='Options path for satellite product')
-parser.add_argument('inpaths', nargs='+', help='L2 input files')
 
-args = parser.parse_args()
-
-gf = pnc.pncopen(args.GRIDDESC, format='griddesc', GDNAM=args.GDNAM)
-exec(open(args.optpath, 'r').read())
-
-def openpaths(inpaths):
+def openpaths(inpaths, opts):
     """
-    Return satellite retrieval file and geolocation file
+    Return satellite retrieval file with geolocation and data in one file
 
     Arguments
     ---------
@@ -33,20 +32,68 @@ def openpaths(inpaths):
 
     Returns
     -------
-    omf, omgf : PseudoNetCDFFile
-
+    omf : PseudoNetCDFFile
     """
-    global datadims, geodims
+    if inpaths[0].startswith('https://'):
+        omfs = opendappaths(inpaths, opts)
+    else:
+        omfs = openhe5(inpaths, opts)
+    omf = omfs[0].stack(omfs[1:], 'nTimes')
+    return omf
+
+def opendapquery(gf, short_name, daterange):
+    """
+    Returns a list of opendap paths in time/space domain
+
+    Arguments
+    ---------
+    gf : PseudoNetCDFFile
+        must have latitude/longitude variables
+    short_name : str
+        NASA satellite short name
+    daterange : str
+        temporal range as defined by CMR
+    """
+    import urllib
+    glon = gf.variables['longitude']
+    glat = gf.variables['latitude']
+    bbox = f'{glon.min()},{glat.min()},{glon.max()},{glat.max()}'
+    url = f'https://cmr.earthdata.nasa.gov/search/granules.json?short_name={short_name}&temporal[]={daterange}&bounding_box={bbox}&page_size=1000&pretty=true'
+    r = urllib.request.urlopen(url)
+    txt = r.read()
+    results = json.loads(txt)
+    entries = results['feed']['entry']
+    opendappaths = [entry['links'][1]['href'] for entry in entries]
+    return opendappaths
+
+def opendappaths(inpaths, opts):
     from collections import OrderedDict
     omfs = []
     for inpath in inpaths:
         tmpf = pnc.pncopen(inpath, format='netcdf')
         omfi = pnc.PseudoNetCDFFile.from_ncvs(
-            **{varkey: tmpf[datagrp].variables[varkey] for varkey in datakeys}
+            **{
+                varkey: tmpf.variables[varkey]
+                for varkey in opts['datakeys'] + opts['geokeys']
+            }
+        )
+        omfs.append(omfi)
+
+    return omfs
+
+def openhe5(inpaths, opts):
+    from collections import OrderedDict
+    omfs = []
+    for inpath in inpaths:
+        tmpf = pnc.pncopen(inpath, format='netcdf')
+        omfi = pnc.PseudoNetCDFFile.from_ncvs(
+            **{varkey: tmpf[opts['datagrp']].variables[varkey] for varkey in opts['datakeys']}
         )
         omgfi = pnc.PseudoNetCDFFile.from_ncvs(
-            **{varkey: tmpf[geogrp].variables[varkey] for varkey in geokeys}
+            **{varkey: tmpf[opts['geogrp']].variables[varkey] for varkey in opts['geokeys']}
         )
+        datadims = opts.get('datadims', None)
+        geodims = opts.get('geodims', None)
         if datadims is None:
             ddims = list(omfi.dimensions)
             datadims = dict(zip(ddims, ['nTimes', 'nXtrack', 'nLevels']))
@@ -64,22 +111,35 @@ def openpaths(inpaths):
         omfi.renameDimensions(**datadims, inplace=True)
         omgfi.renameDimensions(**geodims, inplace=True)
 
-        for geokey in geokeys:
+        for geokey in opts['geokeys']:
             omfi.copyVariable(omgfi.variables[geokey], key=geokey)
             
         omfs.append(omfi)
 
+    return omfs
+   
+def getunit(varv):
+    attrs = varv.getncatts()
+    for ukey in ('Units', 'units'):
+        if ukey in attrs:
+            return attrs[ukey].strip()
+    else:
+        return 'unknown'
 
-    omf = omfs[0].stack(omfs[1:], 'nTimes')
-
-    return omf
-    
-def process():
+def process(args):
+    gf = pnc.pncopen(args.GRIDDESC, format='griddesc', GDNAM=args.GDNAM)
     outpath = args.outpath
-    omf = openpaths(args.inpaths)
+    opts = eval(open(args.optpath, 'r').read())
+    datakeys = opts['datakeys']
     if os.path.exists(outpath):
         print('Using cached', outpath, flush=True)
         return
+
+    if args.inpaths[0].startswith('{'):
+        dapopts = eval(' '.join(args.inpaths))
+        args.inpaths = opendapquery(gf, **dapopts)
+
+    omf = openpaths(args.inpaths, opts)
 
     for timekey in ['Time', 'time', 'TIME']:
         if timekey in omf.variables:
@@ -102,8 +162,8 @@ def process():
 
     varos = [omf.variables[varkey] for varkey in datakeys]
 
-    gbaddata = eval(grndfilterexpr, None, omf.variables)
-    dbaddata = eval(datafilterexpr, None, omf.variables)
+    gbaddata = eval(opts['grndfilterexpr'], None, omf.variables)
+    dbaddata = eval(opts['datafilterexpr'], None, omf.variables)
     baddata = gbaddata | dbaddata
 
     print('Remove {:.2f}'.format(baddata.mask.mean()))
@@ -126,6 +186,7 @@ def process():
 
     outf.createDimension('LAY', nk)
     twodkeys = []
+    renamevars = opts.get('renamevars', {})
     for ki, varkey in enumerate(datakeys):
         outvarkey = renamevars.get(varkey, varkey)
         varv = omf.variables[varkey]
@@ -161,7 +222,7 @@ def process():
         var = outf.createVariable(outvarkey, 'f', outdims, missing_value=-9.000E36)
         var.var_desc = varkey.ljust(80)
         var.long_name = outvarkey.ljust(16)
-        var.units = getattr(varv, 'Units', 'unknown').ljust(16)
+        var.units = getunit(varv)
         var[:] = np.ma.masked_invalid(r[0])
         nvar = outf.createVariable('N' + outvarkey, 'f', outdims, missing_value=-9.000E36)
         nvar.var_desc = ('Count ' + varkey).ljust(80)
@@ -171,8 +232,10 @@ def process():
 
     delattr(outf, 'VAR-LIST')
     # {dk: slice(None, None, -1) for dk in invertdims}
-    pv = omf.variables[pressurekey]
-    pu =pv.Units.lower().strip()
+    pv = omf.variables[opts['pressurekey']]
+
+    pu = getunit(pv).lower()
+
     if pu in ("hpa", "mb"):
         pfactor = 100.
     elif pu == ("pa", "pascal"):
@@ -233,9 +296,11 @@ def process():
         delattr(outf, 'VAR-LIST')
 
     outf.updatemeta()
+    outf.FILEDESC = "cmaqsatproc output"
     outf.HISTORY = sys.argv[0] + ': ' + str(args)
     outf.save(outpath, verbose=1, complevel=1)
     gc.collect()
 
 if __name__ == '__main__':
-    process()
+    args = getargs(None)
+    process(args)
