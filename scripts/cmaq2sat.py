@@ -1,52 +1,41 @@
 import os
-import sys
 import numpy as np
 import PseudoNetCDF as pnc
+import argparse
 
+parser = argparse.ArgumentParser()
+parser.description = """
+Convert 3-D IOAPI mixing ratios (ppm) to dobson units within the
+tropopsphere as diagnosed by potential vorticity < 2 (see Itahashi 2018
+submitted).
 
-if len(sys.argv) < 6:
-    print("""Usage: {} CONCPATH METCRO2D METCRO3D OUTPATH KEY [AverKern]
-
-Description:
-    Convert 3-D IOAPI mixing ratios (ppm) to dobson units within the
-    tropopsphere as diagnosed by potential vorticity < 2 (see Itahashi 2018
-    submitted).
-    
-    * Cloud Fraction (METCRO2D CFRAC) is used to screen out cloudy pixels (CFRAC > 0.2).
-    * CMAQ times between 12 and 14 LST are eligible for comparison the satellite.
-
-Arguments:
-    CONCPATH : IOAPI CONC file must contain KEY
-    METCRO2D : IOAPI 2 dimensional met file must contain CFRAC and PRSFC
-    METCRO3D : IOAPI 3 dimensional met file must contain PV
-    OUTPATH  : path for output (e.g., test.nc)
-    KEY      : variable from CONCPATH for translation
-    AKPATH   : IOAPI Averaging Kernel file (optional, must have AveragingKernel)
-    
+* Cloud Fraction (METCRO2D CFRAC) is used to screen out cloudy pixels
+  (CFRAC > 0.2).
+* CMAQ times between 12 and 14 LST are eligible for comparison the satellite.
+"""
+parser.epilog = """
 Example No Averaging Kernel:
-    python cmaq2sat.py CMAQ.ACONC_20160101.nc MECRO2D_160101 METCRO3D_160101 CMAQ_L3_20160101.nc O3
+    python cmaq2sat.py CMAQ.ACONC_20160101.nc \
+           MECRO2D_160101 METCRO3D_160101 CMAQ_L3_20160101.nc O3
 
 Example No Averaging Kernel:
-    python cmaq2sat.py CMAQ.ACONC_20160101.nc MECRO2D_160101 METCRO3D_160101 CMAQ_L3_20160101.nc O3 AVGK.nc
+    python cmaq2sat.py CMAQ.ACONC_20160101.nc \
+           MECRO2D_160101 METCRO3D_160101 CMAQ_L3_20160101.nc O3 AVGK.nc
 
-Where AVGK.nc was made by gridding the AveragingKernel from an L2 file and averaging to 1-day
-""")
-    exit()
-
-cpath = sys.argv[1]
-m2path = sys.argv[2]
-m3path = sys.argv[3]
-outpath = sys.argv[4]
-key = sys.argv[5]
-if len(sys.argv) > 6:
-    akpath = sys.argv[6]
-else:
-    akpath = None
-
-if len(sys.argv) > 7:
-    akkey = sys.argv[7]
-else:
-    akkey = None
+Where AVGK.nc was made by gridding the AveragingKernel from an L2 file and
+averaging to 1-day
+"""
+aa = parser.add_argument
+aa('cpath', help='CMAQ CONC path; must contain key')
+aa('m2path', help='METCRO2D path; contains CFRAC and PRSFC')
+aa('m3path', help='METCRO3D path; contains PV')
+aa('outpath', help='output path')
+aa('key', help='CMAQ key to process')
+aa(
+    'akpath', nargs='?', default=None,
+    help='Averaging Kernel path; contains akkey'
+)
+aa('akkey', nargs='?', default=None, help='Averaging Kernel key')
 
 
 def ppm2du(cpath, m2path, m3path, outpath, key='O3', akpath=None, akkey=None):
@@ -82,7 +71,7 @@ def ppm2du(cpath, m2path, m3path, outpath, key='O3', akpath=None, akkey=None):
 
     # Any PV < 2 starts the troposphere. Itahashi 2018 submitted
     istrop = np.cumsum(PV[:, ::-1] < 2, axis=1)[:, ::-1] > 0
-    
+
     # Create a 2D and 3D mask for use later
     is3valid = (isoverpass & iscldfree).repeat(inf.NLAYS, 1) & istrop
     is2valid = (isoverpass & iscldfree)
@@ -105,7 +94,7 @@ def ppm2du(cpath, m2path, m3path, outpath, key='O3', akpath=None, akkey=None):
     m2f = m2fm.apply(TSTEP='mean')
 
     # calculate edge pressures from surface, sigma, and top pressure
-    pedges =  (
+    pedges = (
         (m2f.variables['PRSFC'][:] - inf.VGTOP) *
         inf.VGLVLS[None, :, None, None] + inf.VGTOP
     )
@@ -157,4 +146,11 @@ def ppm2du(cpath, m2path, m3path, outpath, key='O3', akpath=None, akkey=None):
     outf.save(outpath, verbose=0)
 
 
-ppm2du(cpath, m2path, m3path, outpath, key=key, akpath=akpath, akkey=akkey)
+if __name__ == '__main__':
+    args = parser.parse_args()
+
+    ppm2du(
+        cpath=args.cpath, m2path=args.m2path, m3path=args.m3path,
+        outpath=args.outpath, key=args.key,
+        akpath=args.akpath, akkey=args.akkey
+    )
