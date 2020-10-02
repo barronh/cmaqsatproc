@@ -497,7 +497,8 @@ def grid(args, gf, opts, omf):
     if args.verbose > 1:
         print('Calculating pressure for sigma approximation', flush=True)
     if opts['pressurekey'] is None:
-        pedges1d = np.array([101325, 0])
+        pedges = np.array([50000.], dtype='f')
+        pedges1d = np.array([101325, 0], dtype='f')
     else:
         pv = omf.variables[opts['pressurekey']]
 
@@ -546,13 +547,25 @@ def grid(args, gf, opts, omf):
         else:
             pedges1d = pedges
 
+        # Ensure pedges is never negative
+        # heuristic top identification could cause that problem.
         pedges1d = np.maximum(0, pedges1d) * pfactor
     ptop = outf.VGTOP = pedges1d[-1]
     psrf = pedges1d[0]
-    sigma = (pedges1d[:] - ptop) / (psrf - ptop)
 
-    outf.VGLVLS = sigma[:].astype('f')
-    outf.VGTYP = 7
+    if pedges.ndim == 1:
+        # OMI ScatteringWtPressure is on a pressure
+        # grid. OMPROFOZ
+        outf.VGTYP = 4
+        outf.VGLVLS = pedges1d.astype('f')
+    else:
+        # OMPROFOZ ProfileLevelPressure
+        # is on a hybrid sigma/eta coordinate
+        # sigma approximation is being used.
+        sigma = (pedges1d[:] - ptop) / (psrf - ptop)
+        outf.VGTYP = 7
+        outf.VGLVLS = sigma[:].astype('f')
+
     del outf.variables['DUMMY']
     for k in list(outf.variables):
         klen = len(k)
