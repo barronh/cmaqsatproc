@@ -18,7 +18,7 @@ python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
 # Requires .dodsrc or .daprc configured to allow
 # NASA OpenDAQ access
 OUTPATH=outsat/OMI-Aura_L3_108NHEMI2-OMNO2_dapq_2016m0101_v003.nc
-INPATHS="{'short_name': 'OMNO2', 'daterange': '2016-01-01T00:00:00+0600/P01D'}"
+INPATHS="{'short_name': 'OMNO2', 'daterange': '2016-01-01T00:00:00Z/P01D'}"
 python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
 
 # Make OMPROFOZ L3 output from downloaded files
