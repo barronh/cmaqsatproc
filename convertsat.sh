@@ -27,3 +27,13 @@ OUTPATH=outsat/OMI-Aura_L3_108NHEMI2-OMPROFOZ_2016m0101_v003.nc
 CFGPATH=config/OMPROFOZv003.py
 INPATHS=/work/ROMO/users/bhenders/obs/OMPROFOZ/avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/2016/01/01/*.he5
 python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
+
+CFGPATH=config/MLO3v005he5.py
+INPATHS=MLS-Aura_L2GP-O3_v05-01-c01_2020d267.he5
+OUTPATH=outsat/MLS-Aura_L3_108NHEMI2-O3_v05-01-c01_2020d267.nc
+python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
+
+CFGPATH=config/MLO3v005opendap.py
+INPATHS="{'short_name': 'ML2O3', 'version': '005', 'daterange': '2020-01-01T00:00:00Z/P01D'}"
+OUTPATH=outsat/MLS-Aura_L3_108NHEMI2-O3_dapq_v05-01-c01_2020d001.nc
+python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
