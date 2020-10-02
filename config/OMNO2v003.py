@@ -4,7 +4,7 @@
         "ScatteringWeight", "ScatteringWtPressure", "AmfTrop", "AmfStrat",
         "ColumnAmountNO2", "ColumnAmountNO2Trop", "ColumnAmountNO2Strat",
         "VcdApTrop", "VcdApStrat", "VcdApBelowCloud",
-        "TropopausePressure", "CloudFraction",
+        "TropopausePressure", "TerrainPressure", "CloudFraction",
         "XTrackQualityFlags", "VcdQualityFlags"
     ],
     "datadims": {
@@ -21,7 +21,7 @@
     "pressurekey": "ScatteringWtPressure",
     "grndfilterexpr": "(SolarZenithAngle >= 70)",
     "datafilterexpr": (
-        "(CloudFraction >= 300) | " +
+        "(CloudFraction[:] >= (300 if CloudFraction.dtype.char == 'h' else 0.30)) | " +
         "(np.bitwise_and(XTrackQualityFlags[:].filled(0), 1) == 1) | " +
         "(np.bitwise_and(VcdQualityFlags, 1) == 1)"
     ),
