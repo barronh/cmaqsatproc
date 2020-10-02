@@ -29,7 +29,7 @@ INPATHS=/work/ROMO/users/bhenders/obs/OMPROFOZ/avdc.gsfc.nasa.gov/pub/data/satel
 python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
 
 CFGPATH=config/MLO3v005he5.py
-INPATHS=MLS-Aura_L2GP-O3_v05-01-c01_2020d267.he5
+INPATHS=/work/ROMO/satellite/ML2O3/acdisc.gesdisc.eosdis.nasa.gov/data/Aura_MLS_Level2/ML2O3.005/2020/MLS-Aura_L2GP-O3_v05-01-c01_2020d267.he5
 OUTPATH=outsat/MLS-Aura_L3_108NHEMI2-O3_v05-01-c01_2020d267.nc
 python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
 
