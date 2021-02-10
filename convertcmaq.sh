@@ -1,6 +1,6 @@
 KEY=NO2
 AKPATH=outsat/OMI-Aura_L3_108NHEMI2-OMNO2_2016m0101_v003.nc
-AKKEY="ScatteringWeight[:]/AmfTrop[:]"
+AKKEY="ScatteringWeight[:]/AmfTrop[:, 0]"
 # KEY=O3
 # AKPATH=outsat/OMI-Aura_L3_108NHEMI2-OMPROFOZ_2016m0101_v003.nc
 # AKKEY="O3AveragingKernel[:]"
