@@ -146,6 +146,54 @@ def findtroposphere(m3f, rawsatf, myargs):
     return istrop
 
 
+def pinterp(m2fd, m3f, aksatf):
+    prsfc = m2fd.variables['PRSFC'][:]
+    # The output shape will be 3d matching the metcro3d file
+    akshape = list(prsfc.shape)
+    akshape[1] = len(m3f.dimensions['LAY'])
+
+    ak = np.ma.masked_all(akshape, dtype='f')
+
+    # The partial pressure represented by the satellite
+    akptop = aksatf.VGTOP
+    akdp = (aksatf.VGLVLS[0] - akptop)
+
+    # Calculate mid point pressures
+    akpmid = (aksatf.VGLVLS[:-1] + aksatf.VGLVLS[1:]) / 2
+
+    # Create a sigma approximation
+    aksigma = (akpmid - akptop) / akdp
+
+    akin = aksatf.variables['AveragingKernel']
+
+    # Out sigma is mid points
+    outsigma = (m3f.VGLVLS[:-1] + m3f.VGLVLS[1:]) / 2
+    outvgtop = m3f.VGTOP
+
+    # Iterate over indices (k=0, while t, j, and i change
+    print('Start inteprolate AK', flush=True)
+    for t, k, j, i in np.ndindex(*prsfc.shape):
+        # Hold a vertical column
+        psfc = prsfc[t, k, j, i]
+        if np.ma.getmaskarray(psfc).all():
+            # Skip any columns that are 100% masked
+            continue
+
+        akv = akin[t, :, j, i]
+        if np.ma.getmaskarray(akv).all():
+            # Skip any columns that are 100% masked
+            continue
+        x = outsigma * (psfc - outvgtop) + outvgtop
+        xp = akpmid
+        if not pressure:
+            x = (x - akptop) / akdp
+            xp = aksigma
+
+        ak[t, :, j, i] = np.interp(x, xp[::-1], akv[::-1])
+
+    return ak
+
+
 def ppm2du(
     cpath, m2path, m3path, outpath, key='O3',
     satpath=None, akexpr=None, tppexpr=None, minlsthour=12, maxlsthour=14,
@@ -179,6 +227,15 @@ def ppm2du(
     inf = pnc.pncopen(cpath, format='ioapi')
     m2f = pnc.pncopen(m2path, format='ioapi')
     m3f = pnc.pncopen(m3path, format='ioapi')
+    cmaqunit = getattr(inf.variables[key], 'units', 'unknown').strip().lower()
+    if cmaqunit in ('ppm', 'ppmv'):
+        unitfactor = 1
+    elif cmaqunit in ('ppb', 'ppbv'):
+        unitfactor = 1e-3
+    else:
+        warn(f'Unit {cmaqunit} is unknown; assuming ppm')
+        unitfactor = 1
+
     if satpath is not None:
         rawsatf = pnc.pncopen(satpath, format='ioapi')
     else:
@@ -258,7 +315,7 @@ def ppm2du(
     )
 
     dp = -np.diff(pedges, axis=1) / 100
-    ppm = infd.variables[key][:].copy()
+    ppm = infd.variables[key][:] * unitfactor
 
     # Using O3 gradient as tropopause
     # commented out to use PV instead
@@ -267,39 +324,41 @@ def ppm2du(
     # cmask = np.cumsum(mask, axis=1) > 0
     # ppm = np.ma.masked_where(cmask, ppm)
     if akexpr is not None:
+        # Calculate the averaging Kernel using variables in the raw satellite
+        # file
         aksatf = rawsatf.eval(
             f'AveragingKernel = {akexpr}'
         )
-        if aksatf.VGTYP == infd.VGTYP and aksatf.VGTYP == 7:
+        # Now interpolate the Averaging Kernel to the model levels
+        # Currently, this supports
+        if (
+            aksatf.VGTYP == infd.VGTYP
+            and np.allclose(aksatf.VGTYP, infd.VGLVLS)
+        ):
+            # The vertical coordinate types are the same and the vertical
+            # level edges are the same, so no interpolation is necessary.
+            akf = aksatf
+        elif aksatf.VGTYP == infd.VGTYP and aksatf.VGTYP == 7:
+            # The vertical coordinates are dry sigma pressures, which support
+            # the use of the efficient interpSigma method for vertical
+            # interpolation
             myargs['ak_interp'] = 'sigma2sigma'
             akf = aksatf.interpSigma(
                 infd.VGLVLS, vgtop=infd.VGTOP, interptype='linear',
                 extrapolate=False, fill_value='extrapolate', verbose=0
             )
+            # Ensure that missing values are treated as missing
             ak = np.ma.masked_values(akf.variables['AveragingKernel'][:], -999)
         elif aksatf.VGTYP == 4:
+            # This case is designed to support OMNO2d-like pressure coordinates
+            # In this case, the VGLVLS will be in decreasing value order in
+            # Pascals (e.g., 102500.f, 101500.f, ... , 115.f, 45.f)
             myargs['ak_interp'] = 'pressure2sigma'
-            prsfc = m2fd.variables['PRSFC'][:]
-            akshape = list(prsfc.shape)
-            akshape[1] = len(m3f.dimensions['LAY'])
-            ak = np.ma.masked_all(akshape, dtype='f')
-            akdp = (aksatf.VGLVLS[0] - aksatf.VGTOP)
-            aksigma = (
-                (aksatf.VGLVLS[:-1] + aksatf.VGLVLS[1:]) / 2 -
-                aksatf.VGTOP
-            ) / akdp
-            akin = aksatf.variables['AveragingKernel']
-            print('Start inteprolate AK', flush=True)
-            outsigma = (m3f.VGLVLS[:-1] + m3f.VGLVLS[1:]) / 2
-            outvgtop = m3f.VGTOP
-            for t, k, j, i in np.ndindex(*prsfc.shape):
-                akv = akin[t, :, j, i]
-                if np.ma.getmaskarray(akv).all():
-                    continue
-
-                xsigma = outsigma * (prsfc[t, k, j, i] - outvgtop) / akdp
-                ak[t, :, j, i] = np.interp(xsigma, aksigma[::-1], akv[::-1])
-
+            ak = pinterp(m2fd, m3f, aksatf, pressure=True)
+        else:
+            raise TypeError(
+                f'Unknown VGTYP={aksatf.VGTYP}; cannot interpolate'
+            )
         # Use averaging kernel if available
         pp = (ppm * dp)
         dus = hPa_to_du * pp
@@ -342,6 +401,7 @@ def ppm2du(
     # with dobson units
     ovar = outf.variables[key]
     ovar.units = 'dobson units'
+    ovar.var_desc = f'{key} dobson units (molec/cm2 = DU * 2.69e16)'.ljust(80)
     ovar[:, 0] = du
     outf.HISTORY = f'ppm2du(**{myargs})'
 
