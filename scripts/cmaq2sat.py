@@ -42,6 +42,7 @@ Where AVGK.nc was made by gridding the AveragingKernel from an L2 file and
 averaging to 1-day
 """
 aa = parser.add_argument
+aa('-v', '--verbose', default=0, action='count', help='Increase verbosity')
 aa(
     '--minlsthour', default=12, type=float,
     help=(
@@ -83,18 +84,47 @@ aa('outpath', help='output path')
 aa('key', help='CMAQ key to process')
 
 
-def findtroposphere(m3f, rawsatf, myargs):
+def findtroposphere(m3f, rawsatf, myargs, verbose=0):
+    """
+    Identify cells that are within the troposphere
+
+    Arguments
+    ---------
+    m3f : PseudoNetCDFFile
+        Must have either PRES, PV or (TA and ZH)
+        * if tppexpr available, then troposphere where greater than PRES
+        * elif PV in m3f, then Itahashi 2018 method is used
+        * elif TA and ZH in m3f, then using WMO 1957 approach
+    rawsatf : PseudoNetCDFFile
+        * used to calculate the satellite troposphere pressure using tppexpr
+    myargs : dictionary
+        must have tppexpr (str or None)
+    verbose : int
+        count verbosity level
+
+    Returns
+    -------
+    istrop : array
+        boolean is troposphere (True) or not (False)
+    """
     tppexpr = myargs['tppexpr']
     if tppexpr is not None and 'PRES' in m3f.variables:
         myargs['istropmethod'] = 'Satellite Tropopause Pressure'
+        if verbose > 0:
+            print(' * Using:', myargs['istropmethod'])
         tppf = rawsatf.eval(
             f'TropoPausePressure = {tppexpr}'
         ).slice(LAY=0)
         # Satellite TropoPause Pressure surface values only
         stpp = tppf.variables['TropoPausePressure'][:]
+        if verbose > 0:
+            print(' * TropoPausePressure mean', stpp.mean())
+
         istrop = m3f.variables['PRES'][:] > stpp
     elif 'PV' in m3f.variables:
         myargs['istropmethod'] = 'Potential Vorticity < 2 (Itahashi 2018)'
+        if verbose > 0:
+            print(' * Using:', myargs['istropmethod'])
         # Any PV < 2 starts the troposphere. Itahashi 2018 submitted
         PV = m3f.variables['PV'][:]
         istrop = np.cumsum(PV[:, ::-1] < 2, axis=1)[:, ::-1] > 0
@@ -107,6 +137,8 @@ def findtroposphere(m3f, rawsatf, myargs):
         myargs['istropmethod'] = (
             'Lapse-rate (similar to doi: 10.1029/2003GL018240)'
         )
+        if verbose > 0:
+            print(' * Using:', myargs['istropmethod'])
         # https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2003GL018240
         # According to the WMO [1957], the tropopause is defined as "the lowest
         # level at which the lapse-rate decreases to 2 C/km or less, provided
@@ -143,10 +175,13 @@ def findtroposphere(m3f, rawsatf, myargs):
     else:
         raise KeyError('METCRO3D requires PV or TA and ZH, but had neither')
 
+    if verbose > 1:
+        print(' * IsTrop average layers', istrop.sum(1).mean())
+
     return istrop
 
 
-def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None):
+def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0):
     """
     Interpolates AveragingKernel from aksatf on satellite layers to pressure
     values per grid cell either defined using PRES or the approximation:
@@ -176,12 +211,15 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None):
     """
     approxpres = PRES is None
     if approxpres:
+        if verbose > 0:
+            print(' * Using: pressure approximated from PRSFC')
         if (VGLVLS is None or VGTOP is None or PRSFC is None):
             errstr = (
                 'PRES or PRSFC/VGLVLS/VGTOP are required; got\n'
                 + f'PRES={PRES},PRSFC={PRSFC},VGLVLS={VGLVLS},VGTOP={VGTOP}'
             )
             raise ValueError(errstr)
+
     # The averaging kernel used as y-value (np.interp yp)
     akin = aksatf.variables['AveragingKernel']
 
@@ -204,8 +242,10 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None):
     # Calculate mid point pressures, used as xcoordinate (np.interp xp)
     akpmid = (aksatf.VGLVLS[:-1] + aksatf.VGLVLS[1:]) / 2
 
+    if verbose > 0:
+        print(' * Start interpolate AK', flush=True)
+
     # Iterate over indices (k=0, while t, j, and i change
-    print('Start inteprolate AK', flush=True)
     for t, j, i in np.ndindex(nt, nj, ni):
         # Hold a vertical column
         akv = akin[t, :, j, i]
@@ -232,8 +272,62 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None):
 def ppm2du(
     cpath, m2path, m3path, outpath, key='O3',
     satpath=None, akexpr=None, tppexpr=None, minlsthour=12, maxlsthour=14,
-    isvalidexpr=None, maxcld=0.2
+    isvalidexpr=None, maxcld=0.2, verbose=0
 ):
+    """
+    Create a satellite-like file from CMAQ with retrieval processing.
+
+    Arguments
+    ---------
+    cpath : str
+        path to IOAPI 3D concentration file containing key
+    m2path : str
+        path to IOAPI 2D MCIP METCRO2D file containing key
+    m3path : str
+        path to IOAPI 3D MCIP METCRO3D file containing key
+    outpath : str
+        path for IOAPI 2D output path
+    key : str
+        key to use from cpath as a concentration file. Expected to have units
+        of either ppm or ppb
+    satpath : str or None
+        optional, IOAPI 3D file with variables to derive akexpr and/or tppexpr
+    akexpr : str or None
+        optional, definition of Averaging Kernel which can be a single variable
+        or can be dervied from Scattering Weights (w_z) and air mass factor (M)
+        e.g., akexpr="ScatWgt / AmfTrop[:, 0]"
+    tppexpr : str or None
+        optional, definition of Tropopause Pressure in Pascals, which can be a
+        single variable name or an expression.
+        e.g., tppexpr='TropopausePres[:] * 100'
+    minlsthour : int
+        lst hour must be >= minlsthour (default: 12)
+    maxlsthour : int
+        lst hour must be <= maxlsthour (default: 14)
+        isoverpass = (lsthour >= minlsthour) & (lsthour <= maxlsthour)
+    isvalidexpr : str or None
+        optional, expr to use from satpath to select valid cells
+    maxcld : float
+        Maximum cloud fraction (isclear = CFRAC < maxcld)
+    verbose : int
+        Count of verbosity level
+
+    Returns
+    -------
+    outf : NetCDFFile
+        File with vertical column density (named `key`), CFRAC,
+        TROPOPAUSEPRES, and LAYERS.
+        * TFLAG : <YYYYJJJ>, <HHMMSS>
+            standard IOAPI variable
+        * KEY : dobson units
+            vertical column density V_z * w_z / M_z
+        * CFRAC : fraction
+            fraction of cloudiness in the model
+        * TROPOPAUSEPRES : Pascals
+            tropopause pressure level (ie. min pressure in troposphere)
+        * LAYERS : count
+            number of layers used in vertical column
+    """
     myargs = locals().copy()
     myargs['script'] = sys.argv[0]
     myargs['script_mtime'] = time.ctime(os.stat(sys.argv[0]).st_mtime)
@@ -271,6 +365,9 @@ def ppm2du(
         warn(f'Unit {cmaqunit} is unknown; assuming ppm')
         unitfactor = 1
 
+    if verbose > 0:
+        print(f' * Scaling {cmaqunit} by {unitfactor} to get ppm')
+
     if satpath is not None:
         rawsatf = pnc.pncopen(satpath, format='ioapi')
     else:
@@ -302,13 +399,17 @@ def ppm2du(
     iscldfree = cf < maxcld
 
     # Find layers in the troposphere
-    istrop = findtroposphere(m3f, rawsatf, myargs)
+    istrop = findtroposphere(m3f, rawsatf, myargs, verbose=verbose)
+
     # Create a 2D and 3D mask for use later
     is2valid = (isoverpass & iscldfree)
 
     # Only select data with valid satellite retrieved overpasses
     if isvalidexpr is not None:
         myargs['isvalidmethod'] = f'Paired with satellite {isvalidexpr}'
+        if verbose > 0:
+            print(' *', myargs['isvalidmethod'])
+
         isvalidf = rawsatf.eval(
             f'ISVALID = {isvalidexpr}'
         ).slice(LAY=0)
@@ -316,9 +417,14 @@ def ppm2du(
         is2valid = is2valid & issatvalid
     else:
         myargs['isvalidmethod'] = 'Model filter only'
+        if verbose > 0:
+            print(' *', myargs['isvalidmethod'])
 
     is3valid = is2valid.repeat(inf.NLAYS, 1) & istrop
     is3strat = is2valid.repeat(inf.NLAYS, 1) & (~istrop)
+
+    if verbose > 0:
+        print(' * Masking files to remove non-overpass or cloudy pixels')
 
     # subset variables to increase speed
     # create copies of m2f and inf with invalid pixels masked
@@ -332,6 +438,9 @@ def ppm2du(
     ).mask(
         ~is2valid, dims=('TSTEP', 'LAY', 'ROW', 'COL')
     )
+
+    if verbose > 0:
+        print(' * Averaging remaining times.')
 
     # Average only valid pixels for a daily file
     infd = infm.apply(TSTEP='mean')
@@ -359,21 +468,43 @@ def ppm2du(
     # cmask = np.cumsum(mask, axis=1) > 0
     # ppm = np.ma.masked_where(cmask, ppm)
     if akexpr is not None:
+        if verbose > 0:
+            print(f' * Calculating AveragingKernel = {akexpr}')
+
         # Calculate the averaging Kernel using variables in the raw satellite
         # file
         aksatf = rawsatf.eval(
             f'AveragingKernel = {akexpr}'
         )
+        if verbose > 0:
+            aktmp = aksatf.variables['AveragingKernel']
+            print(' * AveragingKernel shape', aktmp.shape)
+            if verbose > 1:
+                print(' * AveragingKernel mean profile')
+                print(aktmp[:].mean((0, 2, 3)))
+            del aktmp
         # Now interpolate the Averaging Kernel to the model levels
         # Currently, this supports
         if (
             aksatf.VGTYP == infd.VGTYP
             and np.allclose(aksatf.VGTYP, infd.VGLVLS)
         ):
+            if verbose > 0:
+                print(
+                    ' * Satellite and CMAQ share vertical coordinate: '
+                    + 'no interpolation is necessary.'
+                )
+
             # The vertical coordinate types are the same and the vertical
             # level edges are the same, so no interpolation is necessary.
             akf = aksatf
         elif aksatf.VGTYP == infd.VGTYP and aksatf.VGTYP == 7:
+            if verbose > 0:
+                print(
+                    ' * Both satellite and CMAQ use IOAPI sigma coordinate: '
+                    + 'using PseudoNetCDF interpSigma method for interpolation'
+                )
+
             # The vertical coordinates are dry sigma pressures, which support
             # the use of the efficient interpSigma method for vertical
             # interpolation
@@ -385,29 +516,56 @@ def ppm2du(
             # Ensure that missing values are treated as missing
             ak = np.ma.masked_values(akf.variables['AveragingKernel'][:], -999)
         elif aksatf.VGTYP == 4:
+            if verbose > 0:
+                print(
+                    ' * Satellite uses pressure coordinate: using pinterp '
+                    + 'which assumes CMAQ is on a sigma coordinate (VGTYP=7),'
+                    + ' got VGTYP={m3f.VGYP}. This may be okay for the hybrid'
+                    + ' coordinate.'
+                )
+
             # This case is designed to support OMNO2d-like pressure coordinates
             # In this case, the VGLVLS will be in decreasing value order in
             # Pascals (e.g., 102500.f, 101500.f, ... , 115.f, 45.f)
             myargs['ak_interp'] = 'pressure2sigma'
             ak = pinterp(
                 aksatf, VGLVLS=m3f.VGLVLS, VGTOP=m3f.VGTOP,
-                PRSFC=m2fd.variables['PRSFC']
+                PRSFC=m2fd.variables['PRSFC'], verbose=verbose
             )
-            print('Test', ak.shape)
-            print('Test', ak.mean((0, 2, 3)))
+            if verbose > 0:
+                print(' * AveragingKernel shape', ak.shape)
+                if verbose > 1:
+                    print(' * AveragingKernel mean profile')
+                    print(ak.mean((0, 2, 3)))
         else:
             raise TypeError(
                 f'Unknown VGTYP={aksatf.VGTYP}; cannot interpolate'
             )
+
+        if verbose > 0:
+            print(
+                ' * Calculating vertical column density:\n'
+                + f' * {key} = {hPa_to_du} \\sum_z (K_z * ppm_z * dP_z)'
+            )
+
         # Use averaging kernel if available
         pp = (ppm * dp)
         dus = hPa_to_du * pp
         du = (dus * ak).sum(1, keepdims=True)
         myargs['akmethod'] = f'AveragingKernel = {akexpr}'
     else:
+        if verbose > 0:
+            print(
+                ' * Calculating vertical column density:\n'
+                + f' * {key} = {hPa_to_du} \\sum_z (ppm_z * dP_z)'
+            )
+
         pp = (ppm * dp).sum(1)  # 1e6 hPa
         du = hPa_to_du * pp
         myargs['akmethod'] = 'None'
+
+    if verbose > 0:
+        print(' * Creating output file')
 
     # Create a template file from the input
     # for output results
@@ -445,16 +603,19 @@ def ppm2du(
     ovar[:, 0] = du
     outf.HISTORY = f'ppm2du(**{myargs})'
 
+    if verbose > 0:
+        print(f' * Storing file to disk: {outpath}')
+
     # Save output
-    outf.save(outpath, verbose=0)
+    return outf.save(outpath, verbose=max(0, verbose - 1))
 
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    ppm2du(
+    outf = ppm2du(
         cpath=args.cpath, m2path=args.m2path, m3path=args.m3path,
         outpath=args.outpath, key=args.key, maxcld=args.maxcld,
         minlsthour=args.minlsthour, maxlsthour=args.maxlsthour,
         satpath=args.satpath, akexpr=args.akexpr, tppexpr=args.tppexpr,
-        isvalidexpr=args.isvalidexpr,
+        isvalidexpr=args.isvalidexpr, verbose=args.verbose
     )
