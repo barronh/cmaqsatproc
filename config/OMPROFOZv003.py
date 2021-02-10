@@ -10,7 +10,8 @@
     "datadims": {
         "phony_dim_0": "nTimes",
         "phony_dim_1": "nXtrack",
-        "phony_dim_4": "nLevels"
+        "phony_dim_4": "nLevels",
+        "phony_dim_7": "nLevelEdges"
     },
     "geodims": {
         "phony_dim_9": "nTimes",

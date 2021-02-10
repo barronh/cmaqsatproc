@@ -414,10 +414,9 @@ def grid(args, gf, opts, omf):
         print('Local Time :', localhourpctstr)
 
     outf = gf.copy().subsetVariables(['DUMMY'])
-    varos = [omf.variables[varkey] for varkey in outkeys]
-    ndim, outshape = sorted([(varo.ndim, varo.shape) for varo in varos])[-1]
-    if ndim > 2:
-        nk = outshape[-1]
+
+    if 'nLevels' in omf.dimensions:
+        nk = len(omf.dimensions['nLevels'])
     else:
         nk = 1
 
@@ -555,7 +554,7 @@ def grid(args, gf, opts, omf):
 
     if pedges.ndim == 1:
         # OMI ScatteringWtPressure is on a pressure
-        # grid. OMPROFOZ
+        # grid.
         outf.VGTYP = 4
         outf.VGLVLS = pedges1d.astype('f')
     else:
