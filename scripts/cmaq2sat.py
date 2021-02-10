@@ -146,50 +146,85 @@ def findtroposphere(m3f, rawsatf, myargs):
     return istrop
 
 
-def pinterp(m2fd, m3f, aksatf):
-    prsfc = m2fd.variables['PRSFC'][:]
-    # The output shape will be 3d matching the metcro3d file
-    akshape = list(prsfc.shape)
-    akshape[1] = len(m3f.dimensions['LAY'])
+def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None):
+    """
+    Interpolates AveragingKernel from aksatf on satellite layers to pressure
+    values per grid cell either defined using PRES or the approximation:
 
-    ak = np.ma.masked_all(akshape, dtype='f')
+        PRES ~ (PRSFC - VGTOP) * VGLVLS + VGTOP
 
-    # The partial pressure represented by the satellite
-    akptop = aksatf.VGTOP
-    akdp = (aksatf.VGLVLS[0] - akptop)
+    Requires either PRES or all of PRSFC, VGLVLS, VGTOP
 
-    # Calculate mid point pressures
-    akpmid = (aksatf.VGLVLS[:-1] + aksatf.VGLVLS[1:]) / 2
+    Arguments
+    ---------
+    aksatf : NetCDFFile-like
+        has variables dict with AveragingKernel dim(1, NLAYS, NROWS, NCOLS)
+    PRES : array or None
+        if array, dim(1, NLAYS, NROWS, NCOLS) and units Pascals
+    PRSFC : array or None
+        if array, dim(1, 1, NROWS, NCOLS) and units Pascals
+    VGLVLS: array or None
+        if array, shape NLAYS + 1 and units of (P - Ptop) / (Psfc - Ptop)
+    VGTOP : array or None
+        top of model in Pascals
 
-    # Create a sigma approximation
-    aksigma = (akpmid - akptop) / akdp
-
+    Returns
+    -------
+    ak : array
+        Interpolated Averaging Kernel dim(1, NLAYS, NROWS, NCOLS) where
+        NLAYS = VGLVLS.size - 1
+    """
+    approxpres = PRES is None
+    if approxpres:
+        if (VGLVLS is None or VGTOP is None or PRSFC is None):
+            errstr = (
+                'PRES or PRSFC/VGLVLS/VGTOP are required; got\n'
+                + f'PRES={PRES},PRSFC={PRSFC},VGLVLS={VGLVLS},VGTOP={VGTOP}'
+            )
+            raise ValueError(errstr)
+    # The averaging kernel used as y-value (np.interp yp)
     akin = aksatf.variables['AveragingKernel']
 
-    # Out sigma is mid points
-    outsigma = (m3f.VGLVLS[:-1] + m3f.VGLVLS[1:]) / 2
-    outvgtop = m3f.VGTOP
+    # The output shape will be 3d matching the metcro3d file
+    inshape = akin.shape
+    nt = inshape[0]
+    nj = inshape[2]
+    ni = inshape[3]
+    outshape = list(inshape)
+    if approxpres:
+        outshape[1] = VGLVLS.size - 1
+        # Out sigma is mid points
+        outsigma = (VGLVLS[:-1] + VGLVLS[1:]) / 2
+        outvgtop = VGTOP
+    else:
+        outshape[1] = PRES.shape[1]
+
+    ak = np.ma.masked_all(outshape, dtype='f')
+
+    # Calculate mid point pressures, used as xcoordinate (np.interp xp)
+    akpmid = (aksatf.VGLVLS[:-1] + aksatf.VGLVLS[1:]) / 2
 
     # Iterate over indices (k=0, while t, j, and i change
     print('Start inteprolate AK', flush=True)
-    for t, k, j, i in np.ndindex(*prsfc.shape):
+    for t, j, i in np.ndindex(nt, nj, ni):
         # Hold a vertical column
-        psfc = prsfc[t, k, j, i]
-        if np.ma.getmaskarray(psfc).all():
-            # Skip any columns that are 100% masked
-            continue
-
         akv = akin[t, :, j, i]
         if np.ma.getmaskarray(akv).all():
             # Skip any columns that are 100% masked
             continue
-        x = outsigma * (psfc - outvgtop) + outvgtop
-        xp = akpmid
-        if not pressure:
-            x = (x - akptop) / akdp
-            xp = aksigma
 
-        ak[t, :, j, i] = np.interp(x, xp[::-1], akv[::-1])
+        if approxpres:
+            psfc = PRSFC[t, 0, j, i]
+            # Calculate pressures at mid-points (np.interp x)
+            x = outsigma * (psfc - outvgtop) + outvgtop
+        else:
+            x = PRES[t, :, j, i]
+
+        if np.ma.getmaskarray(x).all():
+            # Skip any columns that are 100% masked
+            continue
+
+        ak[t, :, j, i] = np.interp(x, akpmid[::-1], akv[::-1])
 
     return ak
 
@@ -354,7 +389,12 @@ def ppm2du(
             # In this case, the VGLVLS will be in decreasing value order in
             # Pascals (e.g., 102500.f, 101500.f, ... , 115.f, 45.f)
             myargs['ak_interp'] = 'pressure2sigma'
-            ak = pinterp(m2fd, m3f, aksatf, pressure=True)
+            ak = pinterp(
+                aksatf, VGLVLS=m3f.VGLVLS, VGTOP=m3f.VGTOP,
+                PRSFC=m2fd.variables['PRSFC']
+            )
+            print('Test', ak.shape)
+            print('Test', ak.mean((0, 2, 3)))
         else:
             raise TypeError(
                 f'Unknown VGTYP={aksatf.VGTYP}; cannot interpolate'
