@@ -11,13 +11,14 @@
         "phony_dim_0": "nTimes",
         "phony_dim_1": "nXtrack",
         "phony_dim_4": "nLevels",
-        "phony_dim_7": "nLevelEdges"
+        "phony_dim_8": "nLevelEdges"
     },
     "geodims": {
         "phony_dim_9": "nTimes",
         "phony_dim_10": "nXtrack"
     },
     "pressurekey": "ProfileLevelPressure",
+    "flipdims": ["nLevels", "nLevelEdges"],
     # Data filtering is unclear.
     #
     # According to the README file[1]: "The Exit Status (ES) is one of the most

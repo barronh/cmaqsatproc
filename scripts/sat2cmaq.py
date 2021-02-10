@@ -233,12 +233,28 @@ def openhe5(inpaths, opts, verbose):
             print({dk: len(dv) for dk, dv in omgfi.dimensions.items()})
             print('Selected dimension mapping:', geodims, flush=True)
 
+        for key in datadims:
+            if key not in omfi.dimensions:
+                print(f'Key {key} not found; in {omgi.dimensions}')
+
         omfi.renameDimensions(**datadims, inplace=True)
+
+        for key in geodims:
+            if key not in omgfi.dimensions:
+                print(f'Key {key} not found; in {omgfi.dimensions}')
+
         omgfi.renameDimensions(**geodims, inplace=True)
 
         for geokey in opts['geokeys']:
             omfi.copyVariable(omgfi.variables[geokey], key=geokey)
 
+        flipdimkeys = opts.get('flipdims', [])
+        if len(flipdimkeys) > 0:
+            flipslices = {
+                k: slice(None, None, -1)
+                for k in flipdimkeys if k in omfi.dimensions
+            }
+            omfi = omfi.sliceDimensions(**flipslices)
         omfs.append(omfi)
 
     return omfs
@@ -492,11 +508,13 @@ def grid(args, gf, opts, omf):
         nvar[:] = c[0]
 
     delattr(outf, 'VAR-LIST')
+
     # {dk: slice(None, None, -1) for dk in invertdims}
     if args.verbose > 1:
         print('Calculating pressure for sigma approximation', flush=True)
     if opts['pressurekey'] is None:
-        pedges = np.array([50000.], dtype='f')
+        p = np.array([50000], dtype='f')
+        pedges = np.array([101325, 0.], dtype='f')
         pedges1d = np.array([101325, 0], dtype='f')
     else:
         pv = omf.variables[opts['pressurekey']]
@@ -530,15 +548,18 @@ def grid(args, gf, opts, omf):
                 tmpv = outf.variables[varkey]
                 tmpv[:] = tmpv[:, ::-1]
 
-        hdp = dp / 2
-        pedges = np.ma.concatenate(
-            [
-                p[..., :-1] - hdp,
-                p[..., [-1]] - hdp[..., [-1]],
-                p[..., [-1]] + hdp[..., [-1]],
-            ],
-            axis=-1
-        )
+        if 'nLevelEdges' in pv.dimensions:
+            pedges = pv[:]
+        else:
+            hdp = dp / 2
+            pedges = np.ma.concatenate(
+                [
+                    p[..., :-1] - hdp,
+                    p[..., [-1]] - hdp[..., [-1]],
+                    p[..., [-1]] + hdp[..., [-1]],
+                ],
+                axis=-1
+            )
 
         if pedges.ndim > 1:
             meanaxes = tuple(list(range(pedges.ndim-1)))
@@ -549,6 +570,7 @@ def grid(args, gf, opts, omf):
         # Ensure pedges is never negative
         # heuristic top identification could cause that problem.
         pedges1d = np.maximum(0, pedges1d) * pfactor
+
     ptop = outf.VGTOP = pedges1d[-1]
     psrf = pedges1d[0]
 
@@ -577,6 +599,7 @@ def grid(args, gf, opts, omf):
     outf.updatemeta()
     outf.FILEDESC = "cmaqsatproc output"
     outf.HISTORY = sys.argv[0] + ': ' + str(args)
+
     gc.collect()
     return outf
 
