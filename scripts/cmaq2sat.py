@@ -76,6 +76,8 @@ aa(
         '(e.g., VCD_NO2_Trop.mask == False)'
     )
 )
+aa('--prexpr', default=None, help='Prior expression')
+aa('--swexpr', default=None, help='Scattering weight expression')
 aa('--akexpr', default=None, help='Averaging Kernel expression')
 aa('cpath', help='CMAQ CONC path; must contain key')
 aa('m2path', help='METCRO2D path; contains CFRAC and PRSFC')
@@ -181,7 +183,76 @@ def findtroposphere(m3f, rawsatf, myargs, verbose=0):
     return istrop
 
 
-def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0):
+def sinterp(satf, *args, **kwds):
+    """
+    Thin wrapper to PseudoNetCDF.cmaq.ioapi_base.interpSigma
+
+    Wrapper subsets the file for non-masked values and applies
+    the interpolation only over valid data. Because interpSigma
+    is computationally expensive, it saves significant amount
+    of time.
+
+    Arguments
+    ---------
+    satf : PseudoNetCDFFile
+        expected to have AveragingKernel, ScatteringWeights and/or APriori
+
+    Returns
+    -------
+    outf : PseudoNetCDFFile
+        Same as satf, but on new vertical coordiane system
+    """
+    # Expected variable
+    expected_keys = ['AveragingKernel', 'ScatteringWeights', 'APriori']
+    # Find a variable
+    for tmpkey in expected_keys:
+        if tmpkey in satf.variables:
+            break
+
+    # Variable will have dimensions (TSTEP, ..., ROW, COL)
+    # and will be masked
+    tmpv = satf.variables[tmpkey]
+
+    # Create a nd mask
+    mask = tmpv[:].mask
+    # Reduce the mask from nd to 2d where if any value is unmasked, the whole
+    # row/col combination is processed
+    while mask.ndim > 2:
+        mask = mask.all(0)
+
+    # Indentify where the mask is not true; these are the indicies to process
+    j, i = np.where(~mask)
+
+    # Subset the file for the rows/columns. Name vector ROW
+    tmpsatf = satf.slice(ROW=j, COL=i, newdims=('ROW',))
+
+    # Interpolate those values on th sigma
+    tmpoutf = tmpsatf.interpSigma(*args, **kwds)
+
+    # Create an output file that is like satf, but with no variables
+    outf = satf.subset([])
+    # Change the layer dimension to be like the output
+    outf.createDimension('LAY', len(tmpoutf.dimensions['LAY']))
+
+    # add the IOAPI vertical coordinate definition
+    outf.VGTOP = tmpoutf.VGTOP
+    outf.VGLVLS = tmpoutf.VGLVLS
+
+    # Copy the vector values into the ROW/COL locations
+    for outkey in expected_keys:
+        if outkey in tmpoutf.variables:
+            inv = satf.variables[outkey]
+            outak = outf.copyVariable(
+                inv, key=outkey, withdata=False, fill_value=-999.
+            )
+            outak[:] = np.ma.masked
+            outak[..., j, i] = tmpoutf.variables[outkey][:]
+
+    return outf.mask(values=-999.)
+
+def pinterp(
+    aksatf, interpkey, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0,
+):
     """
     Interpolates AveragingKernel from aksatf on satellite layers to pressure
     values per grid cell either defined using PRES or the approximation:
@@ -202,11 +273,13 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0):
         if array, shape NLAYS + 1 and units of (P - Ptop) / (Psfc - Ptop)
     VGTOP : array or None
         top of model in Pascals
+    interpkey : str
+        variable to interpolate
 
     Returns
     -------
-    ak : array
-        Interpolated Averaging Kernel dim(1, NLAYS, NROWS, NCOLS) where
+    vals : array
+        Interpolated interpkey values dim(1, NLAYS, NROWS, NCOLS) where
         NLAYS = VGLVLS.size - 1
     """
     approxpres = PRES is None
@@ -221,7 +294,7 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0):
             raise ValueError(errstr)
 
     # The averaging kernel used as y-value (np.interp yp)
-    akin = aksatf.variables['AveragingKernel']
+    akin = aksatf.variables[interpkey]
 
     # The output shape will be 3d matching the metcro3d file
     inshape = akin.shape
@@ -271,7 +344,8 @@ def pinterp(aksatf, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0):
 
 def ppm2du(
     cpath, m2path, m3path, outpath, key='O3',
-    satpath=None, akexpr=None, tppexpr=None, minlsthour=12, maxlsthour=14,
+    satpath=None, akexpr=None, swexpr=None, prexpr=None, tppexpr=None,
+    minlsthour=12, maxlsthour=14,
     isvalidexpr=None, maxcld=0.2, verbose=0
 ):
     """
@@ -296,6 +370,13 @@ def ppm2du(
         optional, definition of Averaging Kernel which can be a single variable
         or can be dervied from Scattering Weights (w_z) and air mass factor (M)
         e.g., akexpr="ScatWgt / AmfTrop[:, 0]"
+    swexpr : str or None
+        optional, definition of Scattering Weights which can be a single variable
+        or can be dervied from the Averaging Kernel (K_z) and air mass factor (M)
+        e.g., akexpr="AvgKernel * AmfTrop[:, 0]". When provided, cmaq2sat derives
+        the CMAQ-based Amf, which is output as CmaqAmf
+    swexpr : str or None
+        like swexpr, but for the satellite a priori
     tppexpr : str or None
         optional, definition of Tropopause Pressure in Pascals, which can be a
         single variable name or an expression.
@@ -341,17 +422,24 @@ def ppm2du(
     # Satellite expressions with no satellite path
     # Or satellite path with no satellite options
     if (
-        (isvalidexpr is None and akexpr is None and tppexpr is None) and
-        (satpath is not None)
+        (   
+            isvalidexpr is None and akexpr is None and tppexpr is None
+            and swexpr is None and prexpr
+        ) and (satpath is not None)
     ):
         warn(
-            'Satellite file unused; specify akexpr or tropoexpr or isvalidexpr'
+            'Satellite file unused; specify akexpr, swexpr, prexpr, or isvalidexpr'
         )
     elif (
-        (akexpr is not None or tppexpr is not None) and
-        (satpath is None)
+        (
+            akexpr is not None or tppexpr is not None or swexpr is not None
+            or prexpr is not None
+        ) and (satpath is None)
     ):
-        raise ValueError('akexpr or tppexpr provided without satellite')
+        raise ValueError(
+            'akexpr, swexpr, prexpr, tppexpr or isvalidexpr provided without'
+            + ' satellite'
+        )
 
     inf = pnc.pncopen(cpath, format='ioapi')
     m2f = pnc.pncopen(m2path, format='ioapi')
@@ -461,22 +549,47 @@ def ppm2du(
     dp = -np.diff(pedges, axis=1) / 100
     ppm = infd.variables[key][:] * unitfactor
 
-    # Using O3 gradient as tropopause
-    # commented out to use PV instead
-    # dppm = np.concatenate([ppm[:,[0]] * 0, np.diff(ppm, axis=1)], axis=1)
-    # mask = (dppm > 0.050).astype('i')
-    # cmask = np.cumsum(mask, axis=1) > 0
-    # ppm = np.ma.masked_where(cmask, ppm)
-    if akexpr is not None:
-        if verbose > 0:
-            print(f' * Calculating AveragingKernel = {akexpr}')
 
+    if prexpr is not None or swexpr is not None or akexpr is not None:
+        aksatf = rawsatf.subset([])
+        if prexpr is not None:
+            if verbose > 0:
+                print(f' * Calculating APriori = {prexpr}')
+            prsatf = rawsatf.eval(f'APriori = {prexpr}')
+            aksatf.copyVariable(
+                prsatf.variables['APriori'], key='APriori'
+            )
+        if swexpr is not None:
+            if verbose > 0:
+                print(f' * Calculating ScatteringWeights = {swexpr}')
+            swsatf = rawsatf.eval(f'ScatteringWeights = {swexpr}')
+            aksatf.copyVariable(
+                swsatf.variables['ScatteringWeights'], key='ScatteringWeights'
+            )
+        if akexpr is not None:
+            if verbose > 0:
+                print(f' * Calculating AveragingKernel = {akexpr}')
+            krsatf = rawsatf.eval(f'AveragingKernel = {akexpr}')
+            aksatf.copyVariable(
+                krsatf.variables['AveragingKernel'], key='AveragingKernel'
+            )
         # Calculate the averaging Kernel using variables in the raw satellite
         # file
-        aksatf = rawsatf.eval(
-            f'AveragingKernel = {akexpr}'
-        )
-        if verbose > 0:
+        if verbose > 0 and prexpr is not None:
+            prtmp = aksatf.variables['APriori']
+            print(' * APriori shape', prtmp.shape)
+            if verbose > 1:
+                print(' * APriori mean profile')
+                print(prtmp[:].mean((0, 2, 3)))
+            del prtmp
+        if verbose > 0 and swexpr is not None:
+            swtmp = aksatf.variables['ScatteringWeights']
+            print(' * ScatteringWeights shape', swtmp.shape)
+            if verbose > 1:
+                print(' * ScatteringWeights mean profile')
+                print(swtmp[:].mean((0, 2, 3)))
+            del swtmp
+        if verbose > 0 and akexpr is not None:
             aktmp = aksatf.variables['AveragingKernel']
             print(' * AveragingKernel shape', aktmp.shape)
             if verbose > 1:
@@ -498,6 +611,13 @@ def ppm2du(
             # The vertical coordinate types are the same and the vertical
             # level edges are the same, so no interpolation is necessary.
             akf = aksatf
+            # Ensure that missing values are treated as missing
+            if prexpr is not None:
+                pr = np.ma.masked_values(akf.variables['APriori'][:], -999)
+            if swexpr is not None:
+                sw = np.ma.masked_values(akf.variables['ScatteringWeights'][:], -999)
+            if akexpr is not None:
+                ak = np.ma.masked_values(akf.variables['AveragingKernel'][:], -999)
         elif aksatf.VGTYP == infd.VGTYP and aksatf.VGTYP == 7:
             if verbose > 0:
                 print(
@@ -508,13 +628,20 @@ def ppm2du(
             # The vertical coordinates are dry sigma pressures, which support
             # the use of the efficient interpSigma method for vertical
             # interpolation
-            myargs['ak_interp'] = 'sigma2sigma'
-            akf = aksatf.interpSigma(
-                infd.VGLVLS, vgtop=infd.VGTOP, interptype='linear',
+            akf = sinterp(aksatf,
+                vglvls=infd.VGLVLS, vgtop=infd.VGTOP, interptype='linear',
                 extrapolate=False, fill_value='extrapolate', verbose=0
             )
             # Ensure that missing values are treated as missing
-            ak = np.ma.masked_values(akf.variables['AveragingKernel'][:], -999)
+            if prexpr is not None:
+                myargs['pr_interp'] = 'sigma2sigma'
+                pr = akf.variables['APriori'][:]
+            if swexpr is not None:
+                myargs['sw_interp'] = 'sigma2sigma'
+                sw = akf.variables['ScatteringWeights'][:]
+            if akexpr is not None:
+                myargs['ak_interp'] = 'sigma2sigma'
+                ak = akf.variables['AveragingKernel'][:]
         elif aksatf.VGTYP == 4:
             if verbose > 0:
                 print(
@@ -524,19 +651,37 @@ def ppm2du(
                     + ' coordinate.'
                 )
 
+            pkwds = dict(
+                VGLVLS=m3f.VGLVLS, VGTOP=m3f.VGTOP,
+                PRSFC=m2fd.variables['PRSFC'], verbose=verbose
+            )
             # This case is designed to support OMNO2d-like pressure coordinates
             # In this case, the VGLVLS will be in decreasing value order in
             # Pascals (e.g., 102500.f, 101500.f, ... , 115.f, 45.f)
-            myargs['ak_interp'] = 'pressure2sigma'
-            ak = pinterp(
-                aksatf, VGLVLS=m3f.VGLVLS, VGTOP=m3f.VGTOP,
-                PRSFC=m2fd.variables['PRSFC'], verbose=verbose
-            )
-            if verbose > 0:
-                print(' * AveragingKernel shape', ak.shape)
+            if akexpr is not None:
+                myargs['ak_interp'] = 'pressure2sigma'
+                ak = pinterp(aksatf, 'AveragingKernel', **pkwds)
+                if verbose > 0:
+                    print(' * AveragingKernel shape', ak.shape)
                 if verbose > 1:
                     print(' * AveragingKernel mean profile')
                     print(ak.mean((0, 2, 3)))
+            if prexpr is not None:
+                myargs['pr_interp'] = 'pressure2sigma'
+                pr = pinterp(aksatf, 'APriori', **pkwds)
+                if verbose > 0:
+                    print(' * APriori shape', pr.shape)
+                if verbose > 1:
+                    print(' * APriori mean profile')
+                    print(pr.mean((0, 2, 3)))
+            if swexpr is not None:
+                myargs['sw_interp'] = 'pressure2sigma'
+                sw = pinterp(aksatf, 'ScatteringWeights', **pkwds)
+                if verbose > 0:
+                    print(' * ScatteringWeights shape', sw.shape)
+                if verbose > 1:
+                    print(' * ScatteringWeights mean profile')
+                    print(sw.mean((0, 2, 3)))
         else:
             raise TypeError(
                 f'Unknown VGTYP={aksatf.VGTYP}; cannot interpolate'
@@ -548,10 +693,27 @@ def ppm2du(
                 + f' * {key} = {hPa_to_du} \\sum_z (K_z * ppm_z * dP_z)'
             )
 
+    # 1e6 hPa
+    pp = (ppm * dp)
+    dus = hPa_to_du * pp
+    # Simple VCD no AK
+    du = dus.sum(1, keepdims=True)
+
+    if swexpr is not None:
+        cmaqAmf = (dus * sw).sum(1, keepdims=True) / du
+
+    if akexpr is not None:
         # Use averaging kernel if available
-        pp = (ppm * dp)
-        dus = hPa_to_du * pp
-        du = (dus * ak).sum(1, keepdims=True)
+        # For 2D averaging kernels, the result will be (TSTEP, LAY, ROW, COL)
+        #  * typical for NO2, HCHO, SO2 and other optically thin gases
+        # For 3D averaging kernels, the prior is required and will be used
+        # as a part of the calculation
+        #  * typical for O3, and potentially others
+        if ak.ndim == 5:
+            du = (pr + (ak * (dus - pr)).sum(1)).sum(1, keepdims=True)
+        else:
+            du = (dus * ak).sum(1, keepdims=True)
+        # This will only be the case for 3D averaging kernels
         myargs['akmethod'] = f'AveragingKernel = {akexpr}'
     else:
         if verbose > 0:
@@ -559,9 +721,6 @@ def ppm2du(
                 ' * Calculating vertical column density:\n'
                 + f' * {key} = {hPa_to_du} \\sum_z (ppm_z * dP_z)'
             )
-
-        pp = (ppm * dp).sum(1)  # 1e6 hPa
-        du = hPa_to_du * pp
         myargs['akmethod'] = 'None'
 
     if verbose > 0:
@@ -586,6 +745,16 @@ def ppm2du(
         troppf.variables['PRES'][:] += stratpmaxf.variables['PRES'][:]
         troppf.variables['PRES'][:] /= 2
         outf.copyVariable(troppf.variables['PRES'][:], key='TROPOPAUSEPRES')
+
+    if swexpr is not None:
+        # Create a variable to store CmaqAmf
+        camfv = outf.copyVariable(m2fd.variables['CFRAC'][:], key='CmaqAmfTrop')
+        camfv.long_name = 'CmaqAmf'
+        camfv.units = 'none'
+        camfv.var_desc = (
+            'AmfTrop = SlantTropColumnDensity/VerticalTropColumnDensity'
+        )
+        camfv[:] = cmaqAmf
 
     # Create a variable to store LAYER count in troposphere
     lays = outf.copyVariable(m2fd.variables['CFRAC'][:], key='LAYERS')
@@ -612,10 +781,4 @@ def ppm2du(
 
 if __name__ == '__main__':
     args = parser.parse_args()
-    outf = ppm2du(
-        cpath=args.cpath, m2path=args.m2path, m3path=args.m3path,
-        outpath=args.outpath, key=args.key, maxcld=args.maxcld,
-        minlsthour=args.minlsthour, maxlsthour=args.maxlsthour,
-        satpath=args.satpath, akexpr=args.akexpr, tppexpr=args.tppexpr,
-        isvalidexpr=args.isvalidexpr, verbose=args.verbose
-    )
+    outf = ppm2du(**vars(args))
