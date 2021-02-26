@@ -19,6 +19,8 @@
         "phony_dim_5": "nXtrack"
     },
     "pressurekey": "ScatteringWtPressure",
+    "level_center_dim": "nLevels",
+    "level_edge_dim": "nPresLevels",
     "grndfilterexpr": "(SolarZenithAngle >= 70)",
     "datafilterexpr": (
         "(CloudFraction[:] >= (300 if CloudFraction.dtype.char == 'h' else 0.30)) | " +
