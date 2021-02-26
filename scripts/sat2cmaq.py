@@ -111,6 +111,7 @@ def openpaths(inpaths, opts, verbose=0):
     -------
     omf : PseudoNetCDFFile
     """
+    tdim = opts.get('time_dim', 'nTimes')
     if inpaths[0].startswith('https://'):
         if verbose > 1:
             print('Using opendappaths', flush=True)
@@ -119,7 +120,7 @@ def openpaths(inpaths, opts, verbose=0):
         if verbose > 1:
             print('Using openhe5', flush=True)
         omfs = openhe5(inpaths, opts, verbose)
-    omf = omfs[0].stack(omfs[1:], 'nTimes')
+    omf = omfs[0].stack(omfs[1:], tdim)
     return omf
 
 
@@ -230,6 +231,9 @@ def _applyscale(inf):
 
 
 def openhe5(inpaths, opts, verbose):
+    tdim = opts.get('time_dim', 'nTimes')
+    xdim = opts.get('xtrack_dim', 'nXtrack')
+    lcenterdim = opts.get('level_center_dim', 'nLevels')
     omfs = []
     for inpath in inpaths:
         if verbose > 1:
@@ -255,27 +259,43 @@ def openhe5(inpaths, opts, verbose):
         geodims = opts.get('geodims', None)
         if datadims is None:
             ddims = list(omfi.dimensions)
-            datadims = dict(zip(ddims, ['nTimes', 'nXtrack', 'nLevels']))
+            datadims = dict(zip(ddims, [tdim, xdim, lcenterdim]))
             print('Dimension mapping heuristically', flush=True)
             print({dk: len(dv) for dk, dv in omfi.dimensions.items()})
             print('Selected dimension mapping:', datadims, flush=True)
 
         if geodims is None:
             gdims = list(omgfi.dimensions)
-            geodims = dict(zip(gdims, ['nTimes', 'nXtrack', 'nLevels']))
+            geodims = dict(zip(gdims, [tdim, xdim, lcenterdim]))
             print('Dimension mapping heuristically', flush=True)
             print({dk: len(dv) for dk, dv in omgfi.dimensions.items()})
             print('Selected dimension mapping:', geodims, flush=True)
 
-        for key in datadims:
-            if key not in omfi.dimensions:
-                print(f'Key {key} not found; in {omfi.dimensions}')
+        for inkey, outkey in datadims.items():
+            if inkey not in omfi.dimensions:
+                print(
+                    '** Error renaming data dimension:\n'
+                    + f'Key {inkey} ({outkey}) not found:\n{omfi.dimensions}'
+                    + '\n\n** Try increase or decreasing phony numbered'
+                    + ' dimensions by 1 in the configuration.'
+                    + '\n** Different netcdf versions give them'
+                    + ' different names for repeated length dimensions.'
+                )
+                sys.exit()
 
         omfi.renameDimensions(**datadims, inplace=True)
 
-        for key in geodims:
-            if key not in omgfi.dimensions:
-                print(f'Key {key} not found; in {omgfi.dimensions}')
+        for inkey, outkey in geodims.items():
+            if inkey not in omgfi.dimensions:
+                print(
+                    'Error renaming geo dimension:'
+                    + f'Key {inkey} ({outkey}) not found:\n{omgfi.dimensions}'
+                    + '\n\n** Try increase or decreasing phony numbered'
+                    + ' dimensions by 1 in the configuration.'
+                    + '\n** Different netcdf versions give them'
+                    + ' different names for repeated length dimensions.'
+                )
+                sys.exit()
 
         omgfi.renameDimensions(**geodims, inplace=True)
 
@@ -337,6 +357,9 @@ def subset(args, gf, opts):
     """
     latkey = opts.get('Latitude', 'Latitude')
     lonkey = opts.get('Longitude', 'Longitude')
+    tdim = opts.get('time_dim', 'nTimes')
+    xdim = opts.get('xtrack_dim', 'nXtrack')
+    lcenterdim = opts.get('level_center_dim', 'nLevels')
     if args.inpaths[0].startswith('{'):
         dapopts = eval(' '.join(args.inpaths))
         if args.verbose > 1:
@@ -365,7 +388,7 @@ def subset(args, gf, opts):
             flush=True
         )
 
-    omdims = ('nTimes', 'nXtrack')[:i.ndim]
+    omdims = (tdim, xdim)[:i.ndim]
     # isedge did not change main problem..
     # isedge = np.ones_like(i.mask)
     # isedge[..., 3:-3] = False
@@ -376,14 +399,14 @@ def subset(args, gf, opts):
     elif mask2d.ndim == 2:
         badrow = mask2d.all(1)
 
-    omf = omf.slice(nTimes=np.where(~badrow))
+    omf = omf.slice(**{tdim: np.where(~badrow)})
     mask2d = omf.variables['BADDATA'] == 1
     omf.HISTORY = sys.argv[0] + ': ' + str(args)
-    omfm = omf.mask(where=mask2d, dims=('nTimes', 'nXtrack'))
-    if 'nLevels' in omfm.dimensions:
-        nz = len(omfm.dimensions['nLevels'])
+    omfm = omf.mask(where=mask2d, dims=(tdim, xdim))
+    if lcenterdim in omfm.dimensions:
+        nz = len(omfm.dimensions[lcenterdim])
         mask3d = mask2d[..., None].repeat(nz, 2)
-        omfm = omfm.mask(where=mask3d, dims=('nTimes', 'nXtrack', 'nLevels'))
+        omfm = omfm.mask(where=mask3d, dims=(tdim, xdim, lcenterdim))
 
     if args.satpath is not None:
         omfm.save(args.satpath, complevel=1, verbose=1, format='NETCDF4')
@@ -416,6 +439,10 @@ def grid(args, gf, opts, omf):
     latkey = opts.get('Latitude', 'Latitude')
     lonkey = opts.get('Longitude', 'Longitude')
     timekey = opts.get('Time', 'Time')
+    tdim = opts.get('time_dim', 'nTimes')
+    xdim = opts.get('xtrack_dim', 'nXtrack')
+    lcenterdim = opts.get('level_center_dim', 'nLevels')
+    ledgedim = opts.get('level_edge_dim', 'nLevelEdges')
     if args.verbose > 1:
         print(f'Calculating time', flush=True)
     for tkey in [timekey, 'Time', 'time', 'TIME']:
@@ -465,8 +492,8 @@ def grid(args, gf, opts, omf):
 
     outf = gf.copy().subsetVariables(['DUMMY'])
 
-    if 'nLevels' in omf.dimensions:
-        nk = len(omf.dimensions['nLevels'])
+    if lcenterdim in omf.dimensions:
+        nk = len(omf.dimensions[lcenterdim])
     else:
         nk = 1
 
@@ -478,11 +505,11 @@ def grid(args, gf, opts, omf):
         if args.verbose > 1:
             print(f'Masking and gridding {varkey} as {outvarkey}', flush=True)
         varv = omf.variables[varkey]
-        if 'nTimes' not in varv.dimensions:
+        if tdim not in varv.dimensions:
             continue
 
         varo = np.ma.masked_invalid(
-            reorderVarDims(varv, ('nTimes', 'nXtrack'), key=varkey)[:]
+            reorderVarDims(varv, (tdim, xdim), key=varkey)[:]
         )
 
         varmask = varo.mask
@@ -546,14 +573,36 @@ def grid(args, gf, opts, omf):
     # {dk: slice(None, None, -1) for dk in invertdims}
     if args.verbose > 1:
         print('Calculating pressure for sigma approximation', flush=True)
+
     if opts['pressurekey'] is None:
+        dims = [lcenterdim]
         p = np.array([50000], dtype='f')
-        pedges = np.array([101325, 0.], dtype='f')
         pedges1d = np.array([101325, 0], dtype='f')
     else:
-        pv = omf.variables[opts['pressurekey']]
-
+        pkey = opts['pressurekey']
+        pvf = omf.subset([pkey])
+        pv = pvf.variables[pkey]
         pu = getunit(pv).lower()
+        dims = list(pv.dimensions)
+        afuncs = {}
+        for dk in dims:
+            if dk in (lcenterdim, ledgedim):
+                ldim = dk
+            else:
+                afuncs[dk] = 'mean'
+        pvmf = pvf.apply(**afuncs)
+        pvdf = pvmf.apply(**{ldim: np.diff})
+        # If the delta P is negative, invert a bunch of stuff
+        if pvdf.variables[pkey].mean() > 0:
+            pvmf = pvmf.slice(ldim=slice(None, None, -1))
+            pvdf = pvmf.apply(**{ldim: np.diff})
+            # 2-D variables have data in layer 0
+            # after inverting, it is in layerN
+            # it must be inverted again
+            outf = outf.slice(LAY=slice(None, None, -1))
+            for varkey in twodkeys:
+                tmpv = outf.variables[varkey]
+                tmpv[:] = tmpv[:, ::-1]
 
         if pu in ("hpa", "mb"):
             pfactor = 100.
@@ -563,43 +612,18 @@ def grid(args, gf, opts, omf):
             warn('Unknown unit {}; scale factor = 1'.format(pu))
             pfactor = 1.
 
-        p = pv[:]
-        dp = np.diff(p, axis=-1)
-        if dp.ndim > 1:
-            meanaxis = tuple(range(p.ndim - 1))
-            meandp = dp.mean(meanaxis)
-        else:
-            meandp = dp
-
-        if meandp.mean() > 0:
-            p = p[..., ::-1]
-            dp = np.diff(p, axis=-1)
-            outf = outf.slice(LAY=slice(None, None, -1))
-            # 2-D variables have data in layer 0
-            # after inverting, it is in layerN
-            # it must be inverted again
-            for varkey in twodkeys:
-                tmpv = outf.variables[varkey]
-                tmpv[:] = tmpv[:, ::-1]
-
-        if 'nLevelEdges' in pv.dimensions:
-            pedges = pv[:]
+        # all other dimensions have been averaged
+        # so, they have a unity dimension (ROW=1, COL=1)
+        p = pvmf.variables[pkey][:].squeeze()
+        dp = pvdf.variables[pkey][:].squeeze()
+        if ledgedim in dims:
+            pedges1d = p
         else:
             hdp = dp / 2
-            pedges = np.ma.concatenate(
-                [
-                    p[..., :-1] - hdp,
-                    p[..., [-1]] - hdp[..., [-1]],
-                    p[..., [-1]] + hdp[..., [-1]],
-                ],
-                axis=-1
+            pedges1d = np.append(
+                np.append(p[:-1] - hdp, p[-1] - hdp[-1]),
+                p[-1] + hdp[-1]
             )
-
-        if pedges.ndim > 1:
-            meanaxes = tuple(list(range(pedges.ndim-1)))
-            pedges1d = pedges.mean(axis=meanaxes)
-        else:
-            pedges1d = pedges
 
         # Ensure pedges is never negative
         # heuristic top identification could cause that problem.
@@ -608,15 +632,26 @@ def grid(args, gf, opts, omf):
     ptop = outf.VGTOP = pedges1d[-1]
     psrf = pedges1d[0]
 
-    if pedges.ndim == 1:
-        # OMI ScatteringWtPressure is on a pressure
-        # grid.
+    if len(dims) == 1:
+        # OMI ScatteringWtPressure is on a pressure grid that is not changing
+        # in space or time, so there is only one dimension
         outf.VGTYP = 4
         outf.VGLVLS = pedges1d.astype('f')
     else:
-        # OMPROFOZ ProfileLevelPressure
-        # is on a hybrid sigma/eta coordinate
-        # sigma approximation is being used.
+        # Other products will be converted to an approximate sigma coordinate
+        # This is not strictly true. The OMPROFOZ readme[1] describes the
+        # vertical coordinate as follows.
+        #
+        #    The 25-level vertical pressure grid is set initially at
+        #    Pi = 2-i/2 atm for i = 0, 23 and P24 = 0. This pressure grid is
+        #    then modified: The daily NCEP thermal tropopause pressure is
+        #    used to replace the level closest to it, and layers between
+        #    surface and tropopause are distributed equally in logarithmic
+        #    pressure. I is on a hybrid sigma/eta coordinate sigma
+        #    approximation is being used.
+        #
+        # [1] https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/
+        #     OMPROFOZ/OMPROFOZ_readme-v3.pdf
         sigma = (pedges1d[:] - ptop) / (psrf - ptop)
         outf.VGTYP = 7
         outf.VGLVLS = sigma[:].astype('f')
