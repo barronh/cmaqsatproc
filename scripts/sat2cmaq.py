@@ -199,6 +199,36 @@ def opendappaths(inpaths, opts, verbose):
     return omfs
 
 
+def _applyscale(inf):
+    for varkey in list(inf.variables):
+        invar = inf.variables[varkey]
+        newdtype = invar.dtype.char
+        scale = np.array(1, dtype=newdtype)
+        offset = np.array(0, dtype=newdtype)
+        for scalekey in ['scale_factor', 'ScaleFactor']:
+            if hasattr(invar, scalekey):
+                scale = getattr(invar, scalekey)
+
+        for offkey in ['add_offset', 'Offset']:
+            if hasattr(invar, offkey):
+                offset = getattr(invar, offkey)
+        if (
+            invar.dtype.char in ('i', 'h')
+            and scale.dtype.char not in ('i', 'h')
+        ):
+            newdtype = 'f'
+        if (
+            (newdtype != invar.dtype.char)
+            or (scale != 1)
+            or (offset != 0)
+        ):
+            invals = invar[:]
+            newvar = inf.copyVariable(
+                invar, key=varkey, dtype=newdtype, withdata=False
+            )
+            newvar[:] = invals[:] * scale + offset
+
+
 def openhe5(inpaths, opts, verbose):
     omfs = []
     for inpath in inpaths:
@@ -211,12 +241,16 @@ def openhe5(inpaths, opts, verbose):
                 for varkey in opts['datakeys']
             }
         )
+        _applyscale(omfi)
+
         omgfi = pnc.PseudoNetCDFFile.from_ncvs(
             **{
                 varkey: tmpf[opts['geogrp']].variables[varkey]
                 for varkey in opts['geokeys']
             }
         )
+        _applyscale(omgfi)
+
         datadims = opts.get('datadims', None)
         geodims = opts.get('geodims', None)
         if datadims is None:
@@ -235,7 +269,7 @@ def openhe5(inpaths, opts, verbose):
 
         for key in datadims:
             if key not in omfi.dimensions:
-                print(f'Key {key} not found; in {omgi.dimensions}')
+                print(f'Key {key} not found; in {omfi.dimensions}')
 
         omfi.renameDimensions(**datadims, inplace=True)
 
@@ -288,7 +322,7 @@ def subset(args, gf, opts):
     """
     Arguments
     ---------
-    args: namespace 
+    args: namespace
         must have inpaths, verbose, grndfilterexpr, datafilterexpr
         satpath and any requirements of openpaths
     gf : pnc.PseudoNetCDFFile
@@ -350,7 +384,7 @@ def subset(args, gf, opts):
         nz = len(omfm.dimensions['nLevels'])
         mask3d = mask2d[..., None].repeat(nz, 2)
         omfm = omfm.mask(where=mask3d, dims=('nTimes', 'nXtrack', 'nLevels'))
-        
+
     if args.satpath is not None:
         omfm.save(args.satpath, complevel=1, verbose=1, format='NETCDF4')
 
@@ -361,7 +395,7 @@ def grid(args, gf, opts, omf):
     """
     Arguments
     ---------
-    args: namespace 
+    args: namespace
         must have inpaths, verbose, grndfilterexpr, datafilterexpr
         satpath and any requirements of openpaths
     gf : pnc.PseudoNetCDFFile
