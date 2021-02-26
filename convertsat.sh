@@ -37,3 +37,9 @@ CFGPATH=config/MLO3v005opendap.py
 INPATHS="{'short_name': 'ML2O3', 'version': '005', 'daterange': '2020-01-01T00:00:00Z/P01D'}"
 OUTPATH=outsat/MLS-Aura_L3_108NHEMI2-O3_dapq_v05-01-c01_2020d001.nc
 python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
+
+# Make OMNHCHO L3 output from downloaded files
+OUTPATH=outsat/OMI-Aura_L3_108NHEMI2-OMHCHO_2016m0101_v003.nc
+CFGPATH=config/OMHCHOv003.py
+INPATHS=/work/ROMO/satellite/OMHCHO/aura.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level2/OMHCHO.003/2016/001/*he5
+python scripts/sat2cmaq.py GRIDDESC 108NHEMI2 ${OUTPATH} ${CFGPATH} ${INPATHS}
