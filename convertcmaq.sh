@@ -44,7 +44,9 @@ done
 KEY=O3
 for YYYYhMMhDD in ${DATES}
 do
+# Not compatible right now
 #  --akexpr "AvgKernel[:]" --prexpr "O3APriori[:]" \
+setpaths
 python scripts/cmaq2sat.py \
   -v -v -v -v \
   --satpath outsat/OMI-Aura_L3_108NHEMI2-OMPROFOZ_2016m0101_v003.nc \
