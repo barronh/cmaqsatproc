@@ -250,8 +250,10 @@ def sinterp(satf, *args, **kwds):
 
     return outf.mask(values=-999.)
 
+
 def pinterp(
-    aksatf, interpkey, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None, verbose=0,
+    aksatf, interpkey, PRES=None, PRSFC=None, VGLVLS=None, VGTOP=None,
+    verbose=0
 ):
     """
     Interpolates AveragingKernel from aksatf on satellite layers to pressure
@@ -371,10 +373,10 @@ def ppm2du(
         or can be dervied from Scattering Weights (w_z) and air mass factor (M)
         e.g., akexpr="ScatWgt / AmfTrop[:, 0]"
     swexpr : str or None
-        optional, definition of Scattering Weights which can be a single variable
-        or can be dervied from the Averaging Kernel (K_z) and air mass factor (M)
-        e.g., akexpr="AvgKernel * AmfTrop[:, 0]". When provided, cmaq2sat derives
-        the CMAQ-based Amf, which is output as CmaqAmf
+        optional, definition of Scattering Weights which can be a single
+        variable or can be dervied from the Averaging Kernel (K_z) and air mass
+        factor (M) e.g., akexpr="AvgKernel * AmfTrop[:, 0]". When provided,
+        cmaq2sat derives the CMAQ-based Amf, which is output as CmaqAmf
     swexpr : str or None
         like swexpr, but for the satellite a priori
     tppexpr : str or None
@@ -422,13 +424,14 @@ def ppm2du(
     # Satellite expressions with no satellite path
     # Or satellite path with no satellite options
     if (
-        (   
+        (
             isvalidexpr is None and akexpr is None and tppexpr is None
             and swexpr is None and prexpr
         ) and (satpath is not None)
     ):
         warn(
-            'Satellite file unused; specify akexpr, swexpr, prexpr, or isvalidexpr'
+            'Satellite file unused; specify akexpr, swexpr, prexpr, or'
+            + ' isvalidexpr'
         )
     elif (
         (
@@ -549,7 +552,6 @@ def ppm2du(
     dp = -np.diff(pedges, axis=1) / 100
     ppm = infd.variables[key][:] * unitfactor
 
-
     if prexpr is not None or swexpr is not None or akexpr is not None:
         aksatf = rawsatf.subset([])
         if prexpr is not None:
@@ -613,11 +615,17 @@ def ppm2du(
             akf = aksatf
             # Ensure that missing values are treated as missing
             if prexpr is not None:
-                pr = np.ma.masked_values(akf.variables['APriori'][:], -999)
+                pr = np.ma.masked_values(
+                    akf.variables['APriori'][:], -999
+                )
             if swexpr is not None:
-                sw = np.ma.masked_values(akf.variables['ScatteringWeights'][:], -999)
+                sw = np.ma.masked_values(
+                    akf.variables['ScatteringWeights'][:], -999
+                )
             if akexpr is not None:
-                ak = np.ma.masked_values(akf.variables['AveragingKernel'][:], -999)
+                ak = np.ma.masked_values(
+                      akf.variables['AveragingKernel'][:], -999
+                )
         elif aksatf.VGTYP == infd.VGTYP and aksatf.VGTYP == 7:
             if verbose > 0:
                 print(
@@ -628,7 +636,8 @@ def ppm2du(
             # The vertical coordinates are dry sigma pressures, which support
             # the use of the efficient interpSigma method for vertical
             # interpolation
-            akf = sinterp(aksatf,
+            akf = sinterp(
+                aksatf,
                 vglvls=infd.VGLVLS, vgtop=infd.VGTOP, interptype='linear',
                 extrapolate=False, fill_value='extrapolate', verbose=0
             )
@@ -711,8 +720,17 @@ def ppm2du(
         #  * typical for O3, and potentially others
         if ak.ndim == 5:
             du = (pr + (ak * (dus - pr)).sum(1)).sum(1, keepdims=True)
+            vcd_desc = (
+                'Vertical column density using satellite Averaging Kernel'
+                + ' (VCD = \\sum_{z2}{\\sum_{z1}{pr_z2 + ak_{z1,z2}'
+                + ' * (cmaq_du_{z2} - pr_{z1,z2})}})'
+            )
         else:
             du = (dus * ak).sum(1, keepdims=True)
+            vcd_desc = (
+                'Vertical column density using satellite Averaging Kernel'
+                + ' (VCD = \\sum_z{cmaq_du * ak})'
+            )
         # This will only be the case for 3D averaging kernels
         myargs['akmethod'] = f'AveragingKernel = {akexpr}'
     else:
@@ -720,6 +738,10 @@ def ppm2du(
             print(
                 ' * Calculating vertical column density:\n'
                 + f' * {key} = {hPa_to_du} \\sum_z (ppm_z * dP_z)'
+            )
+            vcd_desc = (
+                'Vertical column density using satellite Averaging Kernel'
+                + f' (VCD = {hPa_to_du} \\sum_z(cmaq_ppm_z * dP_z))'
             )
         myargs['akmethod'] = 'None'
 
@@ -748,12 +770,15 @@ def ppm2du(
 
     if swexpr is not None:
         # Create a variable to store CmaqAmf
-        camfv = outf.copyVariable(m2fd.variables['CFRAC'][:], key='CmaqAmfTrop')
+        camfv = outf.copyVariable(
+            m2fd.variables['CFRAC'][:], key='CmaqAmfTrop'
+        )
         camfv.long_name = 'CmaqAmf'
         camfv.units = 'none'
         camfv.var_desc = (
             'AmfTrop = SlantTropColumnDensity/VerticalTropColumnDensity'
         )
+        camfv.description = '\\sum_z(cmaq_du_z * sw_z)'
         camfv[:] = cmaqAmf
 
     # Create a variable to store LAYER count in troposphere
@@ -769,6 +794,7 @@ def ppm2du(
     ovar = outf.variables[key]
     ovar.units = 'dobson units'
     ovar.var_desc = f'{key} dobson units (molec/cm2 = DU * 2.69e16)'.ljust(80)
+    ovar.description = vcd_desc
     ovar[:, 0] = du
     outf.HISTORY = f'ppm2du(**{myargs})'
 
