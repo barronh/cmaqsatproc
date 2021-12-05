@@ -365,6 +365,8 @@ def subset(args, gf, opts):
         if args.verbose > 1:
             print('Dap options {}'.format(dapopts), flush=True)
         args.inpaths = opendapquery(gf, verbose=args.verbose, **dapopts)
+        if args.verbose > 2:
+            print('Dap results: {}'.format(args.inpaths), flush=True)
 
     if args.verbose > 1:
         print(f'Opening inpaths {args.inpaths}', flush=True)
@@ -444,7 +446,7 @@ def grid(args, gf, opts, omf):
     lcenterdim = opts.get('level_center_dim', 'nLevels')
     ledgedim = opts.get('level_edge_dim', 'nLevelEdges')
     if args.verbose > 1:
-        print(f'Calculating time', flush=True)
+        print('Calculating time', flush=True)
     for tkey in [timekey, 'Time', 'time', 'TIME']:
         if tkey in omf.variables:
             tf = omf.subsetVariables([tkey]).renameVariable(tkey, 'time')
