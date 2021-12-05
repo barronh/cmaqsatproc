@@ -26,7 +26,7 @@
     "grndfilterexpr": "(SolarZenithAngle >= 70)",
     "datafilterexpr": (
         "(AMFCloudFraction >= 0.3) | " +
-        "(np.bitwise_and(XtrackQualityFlags[:].filled(0), 1) == 1) | " +
+        "(np.bitwise_and(XtrackQualityFlags[:].filled(0).astype('i'), 1) == 1) | " +
         "(MainDataQualityFlag[:] != 0)"
     ),
     "renamevars": {
