@@ -6,8 +6,76 @@ import PseudoNetCDF as pnc
 import argparse
 from warnings import warn
 
-parser = argparse.ArgumentParser()
-parser.description = """
+# Constants Copied adopted from The NIST Reference on Constants, Units,
+# and Uncertainty. US National Institute of Standards and Technology.
+# May 2019. Retrieved 2021-12-08. They are compared to constants from
+# CMAQ CONST.EXT
+# https://github.com/USEPA/CMAQ/blob/
+# c7518fb9449334cb2f8e0226b7ee0f6969059519/CCTM/src/ICL/fixed/const/CONST.EXT
+
+# CMAQ
+# mean gravitational acceleration [ m/sec**2 ]
+# FSB: Value is mean of polar and equatorial values.
+# Source: CRC Handbook (76th Ed) pp. 14-6
+# GRAV = 9.80622
+#
+# Adopted
+# https://physics.nist.gov/cgi-bin/cuu/Value?gn Retrieved 2021-12-08
+GRAV = 9.80665
+
+# CMAQ
+# http://physics.nist.gov/cgi-bin/cuu/Value?na Retrieved 2017-04-21.
+# DAVO = 6.02214085774e23
+#
+# Adopted
+# http://physics.nist.gov/cgi-bin/cuu/Value?na Retrieved 2021-12-08
+DAVO = 6.02214076e23
+
+# CMAQ
+# http://physics.nist.gov/cgi-bin/cuu/Value?r Retrieved 2017-04-21.
+# DRGASUNIV = 8.314459848e0
+#
+# Adopted
+# http://physics.nist.gov/cgi-bin/cuu/Value?r Retrieved 2021-12-08.
+DRGASUNIV = 8.314462618e0
+
+# standard atmosphere  [ Pa ]
+STDATMPA = 101325.0
+# Standard Temperature [ K ]
+STDTEMP = 273.15
+
+
+# CMAQ
+# mean molecular weight for dry air [ g/mol ]
+# FSB: 78.06% N2, 21% O2, and 0.943% A on a mole
+# fraction basis ( Source : Hobbs, 1995) pp. 69-70
+# MWAIR = 28.9628 / 1e3
+#
+# Adopted in kg/mole
+MWAIR = 28.9628 / 1e3
+
+# https://aura.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level2/OMO3PR.003/doc/README.OMO3PR.pdf
+# http://www.temis.nl/data/conversions.pdf
+# assumes mixing ratio in PPM and dp in hPa
+hPa_to_du = (
+    10 * DRGASUNIV / MWAIR * STDTEMP / GRAV / STDATMPA
+)
+
+# Conversion from Dobson units to molecules/m2
+DU2MM2 = STDATMPA * DAVO / DRGASUNIV / STDTEMP * 0.01e-3
+# Conversion from Dobson units to molecules/cm2
+DU2MCM2 = DU2MM2 / 1e4
+
+denseqnstr = f'DU = ppm / 1e6 * DENS / {MWAIR} * DZ * {DAVO} / {DU2MM2:.6e}'
+prestaeqnstr = (
+    f'DU = ppm / 1e6 * PRES / TA / {DRGASUNIV} * DZ * {DAVO} / {DU2MM2:.6e}'
+)
+sigmaeqnstr = f'DU = ppm * dp * {hPa_to_du}'
+
+
+def getparser():
+    parser = argparse.ArgumentParser()
+    parser.description = """
 Convert 3-D IOAPI mixing ratios (ppm) to dobson units within the
 clear tropopsphere at overpass times.
 
@@ -29,7 +97,7 @@ from the satellite file, then the output will be restricted to
 valid satellite retrievals.
 """
 
-parser.epilog = """
+    parser.epilog = """
 Example No Averaging Kernel:
     python cmaq2sat.py CMAQ.ACONC_20160101.nc \
            MECRO2D_160101 METCRO3D_160101 CMAQ_L3_20160101.nc O3
@@ -41,52 +109,68 @@ Example No Averaging Kernel:
 Where AVGK.nc was made by gridding the AveragingKernel from an L2 file and
 averaging to 1-day
 """
-aa = parser.add_argument
-aa('-v', '--verbose', default=0, action='count', help='Increase verbosity')
-aa(
-    '--minlsthour', default=12, type=float,
-    help=(
-        'Used with --maxlsthour to restrict times to overpass time. ' +
-        'For example, Aura Overpass is 13:40 solar time at the equator ' +
-        'and 12:00 solar time at 70 N (minlsthour <= lsthour <= maxlsthour).' +
-        'See Figure 2.4 ' +
-        'https://aura.gsfc.nasa.gov/images/aura_validation_v1.0.pdf'
+    aa = parser.add_argument
+    aa('-v', '--verbose', default=0, action='count', help='Increase verbosity')
+    aa(
+        '--todu', choices=['DENS', 'PRESTA', 'SIGMA'], default=None,
+        help=(
+            'CMAQ units of ppm are converted to dobson using DENS (preferred),'
+            + ' PRESTA (pressure and temperature), or sigma. For WRF sigma'
+            + ' coordinates, all three should be nearly identical. For WRF'
+            + ' hybrid,it is important to use DENS or PRESTA. '
+            + f'DENS: {denseqnstr}; PRES: {prestaeqnstr}; SIGMA: {sigmaeqnstr}'
+        )
     )
-)
-aa(
-    '--maxlsthour', default=14, type=float,
-    help='See --minlsthour'
-)
-aa(
-    '--maxcld', default=0.2, type=float,
-    help='CFRAC < maxcld'
-)
-aa(
-    '--satpath', default=None,
-    help='Averaging Kernel path; contains akexpr and or tppexpr'
-)
-aa(
-    '--tppexpr', default=None, type=str,
-    help='expr for TropoPausePressure (Pa) of tropopause in satellite product'
-)
-aa(
-    '--isvalidexpr', default=None, type=str,
-    help=(
-        'Is valid expr from the satellite product'
-        '(e.g., VCD_NO2_Trop.mask == False)'
+    aa(
+        '--minlsthour', default=12, type=float,
+        help=(
+            'Used with --maxlsthour to restrict times to overpass time. For'
+            + ' example, Aura Overpass is 13:40 solar time at the equator and '
+            + ' 12:00 solar time at 70 N (minlsthour <= lsthour <= maxlsthour)'
+            + '. See Figure 2.4 '
+            + 'https://aura.gsfc.nasa.gov/images/aura_validation_v1.0.pdf'
+        )
     )
-)
-aa('--prexpr', default=None, help='Prior expression')
-aa('--swexpr', default=None, help='Scattering weight expression')
-aa('--akexpr', default=None, help='Averaging Kernel expression')
-aa('cpath', help='CMAQ CONC path; must contain key')
-aa('m2path', help='METCRO2D path; contains CFRAC and PRSFC')
-aa('m3path', help='METCRO3D path; contains PV')
-aa('outpath', help='output path')
-aa('key', help='CMAQ key to process')
+    aa(
+        '--maxlsthour', default=14, type=float,
+        help='See --minlsthour'
+    )
+    aa(
+        '--maxcld', default=0.2, type=float,
+        help='CFRAC < maxcld'
+    )
+    aa(
+        '--satpath', default=None,
+        help='Averaging Kernel path; contains akexpr and or tppexpr'
+    )
+    aa(
+        '--tppexpr', default=None, type=str,
+        help=(
+            'expr for TropoPausePressure (Pa) of tropopause in satellite'
+            + ' product'
+        )
+    )
+    aa(
+        '--isvalidexpr', default=None, type=str,
+        help=(
+            'Is valid expr from the satellite product'
+            '(e.g., VCD_NO2_Trop.mask == False)'
+        )
+    )
+    aa('--prexpr', default=None, help='Prior expression')
+    aa('--swexpr', default=None, help='Scattering weight expression')
+    aa('--akexpr', default=None, help='Averaging Kernel expression')
+    aa('cpath', help='CMAQ CONC path; must contain key')
+    aa('m2path', help='METCRO2D path; contains CFRAC and PRSFC')
+    aa('m3path', help='METCRO3D path; contains PV')
+    aa('outpath', help='output path')
+    aa('key', help='CMAQ key to process')
+    return parser
 
 
-def findtroposphere(m3f, rawsatf, myargs, verbose=0):
+def findtroposphere(
+    m3f, rawsatf, myargs, usesat=None, usepv=None, usethermal=None, verbose=0
+):
     """
     Identify cells that are within the troposphere
 
@@ -98,7 +182,18 @@ def findtroposphere(m3f, rawsatf, myargs, verbose=0):
         * elif PV in m3f, then Itahashi 2018 method is used
         * elif TA and ZH in m3f, then using WMO 1957 approach
     rawsatf : PseudoNetCDFFile
-        * used to calculate the satellite troposphere pressure using tppexpr
+        Used to calculate the satellite troposphere pressure using tppexpr.
+    usesat : bool or None
+        Use the satellite's definition of the tropopause using
+        myargs['tppexpr']. If None, usesat is diagnosed by whether tppexpr
+        is not None
+    usepv : bool or None
+        Use the PV approach
+        If None, usepv is diagnosed by whether PV is in m3f
+    usethermal : bool or None
+        Use the thermal-lapse rate approach (aka WMO1957)
+        If None, usethermal is diagnosed by whether TA and ZH is in m3f, and is
+        only used if usepv is False.
     myargs : dictionary
         must have tppexpr (str or None)
     verbose : int
@@ -108,9 +203,36 @@ def findtroposphere(m3f, rawsatf, myargs, verbose=0):
     -------
     istrop : array
         boolean is troposphere (True) or not (False)
+
+    Notes
+    -----
+    Right now, there are four approaches:
+     * Find pressures below tropopause pressure from satellite (tppexpr)
+     * PV approach based on description in Itahashi (10.5194/acp-20-3373-2020)
+       which does not cite, but is likely similar to Holton (10.1029/95RG02097)
+     * WMO1957 approach as described in doi:10.1029/2003GL018240
+     * Hybrid: either PV or WMO1957
+
+    If usepv and usethermal are set to true, then a Hybrid Approach is used.
+    The hybrid approach uses either PV or thermal approach.
+
+    The pros and cons of PV and WMO1957 are discussed in Reichler
+    (10.1029/2003GL018240) and Knowland (10.1002/2017GL074532) chooses to use
+    the maximum altitude of the two approaches, but used 3 PVU instead of the
+    2 PVU typically used and used here.
     """
     tppexpr = myargs['tppexpr']
-    if tppexpr is not None and 'PRES' in m3f.variables:
+
+    if usesat is None:
+        usesat = tppexpr is not None and 'PRES' in m3f.variables
+    if usepv is None:
+        usepv = 'PV' in m3f.variables
+    if usethermal is None:
+        usethermal = (
+            not usepv and 'TA' in m3f.variables and 'ZH' in m3f.variables
+        )
+
+    if usesat:
         myargs['istropmethod'] = 'Satellite Tropopause Pressure'
         if verbose > 0:
             print(' * Using:', myargs['istropmethod'])
@@ -123,14 +245,25 @@ def findtroposphere(m3f, rawsatf, myargs, verbose=0):
             print(' * TropoPausePressure mean', stpp.mean())
 
         istrop = m3f.variables['PRES'][:] > stpp
-    elif 'PV' in m3f.variables:
+    elif usepv and usethermal:
+        istroppv = findtroposphere(
+            m3f, rawsatf, myargs, usesat=False, usepv=True, usethermal=False,
+            verbose=verbose
+        )
+        istropth = findtroposphere(
+            m3f, rawsatf, myargs, usesat=False, usepv=False, usethermal=True,
+            verbose=verbose
+        )
+        myargs['istropmethod'] = 'PV < 2 or Thermal Lapse-rate'
+        istrop = istroppv | istropth
+    elif usepv:
         myargs['istropmethod'] = 'Potential Vorticity < 2 (Itahashi 2018)'
         if verbose > 0:
             print(' * Using:', myargs['istropmethod'])
         # Any PV < 2 starts the troposphere. Itahashi 2018 submitted
         PV = m3f.variables['PV'][:]
         istrop = np.cumsum(PV[:, ::-1] < 2, axis=1)[:, ::-1] > 0
-    elif 'TA' in m3f.variables and 'ZH' in m3f.variables:
+    elif usethermal:
         warn(
             'PV was not available. Using approximation of WMO 1957 ' +
             'lapse-rate definition. see ' +
@@ -344,11 +477,10 @@ def pinterp(
     return ak
 
 
-def ppm2du(
-    cpath, m2path, m3path, outpath, key='O3',
+def cmaq2tropvcd(
+    cpath, m2path, m3path, outpath, key='O3', todu=None,
     satpath=None, akexpr=None, swexpr=None, prexpr=None, tppexpr=None,
-    minlsthour=12, maxlsthour=14,
-    isvalidexpr=None, maxcld=0.2, verbose=0
+    minlsthour=12, maxlsthour=14, isvalidexpr=None, maxcld=0.2, verbose=0
 ):
     """
     Create a satellite-like file from CMAQ with retrieval processing.
@@ -366,6 +498,18 @@ def ppm2du(
     key : str
         key to use from cpath as a concentration file. Expected to have units
         of either ppm or ppb
+    todu : str
+        CMAQ units of ppm are converted to dobson using DENS (preferred),
+        PRESTA (pressure and temperature), or sigma. For WRF sigma
+        coordinates, all three should be nearly identical. For WRF hybrid,
+        it is important to use DENS or PRESTA.
+        * DENS requires DENS and ZF variables in m3path
+        * PRESTA requires PRES, TA and ZF variables in m3path
+        * SIGMA does not require anything in m3path, can have big differences
+          from the other methods under specific conditions. Specifically, when
+          CMAQ VGTYP is not 7 and predictions cover high altitude (e.g.,
+          mountainous) terrains
+        * None will select based on variable availability and VGTYP
     satpath : str or None
         optional, IOAPI 3D file with variables to derive akexpr and/or tppexpr
     akexpr : str or None
@@ -447,6 +591,7 @@ def ppm2du(
     inf = pnc.pncopen(cpath, format='ioapi')
     m2f = pnc.pncopen(m2path, format='ioapi')
     m3f = pnc.pncopen(m3path, format='ioapi')
+
     cmaqunit = getattr(inf.variables[key], 'units', 'unknown').strip().lower()
     if cmaqunit in ('ppm', 'ppmv'):
         unitfactor = 1
@@ -478,10 +623,11 @@ def ppm2du(
             nh = inf.variables[key].shape[0]
         utch = np.arange(0, nh)[:, None, None, None]
 
-    # Define local soalr hour using 15 degree approximation
+    # Define local solar hour using 15 degree approximation
     # of time zone offset as an integer to get lst
-    tzoff = (lon[None, None, :, :] // 15).round(0).astype('i')
-    lsth = utch + tzoff
+    # BHH 2021-12-09: updated to round fractional value rather than truncated
+    tzoff = (lon[None, None, :, :] / 15).round(0).astype('i')
+    lsth = (utch + tzoff) % 24
 
     # Is overpass based on local lsthour
     isoverpass = (lsth >= minlsthour) & (lsth <= maxlsthour)
@@ -541,12 +687,6 @@ def ppm2du(
     pedges = (
         (m2fd.variables['PRSFC'][:] - infd.VGTOP) *
         infd.VGLVLS[None, :, None, None] + infd.VGTOP
-    )
-    # https://aura.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level2/OMO3PR.003/doc/README.OMO3PR.pdf
-    # http://www.temis.nl/data/conversions.pdf
-    # assumes mixing ratio in PPM and dp in hPa
-    hPa_to_du = (
-        10 * 1.3807e-23 * 6.022e23 / 0.02894 * 273.15 / 9.80665 / 101325.
     )
 
     dp = -np.diff(pedges, axis=1) / 100
@@ -696,15 +836,81 @@ def ppm2du(
                 f'Unknown VGTYP={aksatf.VGTYP}; cannot interpolate'
             )
 
+    if myargs['todu'] is None:
+        if 'DENS' in m3f.variables and 'ZF' in m3f.variables:
+            myargs['todu'] = 'DENS'
+        elif (
+            inf.VGTYP != 7 and 'PRES' in m3f.variables
+            and 'TA' in m3f.variables and 'ZF' in m3f.variables
+        ):
+            myargs['todu'] = 'PRESTA'
+        else:
+            myargs['todu'] = 'SIGMA'
+
+    if myargs['todu'] == 'DENS':
+        if not ('DENS' in m3f.variables and 'ZF' in m3f.variables):
+            raise KeyError(
+                'todu option "DENS" requires DENS and ZF variables; use a'
+                + ' different option or use a METCRO3D file with DENS and'
+                + ' ZF'
+            )
+        myargs['ppm2du'] = denseqnstr
+        densf = m3f.subsetVariables(
+            ['DENS', 'ZF']
+        )
+        densf = densf.mask(
+            ~is3valid, dims=('TSTEP', 'LAY', 'ROW', 'COL')
+        ).apply(TSTEP='mean')
+        DENS = densf.variables['DENS'][:]
+        ZF = densf.variables['ZF'][:]
+        DZ = ZF.copy()
+        DZ[:, 1:] -= ZF[:, :-1]
+        cbar = DENS / MWAIR * DZ
+        dus = cbar * ppm / 1e6 * DAVO / DU2MM2
+    elif myargs['todu'] == 'PRESTA':
+        if not (
+            'PRES' in m3f.variables and 'TA' in m3f.variables
+            and 'ZF' in m3f.variables
+        ):
+            raise KeyError(
+                'todu option "PRESTA" requires PRES, TA and ZF variables; use'
+                + ' a different option or use a METCRO3D file with PRES, TA,'
+                + ' and ZF'
+            )
+        myargs['ppm2du'] = prestaeqnstr
+        densf = m3f.subsetVariables(
+            ['PRES', 'TA', 'ZF']
+        )
+        densf = densf.mask(
+            ~is3valid, dims=('TSTEP', 'LAY', 'ROW', 'COL')
+        ).apply(TSTEP='mean')
+        ZF = densf.variables['ZF'][:]
+        DZ = ZF.copy()
+        DZ[:, 1:] -= ZF[:, :-1]
+        PRES = densf.variables['PRES'][:]
+        TA = densf.variables['TA'][:]
+        cbar = PRES[:] / TA[:] / DRGASUNIV * DZ
+        dus = cbar * ppm / 1e6 * DAVO / DU2MM2
+    elif myargs['todu'] == 'SIGMA':
+        myargs['ppm2du'] = sigmaeqnstr
         if verbose > 0:
             print(
-                ' * Calculating vertical column density:\n'
-                + f' * {key} = {hPa_to_du} \\sum_z (K_z * ppm_z * dP_z)'
+                f' * Calculating vertical column density:\n{sigmaeqnstr}'
             )
 
-    # 1e6 hPa
-    pp = (ppm * dp)
-    dus = hPa_to_du * pp
+        if inf.VGTYP != 7:
+            print(
+                '## Warn: VGTYP is not WRF sigma, but using sigma to'
+                + ' approximate delta P'
+            )
+        # 1e6 hPa
+        pp = (ppm * dp)
+        dus = hPa_to_du * pp
+    else:
+        raise KeyError(
+            myargs['todu'] + ' todu option unknown, use DENS, PRESTA or SIGMA'
+        )
+
     # Simple VCD no AK
     du = dus.sum(1, keepdims=True)
 
@@ -739,10 +945,10 @@ def ppm2du(
                 ' * Calculating vertical column density:\n'
                 + f' * {key} = {hPa_to_du} \\sum_z (ppm_z * dP_z)'
             )
-            vcd_desc = (
-                'Vertical column density using satellite Averaging Kernel'
-                + f' (VCD = {hPa_to_du} \\sum_z(cmaq_ppm_z * dP_z))'
-            )
+        vcd_desc = (
+            'Vertical column density using satellite Averaging Kernel'
+            + f' (VCD = \\sum_z({myargs["ppm2du"]}))'
+        )
         myargs['akmethod'] = 'None'
 
     if verbose > 0:
@@ -793,10 +999,12 @@ def ppm2du(
     # with dobson units
     ovar = outf.variables[key]
     ovar.units = 'dobson units'
-    ovar.var_desc = f'{key} dobson units (molec/cm2 = DU * 2.69e16)'.ljust(80)
+    ovar.var_desc = (
+        f'{key} dobson units (molec/cm2 = DU * {DU2MCM2:.6e})'.ljust(80)
+    )
     ovar.description = vcd_desc
     ovar[:, 0] = du
-    outf.HISTORY = f'ppm2du(**{myargs})'
+    outf.HISTORY = f'cmaq2tropvcd(**{myargs})'
 
     if verbose > 0:
         print(f' * Storing file to disk: {outpath}')
@@ -806,5 +1014,6 @@ def ppm2du(
 
 
 if __name__ == '__main__':
+    parser = getparser()
     args = parser.parse_args()
-    outf = ppm2du(**vars(args))
+    outf = cmaq2tropvcd(**vars(args))
