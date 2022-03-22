@@ -111,7 +111,7 @@ class MODISL3(satellite):
     def _to_xarray(cls, path):
         import pyproj
         import numpy as np
-        import gdal
+        from osgeo import gdal
         import xarray as xr
         ds = gdal.Open(path)
         sds = ds.GetSubDatasets()
