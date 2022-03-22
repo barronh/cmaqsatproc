@@ -400,6 +400,8 @@ def subset(args, gf, opts):
         badrow = mask2d
     elif mask2d.ndim == 2:
         badrow = mask2d.all(1)
+    elif mask2d.ndim == 3:
+        badrow = mask2d.all(1)
 
     omf = omf.slice(**{tdim: np.where(~badrow)})
     mask2d = omf.variables['BADDATA'] == 1
