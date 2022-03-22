@@ -3,12 +3,55 @@ __all__ = ['CMAQGrid']
 from .utils import centertobox
 
 
+def _default_griddesc(GDNAM):
+    import PseudoNetCDF as pnc
+    import tempfile
+
+    with tempfile.NamedTemporaryFile() as gdfile:
+        gdfile.write(b"""' '
+'POLSTE_HEMI'
+  6         1.000        45.000       -98.000       -98.000        90.000
+'LamCon_40N_97W'
+  2        33.000        45.000       -97.000       -97.000        40.000
+' '
+'108NHEMI2'
+'POLSTE_HEMI'     -10098000.0 -10098000.0 108000.0 108000.0  187  187 1
+'1188NHEMI2'
+'POLSTE_HEMI'     -10098000.0 -10098000.0 1188000. 1188000.   17   17 1
+'12US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0  12000.0  12000.0  459  299 1
+'12US2'
+'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0  396  246 1
+'36US3'
+'LamCon_40N_97W'   -2952000.0  -2772000.0  36000.0  36000.0  172  148 1
+'108US1'
+'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
+' '""")
+        gdfile.flush()
+        outf = pnc.pncopen(gdfile.name, format='griddesc', GDNAM=GDNAM)
+    return outf
+
+
 class CMAQGrid:
     def __init__(self, gdpath, GDNAM):
+        """
+        Arguments
+        ---------
+        gdpath : str
+            Path to GRIDDESC file. If None, then a default is provided with
+            access to typical EPA domains (12US1, 12US2, 36US3, 108NHEMI2) and
+            a few test domains (1188NHEMI2, 108US1).
+        GDNAM : str
+            Name of domain
+        """
         import PseudoNetCDF as pnc
-        self._gf = pnc.pncopen(
-            gdpath, format='griddesc', GDNAM=GDNAM
-        ).subset(['DUMMY'])
+        if gdpath is None:
+            gf = _default_griddesc(GDNAM)
+        else:
+            gf = pnc.pncopen(
+                gdpath, format='griddesc', GDNAM=GDNAM
+            )
+        self._gf = gf.subset(['DUMMY'])
         self._gf.SDATE = 1970001
         self._gf.updatetflag(overwrite=True)
         self.proj = self._gf.getproj(withgrid=True, projformat='proj4')
@@ -125,7 +168,7 @@ class CMAQGrid:
 
     def template(self, varkeys, vglvls=(1, 0), vgtop=5000, ntsteps=1, **kwds):
         """
-        Create an empty IOAPI file with masked variables
+        Create an empty IOAPI file with variables that have arbitrary values
 
         Arguments
         ---------
@@ -141,7 +184,7 @@ class CMAQGrid:
         Returns
         -------
         outf : PseudoNetCDF.cmaqfiles.ioapi_base
-            NetCDF-like file with masked valeus for all varkeys
+            NetCDF-like file with arbitrary values for all varkeys
         """
         import numpy as np
 
@@ -187,7 +230,7 @@ class CMAQGrid:
             for r in rows:
                 for c in cols:
                     geoms.append(
-                        centertobox(xc=c+0.5, yc=r+0.5, width=1, height=1)
+                        centertobox(xc=c + 0.5, yc=r + 0.5, width=1, height=1)
                     )
             self._geodf = gpd.GeoDataFrame(
                 geometry=geoms, index=midx, crs=self.proj
