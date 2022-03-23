@@ -1,22 +1,23 @@
-# Example Derived from
-# https://aura.gesdisc.eosdis.nasa.gov/opendap/Aura_OMI_Level2/OMNO2.003/2018/
-# 152/OMI-Aura_L2-OMNO2_2018m0601t1550-o73823_v003-2019m0819t210955.he5
-# I exported all important fields and selected 3 nTimes and 3 nXtrack
-# Then, I add mask values
 from .. import readers
-
-names = [
-    'nTimes', 'nXtrack', 'LL_Longitude', 'LU_Longitude', 'UL_Longitude',
-    'UU_Longitude', 'LL_Latitude', 'LU_Latitude', 'UL_Latitude',
-    'UU_Latitude', 'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
-    'ColumnAmountNO2Std'
-]
 
 
 def omi_example_df():
+    """
+    Example Derived from
+    https://aura.gesdisc.eosdis.nasa.gov/opendap/Aura_OMI_Level2/OMNO2.003/2018
+    /152/OMI-Aura_L2-OMNO2_2018m0601t1550-o73823_v003-2019m0819t210955.he5
+    I exported all important fields and selected 3 nTimes and 3 nXtrack
+    Then, I add mask values
+    """
     import io
     import pandas as pd
 
+    names = [
+        'nTimes', 'nXtrack', 'LL_Longitude', 'LU_Longitude', 'UL_Longitude',
+        'UU_Longitude', 'LL_Latitude', 'LU_Latitude', 'UL_Latitude',
+        'UU_Latitude', 'CloudFraction', 'VcdQualityFlags',
+        'XTrackQualityFlags', 'ColumnAmountNO2Std'
+    ]
     df = pd.read_csv(
         io.StringIO("""
 990,15,-59.44,-59.5,-59.04,-59.1,46.73,46.86,46.83,46.96,0.04,0.0,0.0,811e12
@@ -31,6 +32,14 @@ def omi_example_df():
 """),
         names=names
     ).set_index(['nTimes', 'nXtrack'])
+    df['Latitude'] = (
+        df['LL_Latitude'] + df['LU_Latitude']
+        + df['UL_Latitude'] + df['UU_Latitude']
+    ) / 4
+    df['Longitude'] = (
+        df['LL_Longitude'] + df['LU_Longitude']
+        + df['UL_Longitude'] + df['UU_Longitude']
+    ) / 4
     return df
 
 
@@ -67,7 +76,7 @@ def test_omi():
 
     sat = readers.omi.OMNO2.from_dataset(ds)
     df2 = sat.export_dataframe()
-    assert((df2 == df).all().all())
+    assert((df2 == df.loc[:, df2.columns]).all().all())
 
 
 def test_omi_valid():

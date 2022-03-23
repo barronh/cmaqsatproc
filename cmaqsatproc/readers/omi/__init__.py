@@ -11,7 +11,9 @@ class OMNO2(satellite):
             'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
             'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
             'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
-            'ColumnAmountNO2Std'
+            'ColumnAmountNO2Std', 'ColumnAmountNO2Trop',
+            'ColumnAmountNO2Strat', 'AmfTrop', 'AmfStrat', 'ColumnAmountNO2',
+            'SlantColumnAmountNO2',
         )
 
     @property
@@ -128,33 +130,46 @@ class OMHCHO(satellite):
         return (
             'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
             'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
-            'MainDataQualityFlag', 'ColumnUncertainty'
+            'Latitude', 'Longitude', 'MainDataQualityFlag',
+            'ColumnUncertainty', 'AirMassFactor',
+            'ReferenceSectorCorrectedVerticalColumn'
         )
 
     @property
     def ds(self):
         if self._ds is None:
             import xarray as xr
-            self._ds = xr.open_dataset(self.path)
-            slices = [('L', slice(None, -1)), ('U', slice(1, None))]
-            for tkey, tslice in slices:
-                for xkey, xslice in slices:
+            ds = xr.open_dataset(self.path)
+            self.ds = ds
+
+        return self._ds
+
+    @ds.setter
+    def ds(self, ds):
+        import xarray as xr
+
+        self._ds = ds
+        slices = [('L', slice(None, -1)), ('U', slice(1, None))]
+        for tkey, tslice in slices:
+            for xkey, xslice in slices:
+                lonkey = f'{tkey}{xkey}_Longitude'
+                if lonkey not in self._ds.data_vars:
                     lonx = xr.DataArray(
                         self._ds['PixelCornerLongitudes'].isel(
                             nTimes_1=tslice, nXtrack_1=xslice
                         ).values,
                         dims=('nTimes', 'nXtrack')
                     )
-                    self._ds[f'{tkey}{xkey}_Longitude'] = lonx
+                    self._ds[lonkey] = lonx
+                latkey = f'{tkey}{xkey}_Latitude'
+                if latkey not in self._ds.data_vars:
                     latx = xr.DataArray(
                         self._ds['PixelCornerLatitudes'].isel(
                             nTimes_1=tslice, nXtrack_1=xslice
                         ).values,
                         dims=('nTimes', 'nXtrack')
                     )
-                    self._ds[f'{tkey}{xkey}_Latitude'] = latx
-
-        return self._ds
+                    self._ds[latkey] = latx
 
     @property
     def valid_index(self):
@@ -254,15 +269,19 @@ class OMNO2d(satellite):
             import xarray as xr
 
             ds = xr.open_dataset(self.path)
-            attrs = self._attrs
-            if 'bbox' in attrs:
-                lonslice = slice(attrs['bbox'][0], attrs['bbox'][2])
-                latslice = slice(attrs['bbox'][1], attrs['bbox'][3])
-                self._ds = ds.sel(lon=lonslice, lat=latslice)
-            else:
-                self._ds = ds
+            self.ds = ds
 
         return self._ds
+
+    @ds.setter
+    def ds(self, ds):
+        attrs = self._attrs
+        if 'bbox' in attrs:
+            lonslice = slice(attrs['bbox'][0], attrs['bbox'][2])
+            latslice = slice(attrs['bbox'][1], attrs['bbox'][3])
+            self._ds = ds.sel(lon=lonslice, lat=latslice)
+        else:
+            self._ds = ds
 
     @property
     def valid_index(self):
@@ -279,7 +298,7 @@ class OMNO2d(satellite):
         """
         import geopandas as gpd
         import numpy as np
-        
+
         if self._geodf is None:
             # Updated to dataframe method. Needs checking
             lldf = self.to_dataframe('lon', 'lat', valid_only=False)

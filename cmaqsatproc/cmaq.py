@@ -47,10 +47,12 @@ class CMAQGrid:
         import PseudoNetCDF as pnc
         if gdpath is None:
             gf = _default_griddesc(GDNAM)
+            gf.HISTORY = 'From GRIDDESC'
         else:
             gf = pnc.pncopen(
                 gdpath, format='griddesc', GDNAM=GDNAM
             )
+        self.GDNAM = GDNAM
         self._gf = gf.subset(['DUMMY'])
         self._gf.SDATE = 1970001
         self._gf.updatetflag(overwrite=True)

@@ -35,45 +35,52 @@ class MOD04(satellite):
         """
         if self._ds is None:
             import xarray as xr
-            import numpy as np
-            ds = self._ds = xr.open_dataset(self.path)
-            dx = ds.Longitude.copy()
-            dx[:] = np.nan
-            dx.name = 'dx'
-            diff_lon = np.abs(ds.Longitude.diff('Cell_Across_Swath'))
-            diff_lon_mean = diff_lon.rolling(Cell_Across_Swath=2).mean().isel(
-                Cell_Across_Swath=slice(1, None)
-            )
-            dx[:] = xr.concat([
-                diff_lon.isel(
-                    Cell_Across_Swath=[0]
-                ),
-                diff_lon_mean,
-                diff_lon.isel(
-                    Cell_Across_Swath=[-1]
-                )
-            ], dim='Cell_Across_Swath').values
-            dy = ds.Latitude.copy()
-            dy.name = 'dy'
-            dy = ds.Latitude.copy()
-            dy.name = 'dy'
-            dy[:] = np.nan
-            diff_lat = np.abs(ds.Latitude.diff('Cell_Along_Swath'))
-            diff_lat_mean = diff_lat.rolling(Cell_Along_Swath=2).mean().isel(
-                Cell_Along_Swath=slice(1, None)
-            )
-            dy[:] = xr.concat([
-                diff_lat.isel(
-                    Cell_Along_Swath=[0]
-                ),
-                diff_lat_mean,
-                diff_lat.isel(
-                    Cell_Along_Swath=[-1]
-                )
-            ], dim='Cell_Along_Swath').values
-            ds['dx'] = dx
-            ds['dy'] = dy
+            ds = xr.open_dataset(self.path)
+            self.ds = ds
         return self._ds
+
+    @ds.setter
+    def ds(self, ds):
+        import xarray as xr
+        import numpy as np
+
+        dx = ds.Longitude.copy()
+        dx[:] = np.nan
+        dx.name = 'dx'
+        diff_lon = np.abs(ds.Longitude.diff('Cell_Across_Swath'))
+        diff_lon_mean = diff_lon.rolling(Cell_Across_Swath=2).mean().isel(
+            Cell_Across_Swath=slice(1, None)
+        )
+        dx[:] = xr.concat([
+            diff_lon.isel(
+                Cell_Across_Swath=[0]
+            ),
+            diff_lon_mean,
+            diff_lon.isel(
+                Cell_Across_Swath=[-1]
+            )
+        ], dim='Cell_Across_Swath').values
+        dy = ds.Latitude.copy()
+        dy.name = 'dy'
+        dy = ds.Latitude.copy()
+        dy.name = 'dy'
+        dy[:] = np.nan
+        diff_lat = np.abs(ds.Latitude.diff('Cell_Along_Swath'))
+        diff_lat_mean = diff_lat.rolling(Cell_Along_Swath=2).mean().isel(
+            Cell_Along_Swath=slice(1, None)
+        )
+        dy[:] = xr.concat([
+            diff_lat.isel(
+                Cell_Along_Swath=[0]
+            ),
+            diff_lat_mean,
+            diff_lat.isel(
+                Cell_Along_Swath=[-1]
+            )
+        ], dim='Cell_Along_Swath').values
+        ds['dx'] = dx
+        ds['dy'] = dy
+        self._ds = ds
 
     @property
     def geodf(self):
