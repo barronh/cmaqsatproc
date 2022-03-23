@@ -10,7 +10,7 @@ def _getmodislinks(**kwds):
     return links
 
 
-def _test_getcmrlinks_bbox():
+def test_getcmrlinks_bbox():
     # Start by finding links for a day
     links = _getmodislinks(
         bbox=(-121, 21.6, -69.3, 52)
@@ -20,7 +20,7 @@ def _test_getcmrlinks_bbox():
     assert(len(links) > 0)
 
 
-def _test_getcmrlinks_poly():
+def test_getcmrlinks_poly():
     from shapely import wkt
     poly = wkt.loads(
         'POLYGON ((-121.1 21.6, -69.3 20.6, -54.3 50.3,'

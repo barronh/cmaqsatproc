@@ -1,5 +1,4 @@
 from .. import cmaq
-import warnings
 
 
 def test_cmaqgrid():
@@ -13,6 +12,7 @@ def test_cmaqgrid():
             -40.46308679254433, 63.835501598090225
         )
     ))
+
 
 def test_cmaqgrid_template():
     cg = cmaq.CMAQGrid(None, '108US1')

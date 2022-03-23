@@ -18,25 +18,48 @@ class OMNO2(satellite):
     def ds(self):
         if self._ds is None:
             import xarray as xr
-            self._ds = xr.open_dataset(self.path)
-            for corneri, ckey in zip(range(4), ('LL', 'UL', 'UU', 'LU')):
-                lonx = self._ds['FoV75CornerLongitude'].isel(
-                    nCorners=corneri
-                )
-                self._ds[f'{ckey}_Longitude'] = lonx
-                latx = self._ds['FoV75CornerLatitude'].isel(
-                    nCorners=corneri
-                )
-                self._ds[f'{ckey}_Latitude'] = latx
+            self.ds = xr.open_dataset(self.path)
 
         return self._ds
+
+    @ds.setter
+    def ds(self, ds):
+        import warnings
+        self._ds = ds
+        for corneri, ckey in zip(range(4), ('LL', 'UL', 'UU', 'LU')):
+            lonkey = f'{ckey}_Longitude'
+            latkey = f'{ckey}_Latitude'
+            if lonkey not in self._ds.data_vars:
+                if 'FoV75CornerLongitude' not in self._ds.data_vars:
+                    warnings.warn(
+                        'Corners must be calculated and FoV75CornerLongitude'
+                        + ' is missing'
+                    )
+                else:
+                    lonx = self._ds['FoV75CornerLongitude'].isel(
+                        nCorners=corneri
+                    )
+                    self._ds[lonkey] = lonx
+
+            if latkey not in self._ds.data_vars:
+                if 'FoV75CornerLatitude' not in self._ds.data_vars:
+                    warnings.warn(
+                        'Corners must be calculated and FoV75CornerLatitude'
+                        + ' is missing'
+                    )
+                else:
+                    latx = self._ds['FoV75CornerLatitude'].isel(
+                        nCorners=corneri
+                    )
+                    self._ds[latkey] = latx
 
     @property
     def valid_index(self):
         if self._valididx is None:
-            df = self.ds[[
-                'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags'
-            ]].to_dataframe().fillna(1)
+            df = self.to_dataframe(
+                'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
+                valid_only=False
+            ).fillna(1)
             df['FinalFlag'] = (
                 df['VcdQualityFlags'].astype('i') & 1
             ).astype('i')
@@ -136,7 +159,7 @@ class OMHCHO(satellite):
     @property
     def valid_index(self):
         if self._valididx is None:
-            df = self.ds[['MainDataQualityFlag']].to_dataframe()
+            df = self.to_dataframe('MainDataQualityFlag', valid_only=False)
             self._valididx = df.query('MainDataQualityFlag == 0')
         return self._valididx
 
@@ -245,7 +268,7 @@ class OMNO2d(satellite):
     def valid_index(self):
         if self._valididx is None:
             key = self.attrs['targetkey']
-            df = self.ds[[key]].to_dataframe()
+            df = self.to_dataframe(key, valid_only=False)
             self._valididx = df.query(f'{key} == {key}')
         return self._valididx
 
@@ -256,10 +279,12 @@ class OMNO2d(satellite):
         """
         import geopandas as gpd
         import numpy as np
-
-        dlon = np.diff(self.ds.lon.values).mean()
-        dlat = np.diff(self.ds.lat.values).mean()
+        
         if self._geodf is None:
+            # Updated to dataframe method. Needs checking
+            lldf = self.to_dataframe('lon', 'lat', valid_only=False)
+            dlon = np.diff(lldf['lon'].values).mean()
+            dlat = np.diff(lldf['lat']).mean()
             df = self.to_dataframe(
                 'lon', 'lat',
             ).join(self.valid_index[[]], how='inner')
