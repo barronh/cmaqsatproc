@@ -1,4 +1,4 @@
-__all__ = ['satellite', 'omi', 'modis']
+__all__ = ['satellite', 'omi', 'modis', 'tropomi']
 
 
 from .core import satellite

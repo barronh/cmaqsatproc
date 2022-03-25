@@ -58,7 +58,7 @@ destination polygon:
         Create a base geopandas dataframe with a geometry
         """
         import geopandas as gpd
-        
+
         if self._geodf is None:
             df = self.valid_index
             self._geodf = gpd.GeoDataFrame(
@@ -67,7 +67,7 @@ destination polygon:
                     df['PRODUCT_longitude'], df['PRODUCT_latitude']
                 ), crs=4326
             )
-        
+
         # Use polygons soon. Very slow at present.
         if False:
             df = self.to_dataframe(

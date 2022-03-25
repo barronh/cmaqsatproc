@@ -9,6 +9,8 @@ def get_readers(short_name):
     return {
         'MOD04_3K': readers.modis.MOD04,
         'MOD04_L2': readers.modis.MOD04,
+        'MYD04_3K': readers.modis.MOD04,
+        'MYD04_L2': readers.modis.MOD04,
         'OMHCHO': readers.omi.OMHCHO,
         'OMNO2': readers.omi.OMNO2,
         'S5P_L2__NO2___': readers.tropomi.TropOMI,
@@ -40,6 +42,8 @@ def _modis_filter(links):
 _link_filters = {
     'MOD04_3K': _modis_filter,
     'MOD04_L2': _modis_filter,
+    'MYD04_3K': _modis_filter,
+    'MYD04_L2': _modis_filter,
     'OMHCHO': _omi_filter,
     'OMNO2': _omi_filter,
     'S5P_L2__NO2___': _tropomi_filter,
@@ -49,7 +53,6 @@ _link_filters = {
 }
 
 _renamer2ds = {
-    
     'S5P_L2__NO2___': {
         'PRODUCT_nitrogendioxide_tropospheric_column': 'VCDTROPNO2',
         'weights': 'weights'
@@ -70,6 +73,12 @@ _renamer2ds = {
         'Optical_Depth_Land_And_Ocean': 'AOD_550', 'weights': 'weights'
     },
     'MOD04_L2': {
+        'Optical_Depth_Land_And_Ocean': 'AOD_550', 'weights': 'weights'
+    },
+    'MYD04_3K': {
+        'Optical_Depth_Land_And_Ocean': 'AOD_550', 'weights': 'weights'
+    },
+    'MYD04_L2': {
         'Optical_Depth_Land_And_Ocean': 'AOD_550', 'weights': 'weights'
     },
     'OMHCHO': {
