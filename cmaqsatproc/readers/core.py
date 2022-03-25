@@ -1,5 +1,7 @@
 __all__ = ['satellite']
 
+from ..utils import weight_vars
+
 
 class satellite:
     __doc__ = """
@@ -27,6 +29,16 @@ function that returns the weighted sum of pixels for each grid cell.
 Conceptually, the weights method can be overwritten to include complex weights.
 For example, the FOV brightness etc.
 """
+
+    @property
+    def short_description(self):
+        import warnings
+        desc = ""
+        warnings.warn(
+            f'short_description has not been implemented for this {type(self)}',
+            RuntimeWarning
+        )
+        return desc
 
     @classmethod
     def from_paths(cls, paths, *keys, low_memory=True):
@@ -269,10 +281,19 @@ For example, the FOV brightness etc.
             addition is weights, which defaults to the intx_fracarea.
         """
         import geopandas as gpd
-        if clip is None:
-            mygeodf = self.geodf
-        else:
-            mygeodf = gpd.clip(self.geodf, clip.to_crs(self.geodf.crs))
+        import warnings
+
+        # Gets rid of self-intersections.
+        mygeodf = self.geodf
+        mygeodf = mygeodf[mygeodf.is_valid]
+        if mygeodf.shape[0] < self.geodf.shape[0]:
+            nlost = self.geodf.shape[0] - mygeodf.shape[0]
+            warnings.warn(
+                f'{nlost} geometries are not valid (cross pole or dateline)'
+            )
+
+        if clip is not None:
+            mygeodf = gpd.clip(mygeodf, clip.to_crs(self.geodf.crs))
             if mygeodf.shape[0] == 0:
                 intx_df = mygeodf.copy()
                 if option == 'fracarea':
@@ -289,7 +310,30 @@ For example, the FOV brightness etc.
                 )
                 return intx_df
 
-        intx_df = gpd.sjoin(mygeodf.to_crs(othdf.crs), othdf.reset_index())
+        mygeodf_othcrs = mygeodf.to_crs(othdf.crs)
+
+        # This is an uncertain assumption. Basically, I am having trouble with
+        # pixels that cross the dateline, but do not encompass the dateline.
+        # For example, a polygon that crosses the dateline may be interpretted
+        # to include the entire world excluding the dateline.
+        # The polygon shown below is 358 degrees wide
+        # POLYGON ((179 0, -179 0, -179 2, 179 2)))
+        # q1, q3 = area_othcrs.quantile([.25, .75])
+        # iqr = q3 - q1
+        # ub = q3 + 2 * iqr
+        # area_othcrs = mygeodf_othcrs.area
+        # isnotoutlier = area_othcrs <= ub
+        # Exclude very large pixels
+        # outlierfrac = 1 - isnotoutlier.mean()
+        # if outlierfrac > 0.1:
+        #     warnings.warn(
+        #         f'{outlierfrac:%} were removed in an attempt to limit '
+        #         + 'cross-dateline issues'
+        #     )
+        # mygeodf_othcrs_valid = mygeodf_othcrs[isnotoutlier]
+        # Testing solution using _dateline
+        mygeodf_othcrs_valid = mygeodf_othcrs
+        intx_df = gpd.sjoin(mygeodf_othcrs_valid, othdf.reset_index())
         intx_df['dest_geometry'] = othdf.reset_index().iloc[
             intx_df.index_right
         ].geometry.values
@@ -307,6 +351,8 @@ For example, the FOV brightness etc.
             import warnings
             warnings.warn('Using default weight of 1')
             intx_df['weights'] = 1
+        # print(intx_df.shape)
+        # import pdb; pdb.set_trace()
         return intx_df
 
     def weighted(
@@ -347,35 +393,15 @@ For example, the FOV brightness etc.
         if wgtdf.shape[0] == 0:
             aggdf = wgtdf.copy()
             for key in groupkeys:
-                aggdf.insert(column=key, loc=0, value=0)
+                if key not in aggdf.columns:
+                    aggdf.insert(column=key, loc=0, value=0)
             for key in aggkeys:
-                aggdf.insert(column=key, loc=0, value=0)
+                if key not in aggdf.columns:
+                    aggdf.insert(column=key, loc=0, value=0)
             return aggdf.set_index(groupkeys)
 
         withweights = self.to_geodataframe(*aggkeys, geodf=wgtdf)
-        aggattrs = {
-            key: withweights[key].attrs for key in aggkeys
-        }
-        notweighted = ['weights'] + list(groupkeys)
-        weighted = withweights.drop(
-            ['geometry', 'dest_geometry'], axis=1, inplace=False
-        ).multiply(withweights.weights, axis=0)
-        # overwrite weights with original values
-        for key in notweighted:
-            if key not in weighted.index.names:
-                weighted[key] = withweights[key]
-        # Groupby and sum
-        aggweighted = weighted.groupby(groupkeys).sum()
-        # Divide weighted values by the sum of weights
-        agg = aggweighted.divide(aggweighted.weights, axis=0)
-        # Overwrite with the sum of weights
-        for key in notweighted:
-            if key not in groupkeys:
-                agg[key] = aggweighted[key]
-
-        for key in aggkeys:
-            agg[key].attrs.update(aggattrs[key])
-        return agg
+        return weight_vars(withweights, *aggkeys, groupkeys=groupkeys)
 
     def export_dataframe(self, *args):
         """
@@ -384,7 +410,7 @@ For example, the FOV brightness etc.
         primarily for creating merged objects (see from_dataframes and
         from_paths)
         """
-        allargs = tuple(self.required_args) + tuple(args)
+        allargs = list(set(tuple(self.required_args) + tuple(args)))
         outdf = self.to_dataframe(*allargs)
         for key in allargs:
             outdf[key].attrs.update(outdf[key].attrs)
