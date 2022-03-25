@@ -9,6 +9,21 @@ Satellite Processors designed for simple CMAQ comparisons.
 
 ## What makes it simple?
 
+Components are complex, but coupled with easy preconfigured
+pipelines. A pipeline knows how components fit together to make
+running easy.
+
+```
+import pandas as pd
+from cmaqsatproc.pipeline import get_pipeline
+
+
+short_name = 'OMNO2'
+dates = pd.date_range('2019-07-01', '2019-07-02')
+pipe = get_pipeline(short_name='OMNO2', cmaqgrid='12US1')
+out = pipe.process_dates(dates)
+```
+
 * Converting L2 satellite products takes:
   * raw L2 inputs in HDF-EOS5 (.he5), or
   * opendap urls (requires user opendap configuration), or

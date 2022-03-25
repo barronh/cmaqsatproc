@@ -12,6 +12,9 @@ def get_readers(short_name):
         'OMHCHO': readers.omi.OMHCHO,
         'OMNO2': readers.omi.OMNO2,
         'S5P_L2__NO2___': readers.tropomi.TropOMI,
+        'S5P_L2__HCHO__': readers.tropomi.TropOMI,
+        'S5P_L2__CH4___': readers.tropomi.TropOMI,
+        'S5P_L2__CO____': readers.tropomi.TropOMI,
     }[short_name]
 
 
@@ -20,7 +23,12 @@ def _omi_filter(links):
 
 
 def _tropomi_filter(links):
-    return [l.replace('/data/', '/opendap/hyrax/') for l in links if l.endswith('.nc')]
+    links = [l for l in links if l.endswith('.nc')]
+    if any(['opendap' in l.lower() for l in links]):
+        links = [l for l in links if 'opendap' in l.lower()]
+    else:
+        links = [l.replace('/data/', '/opendap/hyrax/') for l in links]
+    return links
 
 
 def _modis_filter(links):
@@ -35,11 +43,27 @@ _link_filters = {
     'OMHCHO': _omi_filter,
     'OMNO2': _omi_filter,
     'S5P_L2__NO2___': _tropomi_filter,
+    'S5P_L2__HCHO__': _tropomi_filter,
+    'S5P_L2__CH4___': _tropomi_filter,
+    'S5P_L2__CO____': _tropomi_filter,
 }
 
 _renamer2ds = {
+    
     'S5P_L2__NO2___': {
         'PRODUCT_nitrogendioxide_tropospheric_column': 'VCDTROPNO2',
+        'weights': 'weights'
+    },
+    'S5P_L2__HCHO__': {
+        'PRODUCT_formaldehyde_tropospheric_vertical_column': 'VCDTROPHCHO',
+        'weights': 'weights'
+    },
+    'S5P_L2__CH4___': {
+        'PRODUCT_methane_mixing_ratio': 'VMRCH4',
+        'weights': 'weights'
+    },
+    'S5P_L2__CO____': {
+        'PRODUCT_carbonmonoxide_total_column': 'VCDTOTCO',
         'weights': 'weights'
     },
     'MOD04_3K': {
@@ -70,7 +94,7 @@ _renamer3ds = {
 
 def get_pipeline(
     short_name, cmaqgrid, persist=True, output3d=False,
-    renamer2d=None, renamer3d=None, local=False
+    link_filter=None, reader=None, renamer2d=None, renamer3d=None, local=False
 ):
     """
     Pipelines perform a series of steps, but creating them can be difficult.
@@ -90,6 +114,14 @@ def get_pipeline(
         Should data be output as IOAPI?
     output3d : bool
         Should 3d data be output as well
+    link_filter : function
+        If provided, override default link_filter
+    reader : function
+        If provided, override default reader
+    renamer2d : function
+        If provided, override default renamer2d
+    renamer3d : function
+        If provided, override default renamer3d
     local : bool
         If local, then files have been downloaded using `wget -r`
 
@@ -105,15 +137,23 @@ def get_pipeline(
         outtmpl2d = False
         outtmpl3d = False
 
-    reader = get_readers(short_name)
-    tmp_link_filter = _link_filters[short_name]
+    if reader is None:
+        reader = get_readers(short_name)
+
+    if link_filter is not None:
+        tmp_link_filter = link_filter
+    else:
+        tmp_link_filter = _link_filters[short_name]
+
     if local:
         def mylinkfilter(links):
             return [l.replace('https://', '') for l in tmp_link_filter(links)]
     else:
         link_filter = tmp_link_filter
+
     if renamer2d is None:
         renamer2d = _renamer2ds.get(short_name, None)
+
     if renamer2d is None:
         varkeys2d = None
     else:
