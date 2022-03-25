@@ -1,4 +1,13 @@
-__all__ = ['getcmrlinks', 'centertobox']
+__all__ = [
+    'getcmrlinks', 'centertobox', 'EasyRowPolygon', 'weight_vars',
+    'rootremover', 'csp_formatwarning', 'csp_formatwarnings'
+]
+import warnings
+
+
+_ckeys = ['LL', 'LU', 'UU', 'UL', 'LL']
+_xcrnrkeys = [f'{ckey}_Longitude' for ckey in _ckeys]
+_ycrnrkeys = [f'{ckey}_Latitude' for ckey in _ckeys]
 
 
 def getcmrlinks(short_name, temporal, bbox=None, poly=None, verbose=0, **kwds):
@@ -88,3 +97,206 @@ def centertobox(xc, yc, width, height):
         [xc - hdx, yc + hdy],
         [xc - hdx, yc - hdy],
     ])
+
+
+def weight_vars(withweights, *aggkeys, groupkeys=['ROW', 'COL']):
+    aggattrs = {
+        key: withweights[key].attrs for key in aggkeys
+    }
+    notweighted = ['weights'] + list(groupkeys)
+    dropkeys = ['geometry', 'dest_geometry']
+    dropkeys = [k for k in dropkeys if k in withweights.columns]
+    weighted = withweights.drop(
+        dropkeys, axis=1, inplace=False
+    ).multiply(withweights.weights, axis=0)
+    # overwrite weights with original values
+    for key in notweighted:
+        if key not in weighted.index.names:
+            weighted[key] = withweights[key]
+    # Groupby and sum
+    aggweighted = weighted.groupby(groupkeys).sum()
+    # Divide weighted values by the sum of weights
+    agg = aggweighted.divide(aggweighted.weights, axis=0)
+    # Overwrite with the sum of weights
+    for key in notweighted:
+        if key not in groupkeys:
+            agg[key] = aggweighted[key]
+
+    for key in aggkeys:
+        agg[key].attrs.update(aggattrs[key])
+
+    return agg
+
+
+def EasyRowPolygon(row, wrap=True):
+    """
+    Create polygons from a row with corners of a pixel specificied using
+    columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
+
+    The wrap functionality prevents polygons from straddling the dateline.
+
+    Arguments
+    ---------
+    row : pandas.DataFrame row
+        Must contain LL, LU, UU, UL for Longitude and Latitude (e.g.,
+        LL_Longitude, LL_Latitude)
+    wrap : bool
+        If True (default), each polygon that crosses the dateline will be
+        truncated to the Western portion.
+
+    Returns
+    -------
+    poly : shapely.geometry.Polygon
+    """
+    from shapely.geometry import Polygon
+    import numpy as np
+
+    x = row[_xcrnrkeys].values
+    y = row[_ycrnrkeys].values
+    if wrap:
+        dx = x.max() - x.min()
+        if dx > 90:
+            x = np.where(x > 0, -180, x)
+
+    # Conceivably apply the same approach to the pole
+    # dy = y.max() - y.min()
+    # if dy > 45:
+    #     y = np.where(y < 0, 90, y)
+    return Polygon(np.asarray([x, y]).T)
+
+
+def EasyDataFramePolygon(df, wrap=True):
+    """
+    Create polygons from a row with corners of a pixel specificied using
+    columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
+
+    The wrap functionality prevents polygons from straddling the dateline.
+
+    (Same functionality as EasyRowPolygon, but intended to be faster due to
+    the ability to rapidly apply wrapping to multiple rows at a time.)
+
+    Arguments
+    ---------
+    df : pandas.DataFrame
+        Must contain LL, LU, UU, UL for Longitude and Latitude (e.g.,
+        LL_Longitude, LL_Latitude)
+    wrap : bool
+        If True (default), each polygon that crosses the dateline will be
+        truncated to the Western portion.
+
+    Returns
+    -------
+    polys : list
+        List of shapely.geometry.Polygons
+    """
+    from shapely.geometry import Polygon
+    import numpy as np
+    x = df[_xcrnrkeys].copy()
+    y = df[_ycrnrkeys].copy()
+    dx = x.max(axis=1) - x.min(axis=1)
+    # Conceivably apply the same approach to the pole
+    # dy = y.max(axis=1) - y.min(axis=1)
+    if wrap:
+        newx = x.where(~((dx > 90).values[:, None] & (x > 0).values), -180)
+        newy = y  # .where(~((dy > 45).values[:, None] & (y < 0).values), 90)
+    else:
+        newx = x
+        newy = y
+
+    polys = []
+    for idx, x in newx.iterrows():
+        y = newy.loc[idx]
+        polys.append(Polygon(np.asarray([x, y]).T))
+
+    return polys
+
+
+def rootremover(strlist, insert=False):
+    """
+    Find the longest common root and replace it with {root}
+
+    Arguments
+    ---------
+    strlist : list
+        List of strings from which to find a common root and replace with
+        '{root}'
+    insert : bool
+        If true, insert f'root: {root}' at the beginning of the short list.
+
+    Return
+    ------
+    stem, short_list
+        List with each element of strlist where the longest common root has
+        been removed. If insert, then the root is inserted
+    """
+    import os
+
+    stem = os.path.dirname(strlist[0])
+    while not all([stem in l for l in strlist]) or False:
+        oldstem = stem
+        stem = os.path.dirname(stem)
+        if oldstem == stem:
+            short_strlist = strlist
+            break
+    else:
+        short_strlist = [
+            l.replace(stem, '{root}')
+            for l in strlist
+        ]
+        if insert:
+            short_strlist.insert(0, f'root: {stem}')
+
+    return stem, short_strlist
+
+
+def csp_formatwarning(message, category, filename, lineno, line=None):
+    """
+    Simplify warnings that come from cmaqsatproc. All others will remain in
+    standard format.
+    """
+    if 'cmaqsatproc' in filename:
+        filename = 'cmaqsatproc' + filename.split('cmaqsatproc')[-1]
+        if category in (UserWarning, RuntimeWarning):
+            category = 'Note:'
+        else:
+            category = str(category).split("'")[1] + ':'
+        warnstr = f'{filename}:{lineno}:{category} {message}\n'
+    else:
+        warnstr = warnings.formatwarning(
+            message=message, category=category,
+            filename=filename, lineno=lineno,
+            line=line
+        )
+    return warnstr
+
+
+def csp_formatwarnings(warning_list, asstr=True):
+    """
+    Apply csp_formatwarnings to a list of warnings. If asstr is true,
+    concatenate the results.
+    """
+    fmt_warning_list = []
+    for w in warning_list:
+        fmt_warning_list.append(
+            csp_formatwarning(
+                message=w.message, category=w.category,
+                filename=w.filename, lineno=w.lineno, line=w.line
+            )
+        )
+    if asstr:
+        return ''.join(fmt_warning_list)
+    else:
+        return fmt_warning_list
+
+
+def csp_showwarning(message, category, filename, lineno, file=None, line=None):
+    """
+    Could be used to overwrite warnings.showwarning. For any other modules,
+    warnings will still be shown as normal. For cmaqsatproc warnings, a special
+    format is applied
+    """
+    import sys
+    if file is None:
+        file = sys.stdout
+    warnstr = csp_formatwarning(message, category, filename, lineno, line=line)
+    file.write(warnstr, flush=True)

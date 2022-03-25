@@ -1,19 +1,33 @@
 __all__ = ['OMNO2', 'OMHCHO', 'OMNO2d']
 
 from ..core import satellite
-from ...utils import centertobox
+from ...utils import centertobox, EasyDataFramePolygon
 
 
 class OMNO2(satellite):
+    @property
+    def short_description(self):
+        desc = """OMNO2 filters valid pixels and provides weights for
+destination polygon:
+* valid = VcdQualityFlags, XTrackQualityFlags, CloudFraction
+  * (VcdQualityFlags.astype('i') & 1) == 0,
+  * XTrackQualityFlags == 0, and
+  * CloudFraction <= 0.3
+* pixel_area = corners from FoV75CornerLongitude, FoV75CornerLatitude
+* weight = intx_fracarea * area_factor * uncertainty_factor
+  * intx_fracarea = fraction of the destination covered by the pixel
+  * area_factor = (1 - (area - area_min) / area_max)
+  * uncertainty_factor = 1 / ColumnAmountNO2Std
+"""
+        return desc
+
     @property
     def required_args(self):
         return (
             'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
             'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
             'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
-            'ColumnAmountNO2Std', 'ColumnAmountNO2Trop',
-            'ColumnAmountNO2Strat', 'AmfTrop', 'AmfStrat', 'ColumnAmountNO2',
-            'SlantColumnAmountNO2',
+            'ColumnAmountNO2Std'
         )
 
     @property
@@ -77,7 +91,6 @@ class OMNO2(satellite):
         Create a base geopandas dataframe with a geometry
         """
         import geopandas as gpd
-        from shapely.geometry import Polygon
         if self._geodf is None:
             df = self.to_dataframe(
                 'LL_Latitude', 'LL_Longitude',
@@ -87,15 +100,7 @@ class OMNO2(satellite):
             ).join(self.valid_index[[]], how='inner')
             self._geodf = gpd.GeoDataFrame(
                 df[[]],
-                geometry=df.apply(
-                    lambda row: Polygon([
-                        [row['LL_Longitude'], row['LL_Latitude']],
-                        [row['LU_Longitude'], row['LU_Latitude']],
-                        [row['UU_Longitude'], row['UU_Latitude']],
-                        [row['UL_Longitude'], row['UL_Latitude']],
-                        [row['LL_Longitude'], row['LL_Latitude']],
-                    ]), axis=1
-                ),
+                geometry=EasyDataFramePolygon(df),
                 crs=4326
             )
         return self._geodf
@@ -111,6 +116,8 @@ class OMNO2(satellite):
         section 6.3 for more detail
         """
         wgtdf = satellite.weights(self, *args, **kwds)
+        # Currently thowing an warning due to calculation in spherical space.
+        # Using area in a relative form, so for now that is okay.
         area = wgtdf['geometry'].area
         area_min = area.min()
         area_max = area.max()
@@ -125,6 +132,21 @@ class OMNO2(satellite):
 
 
 class OMHCHO(satellite):
+    @property
+    def short_description(self):
+        desc = """OMHCHO filters valid pixels and provides weights for
+destination polygon:
+* valid = MainDataQualityFlag, CloudFraction
+  * MainDataQualityFlag == 0,
+  * CloudFraction <= 0.3
+* pixel_area = corners from PixelCornerLongitudes, PixelCornerLatitudes
+* weight = intx_fracarea * area_factor * uncertainty_factor
+  * intx_fracarea = fraction of the destination covered by the pixel
+  * area_factor = (1 - (area - area_min) / area_max)
+  * uncertainty_factor = 1 / ColumnUncertainty
+"""
+        return desc
+
     @property
     def required_args(self):
         return (
@@ -184,7 +206,6 @@ class OMHCHO(satellite):
         Create a base geopandas dataframe with a geometry
         """
         import geopandas as gpd
-        from shapely.geometry import Polygon
         if self._geodf is None:
             df = self.to_dataframe(
                 'LL_Latitude', 'LL_Longitude',
@@ -194,15 +215,7 @@ class OMHCHO(satellite):
             ).join(self.valid_index[[]], how='inner')
             self._geodf = gpd.GeoDataFrame(
                 df[[]],
-                geometry=df.apply(
-                    lambda row: Polygon([
-                        [row['LL_Longitude'], row['LL_Latitude']],
-                        [row['LU_Longitude'], row['LU_Latitude']],
-                        [row['UU_Longitude'], row['UU_Latitude']],
-                        [row['UL_Longitude'], row['UL_Latitude']],
-                        [row['LL_Longitude'], row['LL_Latitude']],
-                    ]), axis=1
-                ),
+                geometry=EasyDataFramePolygon(df),
                 crs=4326
             )
         return self._geodf
@@ -229,6 +242,8 @@ class OMHCHO(satellite):
         wgtdf = satellite.weights(self, *args, **kwds)
         if wgtdf.shape[0] == 0:
             return wgtdf
+        # Currently thowing an warning due to calculation in spherical space.
+        # Using area in a relative form, so for now that is okay.
         area = wgtdf['geometry'].area
         area_min = area.min()
         area_max = area.max()
@@ -243,6 +258,16 @@ class OMHCHO(satellite):
 
 
 class OMNO2d(satellite):
+    @property
+    def short_description(self):
+        desc = """OMNO2d filters valid pixels and provides weights for
+destination polygon:
+* valid = unmasked value
+* pixel_area = corners from centroids +- half average delta
+* weight = Weight
+"""
+        return desc
+
     def __init__(
         self, path, targetkey='ColumnAmountNO2TropCloudScreened', **kwds
     ):

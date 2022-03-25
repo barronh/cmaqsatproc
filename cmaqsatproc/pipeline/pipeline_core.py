@@ -1,4 +1,5 @@
 __all__ = ['Pipeline']
+from ..utils import weight_vars, getcmrlinks, rootremover, csp_formatwarnings
 
 
 class Pipeline:
@@ -16,14 +17,15 @@ class Pipeline:
         2. Choose the links that will provide access
           * typically opendap, but could be a derivative to point to local
             copies
-          * reqiures a function that will filter links
-        3. Calculate pixel contributions to grid cells.
+          * requires a function that will filter links
+        3. For each link, calculate pixel contributions to grid cells.
           * This process is specific to each satellite reader.
           * requires a reader object with the weights method
-        4. Weight pixel values and produces grid cell values.
+        4. For each link, weight pixel values and produces grid cell values.
           * This process is specific to each satellite reader.
           * requires a reader object with the weighted method
-        5. Rename output variables for IOAPI compliance.
+        5. Combine weighted pixel values to produce overall value
+        6. Rename output variables for IOAPI compliance.
           * requires a custom dictionary
         6. Save to a file on disk
           * requires a string template
@@ -100,11 +102,10 @@ class Pipeline:
         links : list
             Links from utils.getcmrlinks after custom processing by link_filter
         """
-        from .. import utils
         import pandas as pd
 
         date = pd.to_datetime(date)
-        links = utils.getcmrlinks(
+        links = getcmrlinks(
             temporal=f'{date:%F}T00:00:00Z/{date:%F}T23:59:59Z',
             poly=self.approxpoly, **self.cmr_kw
         )
@@ -119,17 +120,25 @@ class Pipeline:
             Iterable of dates
         """
         import warnings
+        import pandas as pd
 
         if output:
             outputs = []
         for date in date_range:
+            date = pd.to_datetime(date)
             try:
                 out = self.process_date(
                     date, verbose=verbose, makedirs=makedirs
                 )
                 if output:
                     outputs.append(out)
+                else:
+                    for outf in out:
+                        outf.close()
+                    del out
             except ValueError:
+                if output:
+                    outputs.append({})
                 warnings.warn(
                     f'Processing failed for {date:%F}. No valid pixels'
                 )
@@ -137,7 +146,7 @@ class Pipeline:
         if output:
             return outputs
 
-    def process_date(self, date, verbose=0, makedirs=True, links=None):
+    def process_date(self, date, verbose=0, links=None, **io_kw):
         """
         Arguments
         ---------
@@ -150,87 +159,138 @@ class Pipeline:
             List of outputs either dataframes or ioapi-like files. Type depends
             on whether the outtmpl was provided. If yes, then ioapi.
         """
+        import warnings
+        import pandas as pd
+        import os
+
+        with warnings.catch_warnings(record=True) as warning_list:
+            date = pd.to_datetime(date)
+            cg = self.cmaqgrid
+
+            if verbose > 0:
+                print('Start query', flush=True)
+
+            if links is None:
+                links = self.get_links(date)
+            if verbose > 0:
+                print('Start read')
+                print(links, flush=True)
+
+            outputs = {
+                'links': links,
+                'links_with_pixels': [],
+                '2d': [],
+                '3d': []
+            }
+            for link in links:
+                if verbose > 0:
+                    print(f'Starting {link}', flush=True)
+                self.sat = sat = self.reader(link)
+
+                if verbose > 1:
+                    print('Calculate weights', flush=True)
+
+                self.wgts = wgts = sat.weights(
+                    cg.geodf, clip=self.cmaqgrid.exterior
+                )
+                if wgts.shape[0] == 0:
+                    slink = os.path.basename(link)
+                    warnings.warn(
+                        f'No valid pixels for {slink}'
+                    )
+                    continue
+
+                outputs['links_with_pixels'].append(link)
+                if self.varkeys2d is not None:
+                    if verbose > 1:
+                        print('Process 2d data', flush=True)
+
+                    # Produce 2d output
+                    wgtd2d = sat.weighted(
+                        *self.varkeys2d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+                    )
+                    outputs['2d'].append(wgtd2d)
+
+                if self.varkeys3d is not None:
+                    if verbose > 1:
+                        print('Process 3d data', flush=True)
+
+                    # Produce 2d output
+                    wgtd3d = sat.weighted(
+                        *self.varkeys3d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+                    )
+                    outputs['3d'].append(wgtd3d)
+
+        outputs['history'] = csp_formatwarnings(warning_list)
+        outputio = self.to_ioapi(date, outputs, verbose=verbose, **io_kw)
+        if len(outputio) == 0:
+            # Must be not perist, so return raw output
+            return outputs
+        else:
+            outputio['links'] = outputs['links']
+            outputio['links_with_pixels'] = outputs['links_with_pixels']
+            outputio['history'] = outputs['history']
+            return outputio
+
+    def to_ioapi(
+        self, date, inputs, makedirs=True, laykey='nLevels', verbose=0
+    ):
+        """
+        Arguments
+        ---------
+        date : str
+            Anything that can be interpreted by pandas.to_datetime as a date
+        inputs : mappable
+            If contains 2d and/or 3d and outtmpls are not False, then files
+            will be written to disk and replace standard output. Must contain
+            links.
+        """
         import os
         import pandas as pd
 
         date = pd.to_datetime(date)
         cg = self.cmaqgrid
-        cmr_kw = self.cmr_kw
-        short_name = cmr_kw['short_name']
-        if verbose > 0:
-            print('Start query', flush=True)
-
-        if links is None:
-            links = self.get_links(date)
-        if verbose > 0:
-            print('Start read')
-            print(links, flush=True)
-
-        self.sat = sat = self.reader.from_paths(links, *self.varkeys2d)
-
-        if verbose > 0:
-            print('Calculate weights', flush=True)
-
-        self.wgts = wgts = sat.weights(cg.geodf, clip=self.cmaqgrid.exterior)
-        if wgts.shape[0] == 0:
-            raise ValueError('No valid pixels for this set of data')
-
-        output = []
-
-        if self.varkeys2d is not None:
-            if verbose > 0:
-                print('Process 2d data', flush=True)
-
-            # Produce 2d output
-            wgtd2d = sat.weighted(
-                *self.varkeys2d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+        links = inputs.get('links', [])
+        short_name = self.cmr_kw['short_name']
+        outputs = {}
+        if len(inputs.get('2d', [])) > 0 and self.outtmpl2d is not False:
+            outpath2d = self.outtmpl2d.format(
+                date=date, short_name=short_name
             )
-            # Convert to IOAPI file
-            if self.outtmpl2d is not False:
-                outpath2d = self.outtmpl2d.format(
-                    date=date, short_name=short_name
-                )
-                if verbose > 0:
-                    print(f'Make {outpath2d}', flush=True)
-                outf2d = cg.to_ioapi(wgtd2d, rename=self.renamer2d)
-                outf2d.FILEDESC = (
-                    f'{short_name} files for {date:%F} oversampled\n'
-                    + '\n'.join(links)
-                )[:60 * 80]
-                outdir2d = os.path.dirname(outpath2d)
-                if makedirs and outdir2d != '':
-                    os.makedirs(outdir2d, exist_ok=True)
-                diskf = outf2d.save(outpath2d, complevel=1, verbose=verbose)
-                output.append(diskf)
-            else:
-                output.append(wgtd2d)
-
-        if self.varkeys3d is not None:
             if verbose > 0:
-                print('Process 3d data', flush=True)
+                print(f'Make {outpath2d}', flush=True)
+            wgtd2d = weight_vars(pd.concat(inputs['2d']))
+            outf2d = cg.to_ioapi(wgtd2d, rename=self.renamer2d)
+            outf2d.FILEDESC = (
+                f'{short_name} files for {date:%F} oversampled\n'
+                + '\n'.join(rootremover(links, insert=True)[1])
+            )[:60 * 80]
+            outf2d.HISTORY = inputs['history'][:60 * 80]
+            outdir2d = os.path.dirname(outpath2d)
+            if makedirs and outdir2d != '':
+                os.makedirs(outdir2d, exist_ok=True)
+            diskf = outf2d.save(outpath2d, complevel=1, verbose=verbose)
+            outputs['2d'] = diskf
 
-            # Produce 2d output
-            wgtd3d = sat.weighted(
-                *self.varkeys3d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+        if len(inputs.get('3d', [])) > 0 and self.outtmpl3d is not False:
+            outpath3d = self.outtmpl3d.format(
+                date=date, short_name=short_name
             )
-            # Convert to IOAPI file
-            if self.outtmpl3d is not False:
-                outpath3d = self.outtmpl3d.format(
-                    date=date, short_name=short_name
-                )
-                if verbose > 0:
-                    print(f'Make {outpath2d}', flush=True)
-                outf3d = cg.to_ioapi(wgtd3d, rename=self.renamer3d)
-                outf3d.FILEDESC = (
-                    f'{short_name} files for {date:%F} oversampled\n'
-                    + '\n'.join(links)
-                )[:60 * 80]
-                outdir3d = os.path.dirname(outpath3d)
-                if makedirs and outdir3d != '':
-                    os.makedirs(outdir3d, exist_ok=True)
-                diskf = outf3d.save(outpath3d, complevel=1, verbose=verbose)
-                output.append(diskf)
-            else:
-                output.append(wgtd3d)
+            if verbose > 0:
+                print(f'Make {outpath2d}', flush=True)
+            wgtd3d = weight_vars(
+                pd.concat(inputs['3d']), groupkeys=['ROW', 'COL', laykey]
+            )
+            outf3d = cg.to_ioapi(wgtd3d, rename=self.renamer3d)
+            outf3d.FILEDESC = (
+                f'{short_name} files for {date:%F} oversampled\n'
+                + '\n'.join(rootremover(links, insert=True)[1])
+            )[:60 * 80]
+            outf3d.HISTORY = inputs['history'][:60 * 80]
+            outdir3d = os.path.dirname(outpath3d)
+            if makedirs and outdir3d != '':
+                os.makedirs(outdir3d, exist_ok=True)
+            diskf = outf3d.save(outpath3d, complevel=1, verbose=verbose)
+            outputs['3d'] = diskf
 
-        return output
+        return outputs

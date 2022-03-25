@@ -5,6 +5,16 @@ from ...utils import centertobox
 
 
 class MOD04(satellite):
+    @property
+    def short_description(self):
+        desc = """OMNO2 filters valid pixels and provides weights for
+destination polygon:
+* valid = Land_Ocean_Quality_Flag > 1 and value == value
+* pixel_area = corners from centroids +- delta
+* weight = intx_fracarea
+"""
+        return desc
+
     def __init__(self, path, targetkey='Optical_Depth_Land_And_Ocean', **kwds):
         satellite.__init__(self, path, targetkey=targetkey, **kwds)
 
@@ -114,6 +124,16 @@ MOD04_3K = MOD04
 
 
 class MODISL3(satellite):
+    @property
+    def short_description(self):
+        desc = """OMNO2 filters valid pixels and provides weights for
+destination polygon:
+* valid = Land_Ocean_Quality_Flag > 1 and value == value
+* pixel_area = corners from centroids +- delta
+* weight = intx_fracarea
+"""
+        return desc
+
     @classmethod
     def _to_xarray(cls, path):
         import pyproj

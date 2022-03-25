@@ -11,11 +11,16 @@ def get_readers(short_name):
         'MOD04_L2': readers.modis.MOD04,
         'OMHCHO': readers.omi.OMHCHO,
         'OMNO2': readers.omi.OMNO2,
+        'S5P_L2__NO2___': readers.tropomi.TropOMI,
     }[short_name]
 
 
 def _omi_filter(links):
     return [l for l in links if 'opendap' in l and l.endswith('.he5')]
+
+
+def _tropomi_filter(links):
+    return [l.replace('/data/', '/opendap/hyrax/') for l in links if l.endswith('.nc')]
 
 
 def _modis_filter(links):
@@ -29,9 +34,14 @@ _link_filters = {
     'MOD04_L2': _modis_filter,
     'OMHCHO': _omi_filter,
     'OMNO2': _omi_filter,
+    'S5P_L2__NO2___': _tropomi_filter,
 }
 
 _renamer2ds = {
+    'S5P_L2__NO2___': {
+        'PRODUCT_nitrogendioxide_tropospheric_column': 'VCDTROPNO2',
+        'weights': 'weights'
+    },
     'MOD04_3K': {
         'Optical_Depth_Land_And_Ocean': 'AOD_550', 'weights': 'weights'
     },
@@ -59,8 +69,8 @@ _renamer3ds = {
 
 
 def get_pipeline(
-    short_name, cmaqgrid, persist=True, output3d=True,
-    renamer2d=None, renamer3d=None
+    short_name, cmaqgrid, persist=True, output3d=False,
+    renamer2d=None, renamer3d=None, local=False
 ):
     """
     Pipelines perform a series of steps, but creating them can be difficult.
@@ -80,6 +90,8 @@ def get_pipeline(
         Should data be output as IOAPI?
     output3d : bool
         Should 3d data be output as well
+    local : bool
+        If local, then files have been downloaded using `wget -r`
 
     Returns
     -------
@@ -94,7 +106,12 @@ def get_pipeline(
         outtmpl3d = False
 
     reader = get_readers(short_name)
-    link_filter = _link_filters[short_name]
+    tmp_link_filter = _link_filters[short_name]
+    if local:
+        def mylinkfilter(links):
+            return [l.replace('https://', '') for l in tmp_link_filter(links)]
+    else:
+        link_filter = tmp_link_filter
     if renamer2d is None:
         renamer2d = _renamer2ds.get(short_name, None)
     if renamer2d is None:
