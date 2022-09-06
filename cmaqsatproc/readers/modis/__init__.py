@@ -295,3 +295,12 @@ destination polygon:
 
     # def weights(self, *args, option='fracarea', **kwds):
     #     return satellite.weights(self, *args, option=option, **kwds)
+    @classmethod
+    def process(
+        cls, links, grid, varkeys2d=('Optical_Depth_Land_And_Ocean',),
+        varkeys3d=None, verbose=0
+    ):
+        return satellite.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )

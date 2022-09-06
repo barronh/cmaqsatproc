@@ -60,15 +60,14 @@ class Pipeline:
         """
         if isinstance(cmaqgrid, str):
             from .. import cmaq
-            cmaqgrid = cmaq.CMAQGrid(None, cmaqgrid)
+            cmaqgrid = cmaq.CMAQGrid(gdpath=None, GDNAM=cmaqgrid)
         self.cmaqgrid = cmaqgrid
         self.approxpoly = cmaqgrid.exterior.to_crs(
             4326
         ).geometry.iloc[0].simplify(0.01)
         self.cmr_kw = cmr_kw.copy()
         self.cmr_kw['short_name'] = short_name
-        if link_filter is not None:
-            self.link_filter = link_filter
+        self.link_filter = link_filter
         self.reader = reader
         if varkeys2d is None and renamer2d is not None:
             varkeys2d = list(renamer2d)
@@ -107,9 +106,8 @@ class Pipeline:
         date = pd.to_datetime(date)
         links = getcmrlinks(
             temporal=f'{date:%F}T00:00:00Z/{date:%F}T23:59:59Z',
-            poly=self.approxpoly, **self.cmr_kw
+            poly=self.approxpoly, filterfunc=self.link_filter, **self.cmr_kw
         )
-        finallinks = self.link_filter(links)
         return finallinks
 
     def process_dates(self, date_range, verbose=0, output=False, makedirs=True):

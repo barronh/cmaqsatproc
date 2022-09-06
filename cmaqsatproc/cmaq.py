@@ -33,16 +33,16 @@ def _default_griddesc(GDNAM):
 
 
 class CMAQGrid:
-    def __init__(self, gdpath, GDNAM):
+    def __init__(self, GDNAM, gdpath=None):
         """
         Arguments
         ---------
-        gdpath : str
+        GDNAM : str
+            Name of domain
+        gdpath : str or None
             Path to GRIDDESC file. If None, then a default is provided with
             access to typical EPA domains (12US1, 12US2, 36US3, 108NHEMI2) and
             a few test domains (1188NHEMI2, 108US1).
-        GDNAM : str
-            Name of domain
         """
         import PseudoNetCDF as pnc
         if gdpath is None:

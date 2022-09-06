@@ -1,6 +1,6 @@
 __all__ = ['satellite']
 
-from ..utils import weight_vars
+from ..utils import weight_vars, csp_formatwarnings
 
 
 class satellite:
@@ -416,3 +416,87 @@ For example, the FOV brightness etc.
             outdf[key].attrs.update(outdf[key].attrs)
 
         return outdf
+
+    @classmethod
+    def process(cls, links, grid, varkeys2d=None, varkeys3d=None, verbose=0):
+        """
+        Arguments
+        ---------
+        date : str
+            Anything that can be interpreted by pandas.to_datetime as a date
+
+        Returns
+        -------
+        out : list
+            List of outputs either dataframes or ioapi-like files. Type depends
+            on whether the outtmpl was provided. If yes, then ioapi.
+        """
+        import warnings
+        import pandas as pd
+        import os
+
+        cg = grid
+        with warnings.catch_warnings(record=True) as warning_list:
+            if verbose > 0:
+                print('Start query', flush=True)
+
+            if verbose > 0:
+                print('Start read')
+                print(links, flush=True)
+
+            outputs = {
+                'links': links,
+                'links_with_pixels': [],
+                '2d': [],
+                '3d': []
+            }
+            for link in links:
+                if verbose > 0:
+                    print(f'Starting {link}', flush=True)
+                sat = cls(link)
+
+                if verbose > 1:
+                    print('Calculate weights', flush=True)
+
+                wgts = sat.weights(
+                    cg.geodf, clip=cg.exterior
+                )
+                if wgts.shape[0] == 0:
+                    slink = os.path.basename(link)
+                    warnings.warn(
+                        f'No valid pixels for {slink}'
+                    )
+                    continue
+
+                outputs['links_with_pixels'].append(link)
+                if varkeys2d is not None:
+                    if verbose > 1:
+                        print('Process 2d data', flush=True)
+
+                    # Produce 2d output
+                    wgtd2d = sat.weighted(
+                        *varkeys2d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+                    )
+                    outputs['2d'].append(wgtd2d)
+
+                if varkeys3d is not None:
+                    if verbose > 1:
+                        print('Process 3d data', flush=True)
+
+                    # Produce 2d output
+                    wgtd3d = sat.weighted(
+                        *varkeys3d, groupkeys=['ROW', 'COL'], wgtdf=wgts
+                    )
+                    outputs['3d'].append(wgtd3d)
+        outputs['description'] = sat.short_description
+        outputs['history'] = csp_formatwarnings(warning_list)
+        return outputs
+        #outputio = self.to_ioapi(date, outputs, verbose=verbose, **io_kw)
+        #if len(outputio) == 0:
+        #    # Must be not perist, so return raw output
+        #    return outputs
+        #else:
+        #    outputio['links'] = outputs['links']
+        #    outputio['links_with_pixels'] = outputs['links_with_pixels']
+        #    outputio['history'] = outputs['history']
+        #    return outputio

@@ -19,7 +19,7 @@ destination polygon:
         return (
             'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
             'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
-            'qa_value'
+            'PRODUCT_qa_value'
         )
 
     @property
@@ -60,28 +60,76 @@ destination polygon:
         import geopandas as gpd
 
         if self._geodf is None:
-            df = self.valid_index
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=gpd.points_from_xy(
-                    df['PRODUCT_longitude'], df['PRODUCT_latitude']
-                ), crs=4326
-            )
+            # Use polygons soon. Very slow at present.
+            if self._attrs.get('usepoly', True):
+                df = self.to_dataframe(
+                    'LL_Latitude', 'LL_Longitude',
+                    'LU_Latitude', 'LU_Longitude',
+                    'UL_Latitude', 'UL_Longitude',
+                    'UU_Latitude', 'UU_Longitude',
+                ).join(self.valid_index[[]], how='inner')
+                self._geodf = gpd.GeoDataFrame(
+                    df[[]],
+                    geometry=EasyDataFramePolygon(df),
+                    crs=4326
+                )
+            else:
+                df = self.valid_index
+                self._geodf = gpd.GeoDataFrame(
+                    df[[]],
+                    geometry=gpd.points_from_xy(
+                        df['PRODUCT_longitude'], df['PRODUCT_latitude']
+                    ), crs=4326
+                )
 
-        # Use polygons soon. Very slow at present.
-        if False:
-            df = self.to_dataframe(
-                'LL_Latitude', 'LL_Longitude',
-                'LU_Latitude', 'LU_Longitude',
-                'UL_Latitude', 'UL_Longitude',
-                'UU_Latitude', 'UU_Longitude',
-            ).join(self.valid_index[[]], how='inner')
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=EasyDataFramePolygon(df),
-                crs=4326
-            )
         return self._geodf
 
-    def weights(self, othdf, option='equal', clip=None):
-        return satellite.weights(self, othdf, option=option, clip=clip)
+#    def weights(self, othdf, option='equal', clip=None):
+#        return satellite.weights(self, othdf, option=option, clip=clip)
+class TropOMICO(TropOMI):
+    @classmethod
+    def process(
+        cls, links, grid,
+        varkeys2d=('PRODUCT_carbonmonoxide_total_column',), varkeys3d=None,
+        verbose=0
+    ):
+        return TropOMI.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )
+
+class TropOMINO2(TropOMI):
+    @classmethod
+    def process(
+        cls, links, grid,
+        varkeys2d=('PRODUCT_nitrogendioxide_tropospheric_column',),
+        varkeys3d=None, verbose=0
+    ):
+        return TropOMI.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )
+
+class TropOMIHCHO(TropOMI):
+    @classmethod
+    def process(
+        cls, links, grid,
+        varkeys2d=('PRODUCT_formaldehyde_tropospheric_vertical_column',),
+        varkeys3d=None, verbose=0
+    ):
+        return TropOMI.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )
+
+class TropOMICH4(TropOMI):
+    @classmethod
+    def process(
+        cls, links, grid,
+        varkeys2d=('PRODUCT_methane_mixing_ratio',),
+        varkeys3d=None, verbose=0
+    ):
+        return TropOMI.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )

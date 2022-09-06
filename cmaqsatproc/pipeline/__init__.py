@@ -106,12 +106,13 @@ def get_pipeline(
     link_filter=None, reader=None, renamer2d=None, renamer3d=None, local=False
 ):
     """
-    Pipelines perform a series of steps, but creating them can be difficult.
-    They can be difficult because there are an infinite set of possibile
-    configurations. However, there are only a few common configurations.
+    Pipelines perform a series of steps (see cmaqsatproc.pipeline.Pipeline),
+    but creating them can be difficult. They can be difficult because there
+    are an infinite set of possibile configurations. However, there are only a
+    few common configurations.
 
-    This function pairs short_name with the standard options associated with
-    it.
+    This function pairs NASA CMR "short_name" with the standard options
+    associated with it.
 
     Arguments
     ---------

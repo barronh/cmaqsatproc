@@ -130,6 +130,19 @@ destination polygon:
         )
         return wgtdf
 
+    @classmethod
+    def process(
+        links, grid,
+        varkeys2d=(
+            'ColumnAmountNO2Trop', 'ColumnAmountNO2Strat', 'ColumnAmountNO2',
+            'SlantColumnAmountNO2', 'AmfTrop', 'AmfStrat'
+        ), varkeys3d=, verbose=0
+    ):
+        return satellite.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )
+
 
 class OMHCHO(satellite):
     @property
@@ -256,8 +269,21 @@ destination polygon:
         )
         return wgtdf
 
+    @classmethod
+    def process(
+        links, grid,
+        varkeys2d=(
+            'AirMassFactor', 'ColumnUncertainty',
+            'ReferenceSectorCorrectedVerticalColumn', 'weights'
+        ), varkeys3d=, verbose=0
+    ):
+        return satellite.process(
+            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
+            verbose=verbose
+        )
 
-class OMNO2d(satellite):
+
+class OMNO2d(OMNO2):
     @property
     def short_description(self):
         desc = """OMNO2d filters valid pixels and provides weights for

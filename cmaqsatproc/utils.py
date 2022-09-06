@@ -10,11 +10,13 @@ _xcrnrkeys = [f'{ckey}_Longitude' for ckey in _ckeys]
 _ycrnrkeys = [f'{ckey}_Latitude' for ckey in _ckeys]
 
 
-def getcmrlinks(short_name, temporal, bbox=None, poly=None, verbose=0, **kwds):
+def getcmrlinks(
+    short_name, temporal, bbox=None, poly=None, verbose=0, filterfunc=None,
+    **kwds
+):
     """
-    Return all links from the Common Metadata Repository
-    for the product with short_name, date_range, and optionally
-    a bounding box.
+    Return all links from the Common Metadata Repository for the product
+    granules with short_name, date_range, and optionally a bounding box.
 
     Arguments
     ---------
@@ -28,6 +30,8 @@ def getcmrlinks(short_name, temporal, bbox=None, poly=None, verbose=0, **kwds):
         Longitude/latitude bounding edges as floats (wlon,slat,elon,nlat)
     poly : shapely.geometry.Polygon
         The exterior will be converted to floats and ordered x1,y1,...,xN,yN
+    filterfunc : function
+        Takes a link dictionary from CMR and returns True if it should be retained
     """
     from copy import deepcopy
     import requests
@@ -60,7 +64,7 @@ def getcmrlinks(short_name, temporal, bbox=None, poly=None, verbose=0, **kwds):
     entries = jr['feed']['entry']
     links = []
     for entry in entries:
-        for link in entry['links']:
+        for link in filter(filterfunc, entry['links']):
             href = link['href']
             links.append(href)
 
@@ -165,7 +169,7 @@ def EasyRowPolygon(row, wrap=True):
     return Polygon(np.asarray([x, y]).T)
 
 
-def EasyDataFramePolygon(df, wrap=True):
+def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
     """
     Create polygons from a row with corners of a pixel specificied using
     columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
@@ -204,10 +208,24 @@ def EasyDataFramePolygon(df, wrap=True):
         newy = y
 
     polys = []
-    for idx, x in newx.iterrows():
-        y = newy.loc[idx]
-        polys.append(Polygon(np.asarray([x, y]).T))
-
+    # Faster to convert all to values arrays first
+    if lowmem:
+        i = 0
+        for idx, x in newx.iterrows():
+            if progress:
+                print(f'\r{i/xys.shape[0]:8.3%}', end='')
+            y = newy.loc[idx]
+            polys.append(Polygon(np.asarray([x, y]).T))
+            i += 1
+    else:
+        xys = np.stack([newx.values, newy.values], axis=2)
+        for i, xy in enumerate(xys):
+            if progress:
+                print(f'\r{i/xys.shape[0]:8.3%}', end='')
+            polys.append(Polygon(xy))
+    if progress:
+        print('\r100.000%')
+    
     return polys
 
 
