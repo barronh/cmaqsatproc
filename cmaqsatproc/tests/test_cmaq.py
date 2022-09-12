@@ -3,7 +3,7 @@ from .. import cmaq
 
 def test_cmaqgrid():
     import numpy as np
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(gdpath=None, GDNAM='108US3')
     bbox = cg.bbox()
     assert(np.allclose(
         bbox,
@@ -15,7 +15,7 @@ def test_cmaqgrid():
 
 
 def test_cmaqgrid_template():
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(gdpath=None, GDNAM='108US3')
     tmpl = cg.template(
         ['NO2', 'SO2'], vglvls=(1, 0), vgtop=5000, ntsteps=1, VGTYP=7,
         SDATE=1970015, STIME=140000
@@ -31,19 +31,19 @@ def test_cmaqgrid_template():
 
 
 def test_cmaqgrid_geodf():
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(gdpath=None, GDNAM='108US3')
     gdf = cg.geodf
     assert(gdf.shape == (3000, 1))
     wkt = gdf.loc(axis=0)[0, 0].geometry.wkt
-    assert(wkt == 'POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))')
+    assert(wkt == 'POLYGON ((1 0, 1 1, 0 1, 0 0, 1 0))')
     wkt = gdf.loc(axis=0)[49, 59].geometry.wkt
-    assert(wkt == 'POLYGON ((59 49, 60 49, 60 50, 59 50, 59 49))')
+    assert(wkt == 'POLYGON ((60 49, 60 50, 59 50, 59 49, 60 49))')
 
 
 def test_cmaq_to_ioapi():
     import pandas as pd
     import numpy as np
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(gdpath=None, GDNAM='108US3')
     df = pd.DataFrame.from_dict(dict(
         ROW=[0, 49], COL=[0, 59], NAMEISTOOLONGNO2=[0, .5]
     )).set_index(['ROW', 'COL'])

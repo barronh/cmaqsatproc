@@ -106,8 +106,9 @@ class Pipeline:
         date = pd.to_datetime(date)
         links = getcmrlinks(
             temporal=f'{date:%F}T00:00:00Z/{date:%F}T23:59:59Z',
-            poly=self.approxpoly, filterfunc=self.link_filter, **self.cmr_kw
+            poly=self.approxpoly, **self.cmr_kw
         )
+        finallinks = self.link_filter(links)
         return finallinks
 
     def process_dates(self, date_range, verbose=0, output=False, makedirs=True):

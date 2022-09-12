@@ -16,15 +16,33 @@ def _default_griddesc(GDNAM):
 ' '
 '108NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 108000.0 108000.0  187  187 1
+'324NHEMI2'
+'POLSTE_HEMI'     -10098000.0 -10098000.0 324000.0 324000.0   63   63 1
 '1188NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 1188000. 1188000.   17   17 1
+'1188US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0 1188000. 1188000.    6    4 1
+'324US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0 324000.0 324000.0   17   12 1
+'108US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0 108000.0 108000.0   51   34 1
+'36US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0  36000.0  36000.0  153  100 1
 '12US1'
 'LamCon_40N_97W'   -2556000.0  -1728000.0  12000.0  12000.0  459  299 1
+'4US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0   4000.0   4000.0 1377  897 1
+'1US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0   4000.0   4000.0 5508 3588 1
 '12US2'
 'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0  396  246 1
+'4US2'
+'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0 1188  738 1
+'1US2'
+'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0 4752 2952 1
 '36US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0  36000.0  36000.0  172  148 1
-'108US1'
+'108US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
 ' '""")
         gdfile.flush()
@@ -137,23 +155,29 @@ class CMAQGrid:
         outf : PseudoNetCDF.cmaqfiles.ioapi_base
             Output file
         """
+        import numpy as np
         if rename is None:
             rename = {key: key for key in df.columns}
         if isinstance(TSTEP, str):
             TSTEP = df.index.get_level_values(TSTEP)
         if isinstance(LAY, str):
             LAY = df.index.get_level_values(LAY)
+            vglvls_mid, layer_idx = np.unique(LAY, return_inverse=True)
+            vglvls_edge = np.interp(
+                np.arange(vglvls_mid.size + 1) - 0.5,
+                np.arange(vglvls_mid.size),
+                vglvls_mid
+            )
+            LAY = layer_idx
+        else:
+            vglvls_edge = np.asarray([1, 0])
         if isinstance(ROW, str):
             ROW = df.index.get_level_values(ROW)
         if isinstance(COL, str):
             COL = df.index.get_level_values(COL)
 
         if 'vglvls' not in kwds:
-            import numpy as np
-            vglvls_mid = np.unique(np.asarray(LAY))
-            xp = np.arange(vglvls_mid.size)
-            x = np.arange(xp.size + 1) - 0.5
-            kwds['vglvls'] = np.interp(x, xp, vglvls_mid)
+            kwds['vglvls'] = vglvls_edge
 
         varkeys = sorted(rename)
         outkeys = [rename[key] for key in varkeys]

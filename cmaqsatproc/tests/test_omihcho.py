@@ -102,7 +102,7 @@ def test_satellite_weights():
     ds = omi_example_ds()
     sat = readers.omi.OMHCHO.from_dataset(ds)
 
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(GDNAM='108US3')
     wgt = sat.weights(cg.geodf)
     wgtd1 = sat.weighted(
         'ReferenceSectorCorrectedVerticalColumn', wgtdf=wgt,

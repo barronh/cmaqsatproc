@@ -109,7 +109,7 @@ def test_satellite_weights():
     ds = dataset_example()
     sat = satellite_example.from_dataset(ds)
 
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid(GDNAM='108US1')
     wgt = sat.weights(cg.geodf)
     wgtd1 = sat.weighted('Val', wgtdf=wgt, groupkeys=['ROW', 'COL'])
     assert(wgtd1['Val'].min() >= ds['Val'].min())

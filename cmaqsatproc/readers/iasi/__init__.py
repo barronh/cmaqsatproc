@@ -1,7 +1,6 @@
 __all__ = ['IASI_NH3']
 
 from ..core import satellite
-from ...utils import centertobox, EasyDataFramePolygon
 
 
 class IASI_NH3(satellite):
@@ -33,7 +32,6 @@ destination polygon:
 
     @ds.setter
     def ds(self, ds):
-        import warnings
         self._ds = ds
 
     def to_dataframe(self, *keys, valid_only=True):

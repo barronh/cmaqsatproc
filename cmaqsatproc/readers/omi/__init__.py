@@ -24,6 +24,7 @@ destination polygon:
     @property
     def required_args(self):
         return (
+            'Longitude', 'Latitude',
             'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
             'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
             'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
@@ -72,17 +73,24 @@ destination polygon:
     @property
     def valid_index(self):
         if self._valididx is None:
-            df = self.to_dataframe(
-                'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
-                valid_only=False
-            ).fillna(1)
+            inkeys = ['CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags']
+            if self._bbox is not None:
+                inkeys.extend(['Latitude', 'Longitude'])
+            df = self.to_dataframe(*inkeys, valid_only=False).fillna(1)
             df['FinalFlag'] = (
                 df['VcdQualityFlags'].astype('i') & 1
             ).astype('i')
-            self._valididx = df.query(
+            df = df.query(
                 'FinalFlag == 0 and XTrackQualityFlags == 0'
                 + ' and CloudFraction <= 0.3'
             )
+            if self._bbox is not None:
+                swlon, swlat, nelon, nelat = self._bbox
+                df = df.query(
+                    f'Longitude >= {swlon} and Longitude <= {nelon}'
+                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
+                )
+            self._valididx = df
         return self._valididx
 
     @property
@@ -130,18 +138,10 @@ destination polygon:
         )
         return wgtdf
 
-    @classmethod
-    def process(
-        links, grid,
-        varkeys2d=(
-            'ColumnAmountNO2Trop', 'ColumnAmountNO2Strat', 'ColumnAmountNO2',
-            'SlantColumnAmountNO2', 'AmfTrop', 'AmfStrat'
-        ), varkeys3d=, verbose=0
-    ):
-        return satellite.process(
-            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
-            verbose=verbose
-        )
+    _varkeys2d = (
+        'ColumnAmountNO2Trop', 'ColumnAmountNO2Strat', 'ColumnAmountNO2',
+        'SlantColumnAmountNO2', 'AmfTrop', 'AmfStrat'
+    )
 
 
 class OMHCHO(satellite):
@@ -209,8 +209,18 @@ destination polygon:
     @property
     def valid_index(self):
         if self._valididx is None:
-            df = self.to_dataframe('MainDataQualityFlag', valid_only=False)
-            self._valididx = df.query('MainDataQualityFlag == 0')
+            inkeys = ['MainDataQualityFlag']
+            if self._bbox is not None:
+                inkeys.extend(['Longitude', 'Latitude'])
+            df = self.to_dataframe(*inkeys, valid_only=False)
+            df = df.query('MainDataQualityFlag == 0')
+            if self._bbox is not None:
+                swlon, swlat, nelon, nelat = self._bbox
+                df = df.query(
+                    f'Longitude >= {swlon} and Longitude <= {nelon}'
+                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
+                )
+            self._valididx = df
         return self._valididx
 
     @property
@@ -269,18 +279,10 @@ destination polygon:
         )
         return wgtdf
 
-    @classmethod
-    def process(
-        links, grid,
-        varkeys2d=(
-            'AirMassFactor', 'ColumnUncertainty',
-            'ReferenceSectorCorrectedVerticalColumn', 'weights'
-        ), varkeys3d=, verbose=0
-    ):
-        return satellite.process(
-            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
-            verbose=verbose
-        )
+    _varkeys2d = (
+        'AirMassFactor', 'ColumnUncertainty',
+        'ReferenceSectorCorrectedVerticalColumn', 'weights'
+    )
 
 
 class OMNO2d(OMNO2):
@@ -295,7 +297,7 @@ destination polygon:
         return desc
 
     def __init__(
-        self, path, targetkey='ColumnAmountNO2TropCloudScreened', **kwds
+        self, path, targetkey='ColumnAmountNO2TropCloudScreened', **attrs
     ):
         """
         Same as satellite, but takes two optional arguments.
@@ -309,10 +311,10 @@ destination polygon:
         bbox : list
             Optional, bounding box to prefilter the dataset
             [swlon, swlat, nelon, nelat]
-        **kwds : mappable
+        **attrs : mappable
             Same see satellite.__init__
         """
-        satellite.__init__(self, path, targetkey=targetkey, **kwds)
+        satellite.__init__(self, path, targetkey=targetkey, **attrs)
 
     @property
     def ds(self):
@@ -338,8 +340,20 @@ destination polygon:
     def valid_index(self):
         if self._valididx is None:
             key = self.attrs['targetkey']
-            df = self.to_dataframe(key, valid_only=False)
-            self._valididx = df.query(f'{key} == {key}')
+            inkeys = [key]
+            if self._bbox is not None:
+                inkeys.extend(['Longitude', 'Latitude'])
+
+            df = self.to_dataframe(*inkeys, valid_only=False)
+            df = df.query(f'{key} == {key}')
+            if self._bbox is not None:
+                swlon, swlat, nelon, nelat = self._bbox
+                df = df.query(
+                    f'Longitude >= {swlon} and Longitude <= {nelon}'
+                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
+                )
+            self._valididx = df
+
         return self._valididx
 
     @property

@@ -36,7 +36,7 @@ def test_getcmrlinks_poly():
 
 def test_centertobox():
     wkt = utils.centertobox(0.5, 0.5, 1, 1).wkt
-    assert(wkt == 'POLYGON ((0 0, 1 0, 1 1, 0 1, 0 0))')
+    assert(wkt == 'POLYGON ((1 0, 1 1, 0 1, 0 0, 1 0))')
 
 
 def test_easypoly():

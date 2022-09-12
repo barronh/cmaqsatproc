@@ -1,7 +1,8 @@
-__all__ = ['MODISL3', 'MOD04', 'MOD04_3K', 'MOD04_L2']
+__all__ = ['MODISL3', 'MOD04', 'MOD04_3K', 'MOD04_L2', 'modis_readers']
 
 from ..core import satellite
 from ...utils import centertobox
+from . import modis_readers
 
 
 class MOD04(satellite):
@@ -15,8 +16,8 @@ destination polygon:
 """
         return desc
 
-    def __init__(self, path, targetkey='Optical_Depth_Land_And_Ocean', **kwds):
-        satellite.__init__(self, path, targetkey=targetkey, **kwds)
+    def __init__(self, path, targetkey='Optical_Depth_Land_And_Ocean', **attrs):
+        satellite.__init__(self, path, targetkey=targetkey, **attrs)
 
     @property
     def required_args(self):
@@ -29,12 +30,23 @@ destination polygon:
     def valid_index(self):
         if self._valididx is None:
             key = self.attrs['targetkey']
+            inkeys = ['Land_Ocean_Quality_Flag', key]
+            if self._bbox is not None:
+                inkeys.extend(['Longitude', 'Latitude'])
+
             df = self.to_dataframe(
-                'Land_Ocean_Quality_Flag', key, valid_only=False
+                *inkeys, valid_only=False
             )
-            self._valididx = df.query(
+            df = df.query(
                 f'Land_Ocean_Quality_Flag > 1 and {key} == {key}'
             )
+            if self._bbox is not None:
+                swlon, swlat, nelon, nelat = self._bbox
+                df = df.query(
+                    f'Longitude >= {swlon} and Longitude <= {nelon}'
+                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
+                )
+            self._valididx = df
         return self._valididx
 
     @property
@@ -134,136 +146,54 @@ destination polygon:
 """
         return desc
 
-    @classmethod
-    def _to_xarray(cls, path):
-        import pyproj
-        import numpy as np
-        from osgeo import gdal
-        import xarray as xr
-        ds = gdal.Open(path)
-        sds = ds.GetSubDatasets()
-        outds = xr.merge([
-            cls._getda(sdn, defn)
-            for sdn, defn in sds
-            if (
-                sdn.endswith('AOD_QA')
-                or sdn.endswith('AOD_Uncertainty')
-                or sdn.endswith('Optical_Depth_055')
-            )
-        ])
-        attrs = outds.Optical_Depth_055.attrs
-        nc = int(attrs['DATACOLUMNS'])
-        nr = int(attrs['DATAROWS'])
-        proj = pyproj.Proj(attrs['crs_wkt'])
-        wx, sy = proj(
-            float(attrs['WESTBOUNDINGCOORDINATE']),
-            float(attrs['SOUTHBOUNDINGCOORDINATE'])
-        )
-        ex, ny = proj(
-            float(attrs['EASTBOUNDINGCOORDINATE']),
-            float(attrs['NORTHBOUNDINGCOORDINATE'])
-        )
-        GT = attrs['geo_transform']
-        xbnds = np.linspace(wx, ex, nc + 1)
-        ybnds = np.linspace(sy, ny, nr + 1)
-        x = (xbnds[:-1] + xbnds[1:]) / 2
-        y = (ybnds[:-1] + ybnds[1:]) / 2
-        X_pixel = np.arange(nc)
-        Y_line = np.arange(nr)
-        x = GT[0] + X_pixel * GT[1] + Y_line * GT[2]
-        y = GT[3] + X_pixel * GT[4] + Y_line * GT[5]
-        outds.coords['x'] = x
-        outds.coords['y'] = y
-        outds['crs'] = xr.DataArray(
-            0,
-            dims=(),
-            attrs=dict(crs_wkt=attrs['crs_wkt'])
-        )
-        outds['QualityLevel'] = xr.DataArray(
-            (
-                (outds['AOD_QA'].values.astype('<H') >> 8)
-                & np.array(int('1111', 2), dtype='<H')
-            ),
-            dims=('nCandidate', 'y', 'x'),
-            name='QualityLevel',
-            attrs=dict(
-                notes=(
-                    "see https://amt.copernicus.org/articles/11/5741/2018/"
-                    + "amt-11-5741-2018.pdf"
-                ),
-                long_name='QualityLevel', units='none',
-                description=(
-                    '0: "best", 1: "Water sediment"; 2: "n/a", 3: "one cloud",'
-                    + ' 4: ">1 clouds", 5: "no retrieval",'
-                    + ' 6: "no retrieval near", 7: "Climatology AOD (0.02)",'
-                    + ' 8: "No retrieval glint",'
-                    + ' 9: "Retrieval low due to glint", 10: "AOD near coast",'
-                    + ' 11: "– Land, research quality: AOD retrieved but CM is'
-                    + 'possibly cloudy"'
-                )
-            )
-        )
-        # outds.coords['x_bnds'] = xbnds
-        # outds.coords['y_bnds'] = ybnds
-        return outds
-
-    @classmethod
-    def _getda(self, path, defn):
-        import gdal
-        import xarray as xr
-        import numpy as np
-        ds0 = gdal.Open(path)
-        data = ds0.ReadAsArray()
-        attrs = ds0.GetMetadata_Dict()
-        attrs['crs_wkt'] = ds0.GetProjection()
-        attrs['geo_transform'] = ds0.GetGeoTransform()
-        if 'valid_range' in attrs:
-            vmin, vmax = eval(attrs['valid_range'])
-            data = np.ma.masked_greater(np.ma.masked_less(data, vmin), vmax)
-        finaldata = (
-            float(attrs.get('add_offset', 0))
-            + np.ma.masked_values(data, -28672)
-            * float(attrs.get('scale_factor', 1))
-        )
-        return xr.DataArray(
-            finaldata,
-            dims=('nCandidate', 'y', 'x'),
-            attrs=attrs,
-            name=path.split(':')[-1]
-        )
-
     @property
     def required_args(self):
         return (
             'x', 'y', 'QualityLevel', 'Optical_Depth_055', 'crs'
         )
 
-    @classmethod
-    def open_path(cls, path, **kwds):
+    @property
+    def ds(self):
         """
-        Initialize a satellite object where the datastore will be opened
-        from the path
+        The ds property contains a dataset, which must contain sufficient
+        data for geodf to define a polygon. The ds may be superseded by
+        a df if set.
         """
-        ds = cls._to_xarray(path)
-        obj = cls.from_dataset(ds, **kwds)
-        return obj
+        if self._ds is None:
+            self._ds = modis_readers.gdalhdf4_to_xrdataset(self.path)
+        return self._ds
 
     @property
     def valid_index(self):
         if self._valididx is None:
-            df = self.to_dataframe('QualityLevel', 'Optical_Depth_055')
-            self._valididx = df.query(
+            inkeys = ['QualityLevel', 'Optical_Depth_055']
+            if self._bbox is not None:
+                inkeys.extend(['x', 'y'])
+            df = self.to_dataframe(*inkeys, valid_only=False)
+            df = df.query(
                 'QualityLevel == 0 and Optical_Depth_055 == Optical_Depth_055'
             )
+            if self._bbox is not None:
+                import pyproj
+                bbox = self._bbox
+                proj = pyproj.Proj(self.crs)
+                minx, miny = proj(bbox[0], bbox[1])
+                maxx, maxy = proj(bbox[2], bbox[3])
+                # xs = [minx, maxx]
+                # ys = [miny, maxy]
+                # minx = max(xs)
+                # maxx = max(xs)
+                # miny = max(ys)
+                # maxy = max(ys)
+                df = df.query(
+                    f'x >= {minx} and x <= {maxx}'
+                    + f' and y >= {miny} and y <= {maxy}'
+                )
+            self._valididx = df
         return self._valididx
 
     @property
-    def geodf(self):
-        """
-        Create a base geopandas dataframe with a geometry
-        """
-        import geopandas as gpd
-
+    def crs(self):
         try:
             crs = self.ds.crs.attrs['crs_wkt']
         except Exception:
@@ -276,6 +206,15 @@ destination polygon:
                 + ',0],PARAMETER["false_easting",0],PARAMETER["false_northing"'
                 + ',0],UNIT["Meter",1]]'
             )
+        return crs
+
+    @property
+    def geodf(self):
+        """
+        Create a base geopandas dataframe with a geometry
+        """
+        import geopandas as gpd
+
         if self._geodf is None:
             df = self.to_dataframe(
                 'x', 'y',
@@ -287,20 +226,12 @@ destination polygon:
             self._geodf = gpd.GeoDataFrame(
                 df[[]],
                 geometry=df.apply(lambda row: centertobox(
-                    df['x'], df['y'], width=1000, height=1000
+                    row['x'], row['y'].values.T, width=1000, height=1000
                 )),
-                crs=crs
+                crs=self.crs
             )
         return self._geodf
 
     # def weights(self, *args, option='fracarea', **kwds):
     #     return satellite.weights(self, *args, option=option, **kwds)
-    @classmethod
-    def process(
-        cls, links, grid, varkeys2d=('Optical_Depth_Land_And_Ocean',),
-        varkeys3d=None, verbose=0
-    ):
-        return satellite.process(
-            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
-            verbose=verbose
-        )
+    _varkeys2d = ('Optical_Depth_Land_And_Ocean',)

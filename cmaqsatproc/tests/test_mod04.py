@@ -70,7 +70,7 @@ def test_satellite_weights():
     ds = modis_example_ds()
     sat = readers.modis.MOD04.from_dataset(ds)
 
-    cg = cmaq.CMAQGrid(None, '108US1')
+    cg = cmaq.CMAQGrid('108US3')
     wgt = sat.weights(cg.geodf)
     wgtd1 = sat.weighted(
         'Optical_Depth_Land_And_Ocean', wgtdf=wgt, groupkeys=['ROW', 'COL']

@@ -29,6 +29,9 @@ function that returns the weighted sum of pixels for each grid cell.
 Conceptually, the weights method can be overwritten to include complex weights.
 For example, the FOV brightness etc.
 """
+    _varkeys2d = ()
+    _varkeys3d = ()
+    _zkey = None
 
     @property
     def short_description(self):
@@ -128,13 +131,28 @@ For example, the FOV brightness etc.
             df[key].attrs.update(dfs[0][key].attrs)
         return cls.from_dataframe(df)
 
-    def __init__(self, path=None, **kwds):
+    def __init__(self, path=None, bbox=None, **attrs):
+        """
+        Arguments
+        ---------
+        path : str or Dataset
+            If a str, xr.open_dataset to open the dataset as the ds property.
+            If a Dataset, it will be used as the ds property.
+        bbox : iterable
+            Must contain swlon, swlat, nelon, nelat in decimal degrees. Will
+            be used in valid_index to subset "valid" pixels to a domain. This
+            is extremely good for speed becuase you often do not need all
+            pixels of an orbit.
+        attrs : mappable
+            Used to set attrs of the
+        """
         from copy import deepcopy
 
         self.path = path
         self._ds = None
         self._df = None
-        self._attrs = deepcopy(kwds)
+        self._bbox = bbox
+        self._attrs = deepcopy(attrs)
         self._valididx = None
         self._geodf = None
 
@@ -201,7 +219,7 @@ For example, the FOV brightness etc.
             List of keys to pull from the self.ds or self.df for all valid
             pixels.
         valid_only : bool
-            Default True. Only export a dataframe where valid_idx.
+            Default True. Only export a dataframe where valid_index.
 
         Returns
         -------
@@ -231,7 +249,7 @@ For example, the FOV brightness etc.
 
         return outdf
 
-    def to_geodataframe(self, *keys, geodf=None):
+    def to_geodataframe(self, *keys, geodf=None, valid_only=True):
         """
         Export keys to a dataframe for only valid values with geometries
         from geodf
@@ -242,7 +260,7 @@ For example, the FOV brightness etc.
             List of keys to pull from the self.ds or self.df for all valid
             pixels.
         valid_only : bool
-            Default True. Only export a dataframe where valid_idx.
+            Default True. Only export a dataframe where valid_index.
 
         Returns
         -------
@@ -251,7 +269,7 @@ For example, the FOV brightness etc.
         """
         if geodf is None:
             geodf = self.geodf
-        df = self.to_dataframe(*keys)
+        df = self.to_dataframe(*keys, valid_only=valid_only)
         outdf = geodf.join(df)
         for key in keys:
             outdf[key].attrs.update(df[key].attrs)
@@ -401,7 +419,7 @@ For example, the FOV brightness etc.
             return aggdf.set_index(groupkeys)
 
         withweights = self.to_geodataframe(*aggkeys, geodf=wgtdf)
-        return weight_vars(withweights, *aggkeys, groupkeys=groupkeys)
+        return weight_vars(withweights, groupkeys=groupkeys)
 
     def export_dataframe(self, *args):
         """
@@ -417,86 +435,110 @@ For example, the FOV brightness etc.
 
         return outdf
 
-    @classmethod
-    def process(cls, links, grid, varkeys2d=None, varkeys3d=None, verbose=0):
+    def to_level3(
+        self, grid, varkeys2d=None, varkeys3d=None, groupkeys=None,
+        weights_kw=None, verbose=0
+    ):
         """
+        Convert level2 data to level3 data.
+
+        For 2d and 3d variables:
+            1. For each link, calculate pixel contributions to all grid cells.
+              * This process is specific to each satellite reader.
+              * requires a reader object with the weights method
+            2. For each link, weight pixel values and produces grid cell values.
+              * This process is specific to each satellite reader.
+              * requires a reader object with the weighted method
+            3. Combine weighted pixel values to produce overall value
+
         Arguments
         ---------
-        date : str
-            Anything that can be interpreted by pandas.to_datetime as a date
+        grid : CMAQGrid
+            Grid object.
+        varkeys2d : iterable
+            List of keys to process with first 2 dimensions in groupkeys
+        varkeys3d : iterable
+            List of keys to process with all dimensions in groupkeys
+        groupkeys : list
+            Usually ['ROW', 'COL', zdim] where zdim will depend on the dataset
+        weights_kw : mappable
+            Keywords for the weights method. For example, dict(option='equal')
+            to make all intersecting pixels equally weighted.
+        verbose : int
+            Level of verbosity
 
         Returns
         -------
-        out : list
-            List of outputs either dataframes or ioapi-like files. Type depends
-            on whether the outtmpl was provided. If yes, then ioapi.
+        out : dict
+            '2d': 2d variables as a dataframe,
+            '3d': 3d variables as a dataframe,
+            'description': a short description of the processing,
+            'history': a list of all warnings
         """
         import warnings
-        import pandas as pd
-        import os
+        if self.df is not None:
+            allkeys = list(self.df.columns)
+        else:
+            allkeys = list(self.ds.data_vars)
 
-        cg = grid
+        if varkeys2d is None:
+            varkeys2d = [
+                key for key in self._varkeys2d if key in allkeys
+            ]
+        if varkeys3d is None:
+            varkeys3d = [
+                key for key in self._varkeys3d if key in allkeys
+            ]
+        if groupkeys is None:
+            if self._zkey is None:
+                groupkeys = ['ROW', 'COL', ]
+            else:
+                groupkeys = ['ROW', 'COL', self._zkey]
+        if weights_kw is None:
+            weights_kw = {}
         with warnings.catch_warnings(record=True) as warning_list:
-            if verbose > 0:
-                print('Start query', flush=True)
+            outputs = {}
+            outputs['description'] = (
+                f'{self.path} with:\n{self.short_description}'
+            )
+            if verbose > 1:
+                print(f'Found {self.valid_index.shape[0]} valid pixels')
 
             if verbose > 0:
-                print('Start read')
-                print(links, flush=True)
+                print('Calculating weights', flush=True)
 
-            outputs = {
-                'links': links,
-                'links_with_pixels': [],
-                '2d': [],
-                '3d': []
-            }
-            for link in links:
-                if verbose > 0:
-                    print(f'Starting {link}', flush=True)
-                sat = cls(link)
-
-                if verbose > 1:
-                    print('Calculate weights', flush=True)
-
-                wgts = sat.weights(
-                    cg.geodf, clip=cg.exterior
+            wgts = self.weights(
+                grid.geodf, clip=grid.exterior, **weights_kw
+            )
+            if wgts.shape[0] == 0:
+                warnings.warn(
+                    f'No valid pixels for {self.path}'
                 )
-                if wgts.shape[0] == 0:
-                    slink = os.path.basename(link)
-                    warnings.warn(
-                        f'No valid pixels for {slink}'
-                    )
-                    continue
+                outputs['history'] = csp_formatwarnings(warning_list)
+                return outputs
 
-                outputs['links_with_pixels'].append(link)
-                if varkeys2d is not None:
-                    if verbose > 1:
-                        print('Process 2d data', flush=True)
+            if len(varkeys2d) > 0:
+                if verbose > 0:
+                    print('Processing 2d data', flush=True)
 
-                    # Produce 2d output
-                    wgtd2d = sat.weighted(
-                        *varkeys2d, groupkeys=['ROW', 'COL'], wgtdf=wgts
-                    )
-                    outputs['2d'].append(wgtd2d)
+                # Produce 2d output
+                wgtd2d = self.weighted(
+                    *varkeys2d, groupkeys=groupkeys[:2], wgtdf=wgts
+                )
+                outputs['2d'] = wgtd2d
+                if verbose > 1:
+                    print(f'{wgtd2d.shape[0]} unique cells')
 
-                if varkeys3d is not None:
-                    if verbose > 1:
-                        print('Process 3d data', flush=True)
+            if len(varkeys3d) > 0:
+                if verbose > 0:
+                    print('Processing 3d data', flush=True)
 
-                    # Produce 2d output
-                    wgtd3d = sat.weighted(
-                        *varkeys3d, groupkeys=['ROW', 'COL'], wgtdf=wgts
-                    )
-                    outputs['3d'].append(wgtd3d)
-        outputs['description'] = sat.short_description
-        outputs['history'] = csp_formatwarnings(warning_list)
+                # Produce 3d output
+                wgtd3d = self.weighted(
+                    *varkeys3d, groupkeys=groupkeys, wgtdf=wgts
+                )
+                outputs['3d'] = wgtd3d
+                if verbose > 1:
+                    print(f'{wgtd3d.shape[0]} unique cells-layers')
+            outputs['history'] = csp_formatwarnings(warning_list)
         return outputs
-        #outputio = self.to_ioapi(date, outputs, verbose=verbose, **io_kw)
-        #if len(outputio) == 0:
-        #    # Must be not perist, so return raw output
-        #    return outputs
-        #else:
-        #    outputio['links'] = outputs['links']
-        #    outputio['links_with_pixels'] = outputs['links_with_pixels']
-        #    outputio['history'] = outputs['history']
-        #    return outputio

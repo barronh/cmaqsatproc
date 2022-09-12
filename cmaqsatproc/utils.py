@@ -1,6 +1,7 @@
 __all__ = [
-    'getcmrlinks', 'centertobox', 'EasyRowPolygon', 'weight_vars',
-    'rootremover', 'csp_formatwarning', 'csp_formatwarnings'
+    'getcmrlinks', 'getcmrgranules', 'centertobox', 'cornertobox',
+    'EasyRowPolygon', 'weight_vars', 'rootremover', 'csp_formatwarning',
+    'csp_formatwarnings'
 ]
 import warnings
 
@@ -10,9 +11,8 @@ _xcrnrkeys = [f'{ckey}_Longitude' for ckey in _ckeys]
 _ycrnrkeys = [f'{ckey}_Latitude' for ckey in _ckeys]
 
 
-def getcmrlinks(
-    short_name, temporal, bbox=None, poly=None, verbose=0, filterfunc=None,
-    **kwds
+def getcmrgranules(
+    short_name, temporal, bbox=None, poly=None, verbose=0, **kwds
 ):
     """
     Return all links from the Common Metadata Repository for the product
@@ -31,7 +31,13 @@ def getcmrlinks(
     poly : shapely.geometry.Polygon
         The exterior will be converted to floats and ordered x1,y1,...,xN,yN
     filterfunc : function
-        Takes a link dictionary from CMR and returns True if it should be retained
+        Takes a link dictionary from CMR and returns True if it should be
+        retained
+
+    Returns
+    -------
+    jr : dictionary
+        json result as a dictionary
     """
     from copy import deepcopy
     import requests
@@ -61,6 +67,29 @@ def getcmrlinks(
         params=opts
     )
     jr = r.json()
+    return jr
+
+
+def getcmrlinks(*args, filterfunc=None, **kwds):
+    """
+    Return all links from the Common Metadata Repository for the product
+    granules with *args and **kwds are passed thru to getcmrgranules
+
+    Arguments
+    ---------
+    *args, **kwds :
+        See getcmrgranuels.
+    filterfunc : function
+        Takes a link dictionary from CMR and returns True if it should be
+        retained
+
+    Returns
+    -------
+    links : list
+        List of all links where filterfunc is None or just links for which
+        filterfunc returns True.
+    """
+    jr = getcmrgranules(*args, **kwds)
     entries = jr['feed']['entry']
     links = []
     for entry in entries:
@@ -90,24 +119,53 @@ def centertobox(xc, yc, width, height):
         x = xc - hdx, x + hdx, x + hdx, x - hdx, x - hdx
         y = yc - hdy, y + hdy, y + hdy, y - hdy, y - hdy
     """
-    from shapely.geometry import Polygon
+    from shapely.geometry import box
 
     hdx = width / 2
     hdy = height / 2
-    return Polygon([
-        [xc - hdx, yc - hdy],
-        [xc + hdx, yc - hdy],
-        [xc + hdx, yc + hdy],
-        [xc - hdx, yc + hdy],
-        [xc - hdx, yc - hdy],
-    ])
+    return box(xc - hdx, yc - hdy, xc + hdx, yc + hdy)
 
 
-def weight_vars(withweights, *aggkeys, groupkeys=['ROW', 'COL']):
-    aggattrs = {
-        key: withweights[key].attrs for key in aggkeys
-    }
+def cornertobox(xc, yc, width, height):
+    """
+    Return a polygon using a fixed width (2*hdx) and height (2*hdy)
+    where the corners are offset from the center by hdx and hdy
+
+    Arguments
+    ---------
+    xc, yc : scalar
+        x,y-coordinates for the corner of the polygon
+    width, height : scalar
+        Width and height
+
+    Returns
+    -------
+    poly : shapely.geometry.Polygon
+        Polygon with exterior points at
+        x = xc, x + width, x + width, x, x
+        y = yc, y + height, y + height, y, y
+    """
+    from shapely.geometry import box
+    return box(xc, yc, xc + width, yc + height)
+
+
+def weight_vars(withweights, *aggkeys, groupkeys=('ROW', 'COL')):
+    """
+    Arguments
+    ---------
+    withweights : pandas.DataFrame
+    aggkeys : keys
+    groupkeys : iterable
+
+    Returns
+    -------
+    agg : pandas.DataFrame
+    """
     notweighted = ['weights'] + list(groupkeys)
+    aggattrs = {
+        key: withweights[key].attrs
+        for key in withweights.columns
+    }
     dropkeys = ['geometry', 'dest_geometry']
     dropkeys = [k for k in dropkeys if k in withweights.columns]
     weighted = withweights.drop(
@@ -126,8 +184,9 @@ def weight_vars(withweights, *aggkeys, groupkeys=['ROW', 'COL']):
         if key not in groupkeys:
             agg[key] = aggweighted[key]
 
-    for key in aggkeys:
-        agg[key].attrs.update(aggattrs[key])
+    for key in agg.columns:
+        if key in aggattrs:
+            agg[key].attrs.update(aggattrs[key])
 
     return agg
 
@@ -213,7 +272,7 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
         i = 0
         for idx, x in newx.iterrows():
             if progress:
-                print(f'\r{i/xys.shape[0]:8.3%}', end='')
+                print(f'\r{i/newx.shape[0]:8.3%}', end='')
             y = newy.loc[idx]
             polys.append(Polygon(np.asarray([x, y]).T))
             i += 1
@@ -225,7 +284,7 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
             polys.append(Polygon(xy))
     if progress:
         print('\r100.000%')
-    
+
     return polys
 
 
