@@ -13,10 +13,9 @@ def omi_example_df():
     import pandas as pd
 
     names = [
-        'nTimes', 'nXtrack', 'LL_Longitude', 'LU_Longitude', 'UL_Longitude',
-        'UU_Longitude', 'LL_Latitude', 'LU_Latitude', 'UL_Latitude',
-        'UU_Latitude', 'CloudFraction', 'VcdQualityFlags',
-        'XTrackQualityFlags', 'ColumnAmountNO2Std'
+        'nTimes', 'nXtrack', 'll_x', 'lu_x', 'ul_x', 'uu_x', 'll_y', 'lu_y',
+        'ul_y', 'uu_y', 'CloudFraction', 'VcdQualityFlags',
+        'XTrackQualityFlags', 'ColumnAmountNO2'
     ]
     df = pd.read_csv(
         io.StringIO("""
@@ -33,12 +32,10 @@ def omi_example_df():
         names=names
     ).set_index(['nTimes', 'nXtrack'])
     df['Latitude'] = (
-        df['LL_Latitude'] + df['LU_Latitude']
-        + df['UL_Latitude'] + df['UU_Latitude']
+        df['ll_y'] + df['lu_y'] + df['ul_y'] + df['uu_y']
     ) / 4
     df['Longitude'] = (
-        df['LL_Longitude'] + df['LU_Longitude']
-        + df['UL_Longitude'] + df['UU_Longitude']
+        df['ll_x'] + df['lu_x'] + df['ul_x'] + df['uu_x']
     ) / 4
     return df
 
@@ -51,7 +48,7 @@ def omi_example_ds():
         xr.concat([
             ds[key]
             for key in (
-                'LL_Longitude', 'UL_Longitude', 'UU_Longitude', 'LU_Longitude'
+                'll_x', 'ul_x', 'uu_x', 'lu_x'
             )
         ], dim='nCorners').transpose('nTimes', 'nXtrack', 'nCorners')
     )
@@ -59,55 +56,53 @@ def omi_example_ds():
         xr.concat([
             ds[key]
             for key in (
-                'LL_Latitude', 'UL_Latitude', 'UU_Latitude', 'LU_Latitude'
+                'll_y', 'ul_y', 'uu_y', 'lu_y'
             )
         ], dim='nCorners').transpose('nTimes', 'nXtrack', 'nCorners')
     )
-    outds = ds.drop_vars([
-        'LL_Latitude', 'UL_Latitude', 'UU_Latitude', 'LU_Latitude',
-        'LL_Longitude', 'UL_Longitude', 'UU_Longitude', 'LU_Longitude'
-    ])
+    ds['valid'] = (
+        ((ds['VcdQualityFlags'].astype('i') & 1) == 0)
+        & (ds['XTrackQualityFlags'] == 0)
+        & (ds['CloudFraction'] <= 0.3)
+    )
+    # outds = ds.drop_vars([
+    #     'll_y', 'ul_y', 'uu_y', 'lu_y', 'll_x', 'ul_x', 'uu_x', 'lu_x'
+    # ])
+    outds = ds
     return outds
 
 
-def test_omi():
+def checksat(sat):
+    import geopandas as gpd
+    from shapely.geometry import box
     df = omi_example_df()
-    ds = omi_example_ds()
-
-    sat = readers.omi.OMNO2.from_dataset(ds)
-    df2 = sat.export_dataframe()
-    assert((df2 == df.loc[:, df2.columns]).all().all())
-
-
-def test_omi_valid():
-    df = omi_example_df()
-    ds = omi_example_ds()
-    ds['VcdQualityFlags'][1, 1] = 1
-    ds['CloudFraction'][1, 2] = 1
-    ds['XTrackQualityFlags'][2, 0] = 1
-    sat = readers.omi.OMNO2.from_dataset(ds)
-    df2 = sat.export_dataframe()
-    assert((df.shape[0] - 3) == df2.shape[0])
+    satdf = sat.to_dataframe('ColumnAmountNO2')
+    assert ((df['ColumnAmountNO2'] == satdf['ColumnAmountNO2']).all())
+    gdf = gpd.GeoDataFrame(
+        dict(ROW=[0], COL=[0], Val=[df['ColumnAmountNO2'].mean()]),
+        geometry=[box(-179, 0, 179, 89)], crs=4326
+    ).set_index(['ROW', 'COL']).to_crs(3785)
+    l3 = sat.to_level3('ColumnAmountNO2', grid=gdf[['geometry']])
+    diff = (
+        l3['nTimes', 'nXtrack']['ColumnAmountNO2'] - gdf['Val']
+    )
+    pctdiff = diff / gdf['Val'] * 100
+    assert ((pctdiff.abs() < 5).all())
 
 
-def test_satellite_weights():
-    from .. import cmaq
-
+def test_from_dataset():
     ds = omi_example_ds()
     sat = readers.omi.OMNO2.from_dataset(ds)
+    checksat(sat)
 
-    cg = cmaq.CMAQGrid(GDNAM='108US3')
-    wgt = sat.weights(cg.geodf)
-    wgtd1 = sat.weighted(
-        'ColumnAmountNO2Std', wgtdf=wgt, groupkeys=['ROW', 'COL']
-    )
-    assert(
-        wgtd1['ColumnAmountNO2Std'].min() >= ds['ColumnAmountNO2Std'].min()
-    )
-    assert(
-        wgtd1['ColumnAmountNO2Std'].max() <= ds['ColumnAmountNO2Std'].max()
-    )
-    wgtd2 = sat.weighted(
-        'ColumnAmountNO2Std', othdf=cg.geodf, groupkeys=['ROW', 'COL']
-    )
-    assert((wgtd1 == wgtd2).all().all())
+
+def test_open_dataset():
+    import tempfile
+    import os
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        outpath = os.path.join(tmpdirname, 'testomino2.nc')
+        ds = omi_example_ds()
+        ds.to_netcdf(outpath)
+        sat = readers.omi.OMNO2.open_dataset(outpath)
+        checksat(sat)

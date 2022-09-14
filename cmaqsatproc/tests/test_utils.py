@@ -17,7 +17,7 @@ def test_getcmrlinks_bbox():
     )
     print(len(links))
     # Finds 100+ links. Depending on how you shape the polygon,
-    assert(len(links) > 0)
+    assert (len(links) > 0)
 
 
 def test_getcmrlinks_poly():
@@ -31,12 +31,12 @@ def test_getcmrlinks_poly():
     )
     # print(len(links))
     # Finds 120+ links. Depending on how you shape the polygon,
-    assert(len(links) > 0)
+    assert (len(links) > 0)
 
 
 def test_centertobox():
     wkt = utils.centertobox(0.5, 0.5, 1, 1).wkt
-    assert(wkt == 'POLYGON ((1 0, 1 1, 0 1, 0 0, 1 0))')
+    assert (wkt == 'POLYGON ((1 0, 1 1, 0 1, 0 0, 1 0))')
 
 
 def test_easypoly():
@@ -44,38 +44,38 @@ def test_easypoly():
     import pandas as pd
     import geopandas as gpd
     df = pd.DataFrame(dict(
-        LL_Longitude=[0, -179.5, 0],
-        LU_Longitude=[0, -179.5, 0],
-        UU_Longitude=[1, 179.5, 1],
-        UL_Longitude=[1, 179.5, 1],
-        LL_Latitude=[0, 0, 89],
-        LU_Latitude=[1, 1, -89],
-        UU_Latitude=[1, 1, -89],
-        UL_Latitude=[0, 0, 89]
+        ll_x=[0, -179.5, 0],
+        lu_x=[0, -179.5, 0],
+        uu_x=[1, 179.5, 1],
+        ul_x=[1, 179.5, 1],
+        ll_y=[0, 0, 89],
+        lu_y=[1, 1, -89],
+        uu_y=[1, 1, -89],
+        ul_y=[0, 0, 89]
     ))
     gdf = gpd.GeoDataFrame(
         df, geometry=df.apply(utils.EasyRowPolygon, axis=1), crs=4326
     )
     x, y = gdf.iloc[0].geometry.exterior.xy
-    assert(np.allclose(x, [0, 0, 1, 1, 0]))
-    assert(np.allclose(y, [0, 1, 1, 0, 0]))
+    assert (np.allclose(x, [0, 0, 1, 1, 0]))
+    assert (np.allclose(y, [0, 1, 1, 0, 0]))
     x, y = gdf.iloc[1].geometry.exterior.xy
-    assert(np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
-    assert(np.allclose(y, [0, 1, 1, 0, 0]))
+    assert (np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
+    assert (np.allclose(y, [0, 1, 1, 0, 0]))
     x, y = gdf.iloc[2].geometry.exterior.xy
-    assert(np.allclose(x, [0, 0, 1, 1, 0]))
+    assert (np.allclose(x, [0, 0, 1, 1, 0]))
     # Known failure. No reason a satellite should simultaneously see both poles
-    assert(np.allclose(y, [89, -89, -89, 89, 89]))
+    assert (np.allclose(y, [89, -89, -89, 89, 89]))
     gdf = gpd.GeoDataFrame(
         df, geometry=utils.EasyDataFramePolygon(df), crs=4326
     )
     x, y = gdf.iloc[0].geometry.exterior.xy
-    assert(np.allclose(x, [0, 0, 1, 1, 0]))
-    assert(np.allclose(y, [0, 1, 1, 0, 0]))
+    assert (np.allclose(x, [0, 0, 1, 1, 0]))
+    assert (np.allclose(y, [0, 1, 1, 0, 0]))
     x, y = gdf.iloc[1].geometry.exterior.xy
-    assert(np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
-    assert(np.allclose(y, [0, 1, 1, 0, 0]))
+    assert (np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
+    assert (np.allclose(y, [0, 1, 1, 0, 0]))
     x, y = gdf.iloc[2].geometry.exterior.xy
-    assert(np.allclose(x, [0, 0, 1, 1, 0]))
+    assert (np.allclose(x, [0, 0, 1, 1, 0]))
     # Known failure. No reason a satellite should simultaneously see both poles
-    assert(np.allclose(y, [89, -89, -89, 89, 89]))
+    assert (np.allclose(y, [89, -89, -89, 89, 89]))

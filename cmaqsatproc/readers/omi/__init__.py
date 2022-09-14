@@ -1,400 +1,204 @@
-__all__ = ['OMNO2', 'OMHCHO', 'OMNO2d']
+__all__ = ['OMI']
 
 from ..core import satellite
-from ...utils import centertobox, EasyDataFramePolygon
 
 
-class OMNO2(satellite):
-    @property
-    def short_description(self):
-        desc = """OMNO2 filters valid pixels and provides weights for
-destination polygon:
-* valid = VcdQualityFlags, XTrackQualityFlags, CloudFraction
-  * (VcdQualityFlags.astype('i') & 1) == 0,
-  * XTrackQualityFlags == 0, and
-  * CloudFraction <= 0.3
-* pixel_area = corners from FoV75CornerLongitude, FoV75CornerLatitude
-* weight = intx_fracarea * area_factor * uncertainty_factor
-  * intx_fracarea = fraction of the destination covered by the pixel
-  * area_factor = (1 - (area - area_min) / area_max)
-  * uncertainty_factor = 1 / ColumnAmountNO2Std
-"""
-        return desc
+class OMIL2(satellite):
+    __doc__ = """
+    Default OMI satellite processor.
+    * bbox subsets the nTimes and nTimes_1  dimensions
+    """
 
-    @property
-    def required_args(self):
-        return (
-            'Longitude', 'Latitude',
-            'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
-            'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
-            'CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags',
-            'ColumnAmountNO2Std'
-        )
-
-    @property
-    def ds(self):
-        if self._ds is None:
-            import xarray as xr
-            self.ds = xr.open_dataset(self.path)
-
-        return self._ds
-
-    @ds.setter
-    def ds(self, ds):
-        import warnings
-        self._ds = ds
-        for corneri, ckey in zip(range(4), ('LL', 'UL', 'UU', 'LU')):
-            lonkey = f'{ckey}_Longitude'
-            latkey = f'{ckey}_Latitude'
-            if lonkey not in self._ds.data_vars:
-                if 'FoV75CornerLongitude' not in self._ds.data_vars:
-                    warnings.warn(
-                        'Corners must be calculated and FoV75CornerLongitude'
-                        + ' is missing'
-                    )
-                else:
-                    lonx = self._ds['FoV75CornerLongitude'].isel(
-                        nCorners=corneri
-                    )
-                    self._ds[lonkey] = lonx
-
-            if latkey not in self._ds.data_vars:
-                if 'FoV75CornerLatitude' not in self._ds.data_vars:
-                    warnings.warn(
-                        'Corners must be calculated and FoV75CornerLatitude'
-                        + ' is missing'
-                    )
-                else:
-                    latx = self._ds['FoV75CornerLatitude'].isel(
-                        nCorners=corneri
-                    )
-                    self._ds[latkey] = latx
-
-    @property
-    def valid_index(self):
-        if self._valididx is None:
-            inkeys = ['CloudFraction', 'VcdQualityFlags', 'XTrackQualityFlags']
-            if self._bbox is not None:
-                inkeys.extend(['Latitude', 'Longitude'])
-            df = self.to_dataframe(*inkeys, valid_only=False).fillna(1)
-            df['FinalFlag'] = (
-                df['VcdQualityFlags'].astype('i') & 1
-            ).astype('i')
-            df = df.query(
-                'FinalFlag == 0 and XTrackQualityFlags == 0'
-                + ' and CloudFraction <= 0.3'
-            )
-            if self._bbox is not None:
-                swlon, swlat, nelon, nelat = self._bbox
-                df = df.query(
-                    f'Longitude >= {swlon} and Longitude <= {nelon}'
-                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
-                )
-            self._valididx = df
-        return self._valididx
-
-    @property
-    def geodf(self):
+    @classmethod
+    def open_dataset(cls, path, bbox=None, **kwargs):
         """
-        Create a base geopandas dataframe with a geometry
-        """
-        import geopandas as gpd
-        if self._geodf is None:
-            df = self.to_dataframe(
-                'LL_Latitude', 'LL_Longitude',
-                'LU_Latitude', 'LU_Longitude',
-                'UL_Latitude', 'UL_Longitude',
-                'UU_Latitude', 'UU_Longitude',
-            ).join(self.valid_index[[]], how='inner')
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=EasyDataFramePolygon(df),
-                crs=4326
-            )
-        return self._geodf
-
-    def weights(self, *args, **kwds):
-        """
-        Combines intx_fracarea with
-        * area_factor = (1- (area - area_min) / area_max)
-        * uncertainty_factor = 1 / ColumnAmountNO2Std
-
-        See https://acdisc.gesdisc.eosdis.nasa.gov/data/
-        Aura_OMI_Level3/OMNO2d.003/doc/README.OMNO2.pdf
-        section 6.3 for more detail
-        """
-        wgtdf = satellite.weights(self, *args, **kwds)
-        # Currently thowing an warning due to calculation in spherical space.
-        # Using area in a relative form, so for now that is okay.
-        area = wgtdf['geometry'].area
-        area_min = area.min()
-        area_max = area.max()
-        area_factor = 1 - (area - area_min) / area_max
-        uncertainty_factor = 1 / self.to_dataframe('ColumnAmountNO2Std').loc[
-            wgtdf.index, 'ColumnAmountNO2Std'
-        ]
-        wgtdf['weights'] = (
-            wgtdf['intx_fracarea'] * area_factor * uncertainty_factor
-        )
-        return wgtdf
-
-    _varkeys2d = (
-        'ColumnAmountNO2Trop', 'ColumnAmountNO2Strat', 'ColumnAmountNO2',
-        'SlantColumnAmountNO2', 'AmfTrop', 'AmfStrat'
-    )
-
-
-class OMHCHO(satellite):
-    @property
-    def short_description(self):
-        desc = """OMHCHO filters valid pixels and provides weights for
-destination polygon:
-* valid = MainDataQualityFlag, CloudFraction
-  * MainDataQualityFlag == 0,
-  * CloudFraction <= 0.3
-* pixel_area = corners from PixelCornerLongitudes, PixelCornerLatitudes
-* weight = intx_fracarea * area_factor * uncertainty_factor
-  * intx_fracarea = fraction of the destination covered by the pixel
-  * area_factor = (1 - (area - area_min) / area_max)
-  * uncertainty_factor = 1 / ColumnUncertainty
-"""
-        return desc
-
-    @property
-    def required_args(self):
-        return (
-            'LL_Longitude', 'LU_Longitude', 'UL_Longitude', 'UU_Longitude',
-            'LL_Latitude', 'LU_Latitude', 'UL_Latitude', 'UU_Latitude',
-            'Latitude', 'Longitude', 'MainDataQualityFlag',
-            'ColumnUncertainty', 'AirMassFactor',
-            'ReferenceSectorCorrectedVerticalColumn'
-        )
-
-    @property
-    def ds(self):
-        if self._ds is None:
-            import xarray as xr
-            ds = xr.open_dataset(self.path)
-            self.ds = ds
-
-        return self._ds
-
-    @ds.setter
-    def ds(self, ds):
-        import xarray as xr
-
-        self._ds = ds
-        slices = [('L', slice(None, -1)), ('U', slice(1, None))]
-        for tkey, tslice in slices:
-            for xkey, xslice in slices:
-                lonkey = f'{tkey}{xkey}_Longitude'
-                if lonkey not in self._ds.data_vars:
-                    lonx = xr.DataArray(
-                        self._ds['PixelCornerLongitudes'].isel(
-                            nTimes_1=tslice, nXtrack_1=xslice
-                        ).values,
-                        dims=('nTimes', 'nXtrack')
-                    )
-                    self._ds[lonkey] = lonx
-                latkey = f'{tkey}{xkey}_Latitude'
-                if latkey not in self._ds.data_vars:
-                    latx = xr.DataArray(
-                        self._ds['PixelCornerLatitudes'].isel(
-                            nTimes_1=tslice, nXtrack_1=xslice
-                        ).values,
-                        dims=('nTimes', 'nXtrack')
-                    )
-                    self._ds[latkey] = latx
-
-    @property
-    def valid_index(self):
-        if self._valididx is None:
-            inkeys = ['MainDataQualityFlag']
-            if self._bbox is not None:
-                inkeys.extend(['Longitude', 'Latitude'])
-            df = self.to_dataframe(*inkeys, valid_only=False)
-            df = df.query('MainDataQualityFlag == 0')
-            if self._bbox is not None:
-                swlon, swlat, nelon, nelat = self._bbox
-                df = df.query(
-                    f'Longitude >= {swlon} and Longitude <= {nelon}'
-                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
-                )
-            self._valididx = df
-        return self._valididx
-
-    @property
-    def geodf(self):
-        """
-        Create a base geopandas dataframe with a geometry
-        """
-        import geopandas as gpd
-        if self._geodf is None:
-            df = self.to_dataframe(
-                'LL_Latitude', 'LL_Longitude',
-                'LU_Latitude', 'LU_Longitude',
-                'UL_Latitude', 'UL_Longitude',
-                'UU_Latitude', 'UU_Longitude',
-            ).join(self.valid_index[[]], how='inner')
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=EasyDataFramePolygon(df),
-                crs=4326
-            )
-        return self._geodf
-
-    def weights(self, *args, **kwds):
-        """
-        Combines intx_fracarea with
-        * area_factor = (1- (area - area_min) / area_max)
-        * uncertainty_factor = 1 / ColumnUncertainty
-
-        The area_factor is currently being used instead of the Spatial
-        Response (S)
-
-        To do, replace area_factor with spatial response
-        For weights used by OMHCHOd see
-        https://acdisc.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level3/
-          OMHCHOd.003/doc/README_OMHCHOd_v003.pdf
-        For explanation of the Spatial Response function see section 4.1 of
-         https://amt.copernicus.org/articles/11/6679/2018/
-        For area factor, see section 6.3 of
-          https://acdisc.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level3/OMNO2d.003/
-        doc/README.OMNO2.pdf
-        """
-        wgtdf = satellite.weights(self, *args, **kwds)
-        if wgtdf.shape[0] == 0:
-            return wgtdf
-        # Currently thowing an warning due to calculation in spherical space.
-        # Using area in a relative form, so for now that is okay.
-        area = wgtdf['geometry'].area
-        area_min = area.min()
-        area_max = area.max()
-        area_factor = 1 - (area - area_min) / area_max
-        uncertainty_factor = 1 / self.to_dataframe('ColumnUncertainty').loc[
-            wgtdf.index, 'ColumnUncertainty'
-        ]
-        wgtdf['weights'] = (
-            wgtdf['intx_fracarea'] * area_factor * uncertainty_factor
-        )
-        return wgtdf
-
-    _varkeys2d = (
-        'AirMassFactor', 'ColumnUncertainty',
-        'ReferenceSectorCorrectedVerticalColumn', 'weights'
-    )
-
-
-class OMNO2d(OMNO2):
-    @property
-    def short_description(self):
-        desc = """OMNO2d filters valid pixels and provides weights for
-destination polygon:
-* valid = unmasked value
-* pixel_area = corners from centroids +- half average delta
-* weight = Weight
-"""
-        return desc
-
-    def __init__(
-        self, path, targetkey='ColumnAmountNO2TropCloudScreened', **attrs
-    ):
-        """
-        Same as satellite, but takes two optional arguments.
-
         Arguments
         ---------
         path : str
-            path to file
-        targetkey : str
-            key in file to use for filtering cells
-        bbox : list
-            Optional, bounding box to prefilter the dataset
-            [swlon, swlat, nelon, nelat]
-        **attrs : mappable
-            Same see satellite.__init__
+            Path to a OMI OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+            of 0, 0
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: OMIL2
+            Satellite processing instance
         """
-        satellite.__init__(self, path, targetkey=targetkey, **attrs)
+        import xarray as xr
 
-    @property
-    def ds(self):
-        if self._ds is None:
-            import xarray as xr
-
-            ds = xr.open_dataset(self.path)
-            self.ds = ds
-
-        return self._ds
-
-    @ds.setter
-    def ds(self, ds):
-        attrs = self._attrs
-        if 'bbox' in attrs:
-            lonslice = slice(attrs['bbox'][0], attrs['bbox'][2])
-            latslice = slice(attrs['bbox'][1], attrs['bbox'][3])
-            self._ds = ds.sel(lon=lonslice, lat=latslice)
-        else:
-            self._ds = ds
-
-    @property
-    def valid_index(self):
-        if self._valididx is None:
-            key = self.attrs['targetkey']
-            inkeys = [key]
-            if self._bbox is not None:
-                inkeys.extend(['Longitude', 'Latitude'])
-
-            df = self.to_dataframe(*inkeys, valid_only=False)
-            df = df.query(f'{key} == {key}')
-            if self._bbox is not None:
-                swlon, swlat, nelon, nelat = self._bbox
-                df = df.query(
-                    f'Longitude >= {swlon} and Longitude <= {nelon}'
-                    + f' and Latitude >= {swlat} and Latitude <= {nelat}'
-                )
-            self._valididx = df
-
-        return self._valididx
-
-    @property
-    def geodf(self):
-        """
-        Create a base geopandas dataframe with a geometry
-        """
-        import geopandas as gpd
-        import numpy as np
-
-        if self._geodf is None:
-            # Updated to dataframe method. Needs checking
-            lldf = self.to_dataframe('lon', 'lat', valid_only=False)
-            dlon = np.diff(lldf['lon'].values).mean()
-            dlat = np.diff(lldf['lat']).mean()
-            df = self.to_dataframe(
-                'lon', 'lat',
-            ).join(self.valid_index[[]], how='inner')
-            df['lon'] = df.index.get_level_values('lon')
-            df['lat'] = df.index.get_level_values('lat')
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=df.apply(
-                    lambda row: centertobox(
-                        row['lon'], row['lat'], width=dlon, height=dlat
-                    ), axis=1
-                ),
-                crs=4326
+        ds = xr.open_dataset(path, **kwargs).reset_coords()
+        if bbox is not None:
+            swlon, swlat, nelon, nelat = bbox
+            df = ds[['Latitude', 'Longitude']].to_dataframe()
+            df = df.query(
+                f'Latitude >= {swlat} and Latitude <= {nelat}'
+                + f' and Longitude >= {swlon} and Longitude <= {nelon}'
             )
-        return self._geodf
+            times = df.index.get_level_values('nTimes').unique()
+            if len(times) < 0:
+                raise ValueError(f'{path} has no values in {bbox}')
+            ds = ds.isel(
+                nTimes=slice(times.min(), times.max() + 1)
+            )
+            if 'nTimes_1' in ds.dims:
+                ds = ds.isel(nTimes_1=slice(times.min(), times.max() + 2))
 
-    def weights(self, *args, **kwds):
-        """
-        Combines intx_fracarea with Weight from dataset.
-        See https://acdisc.gesdisc.eosdis.nasa.gov/data/Aura_OMI_Level3/
-        OMNO2d.003/doc/README.OMNO2.pdf
-        section 6.3 for more detail
-        """
-        wgtdf = satellite.weights(self, *args, **kwds)
-        wgtdf['weights'] = (
-            wgtdf['intx_fracarea']
-            * self.to_dataframe('Weight').loc[wgtdf.index, 'Weight']
+        sat = cls()
+        sat.path = path
+        sat.ds = ds
+        sat.bbox = bbox
+        return sat
+
+    @classmethod
+    def shorten_name(cls, key):
+        key = key.replace(
+            'ReferenceSectorCorrectedVerticalColumn', 'RefSctCor_VCD'
         )
-        return wgtdf
+        key = key.replace('SlantColumnAmount', 'SCD')
+        key = key.replace('ColumnAmount', 'VCD')
+        key = key.replace('Pressure', 'Press')
+        key = key.replace('Scattering', 'Scat')
+        key = key.replace('Altitude', 'Alt')
+        key = key.replace('Spacecraft', 'Craft')
+        key = key.replace('Wavelength', 'WvLen')
+        key = key.replace('Registration', 'Reg')
+        key = key.replace('Viewing', 'View')
+        key = key.replace('Angle', 'Ang')
+        key = key.replace('Pixel', 'Pix')
+        key = key.replace('Measurement', 'Msrmt')
+        key = key.replace('Radiance', 'Rad')
+        key = key.replace('Latitude', 'Lat')
+        key = key.replace('Longitude', 'Lon')
+        key = key.replace('Check', 'Chk')
+        key = key.replace('Fraction', 'Frac')
+        key = key.replace('Configuration', 'Cfg')
+        key = key.replace('Pointer', 'Ptr')
+        key = key.replace('CloudRadianceFraction', 'CldRadFrac')
+        key = key.replace('QualityFlags', 'QAFlag')
+        key = key.replace('TerrainReflectivity', 'TerrainRefl')
+        key = key.replace('ClimatologyLevels', 'ClimPresLevels')
+        return key
+
+
+class OMNO2(OMIL2):
+    __doc__ = """
+    OMNO2 satellite processor.
+    * bbox subsets the nTimes and nTimes_1 dimensions
+    * valid based three conditions
+      * (VcdQualityFlags & 1) == 0
+      * XTrackQualityFlags == 0
+      * CloudFraction <= 0.3
+    """
+    _defaultkeys = ('ColumnAmountNO2Trop', 'AmfTrop')
+
+    @classmethod
+    def open_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Arguments
+        ---------
+        path : str
+            Path to a TropOMI OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+            of 0, 0
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: OMINO2
+            Satellite processing instance
+        """
+        omtmp = OMIL2.open_dataset(path, bbox=bbox, **kwargs)
+        ds = omtmp.ds
+        corners = {
+            'll': 0, 'lu': 3, 'ul': 1, 'uu': 2,
+        }
+        for key, corner in corners.items():
+            ds[f'{key}_x'] = ds['FoV75CornerLongitude'].sel(nCorners=corner)
+            ds[f'{key}_y'] = ds['FoV75CornerLatitude'].sel(nCorners=corner)
+
+        ds['valid'] = (
+            ((ds['VcdQualityFlags'].astype('i') & 1) == 0)
+            & (ds['XTrackQualityFlags'] == 0)
+            & (ds['CloudFraction'] <= 0.3)
+        )
+        if not ds['valid'].any():
+            raise ValueError(f'No valid pixels in {path} with {bbox}')
+
+        sat = cls()
+        sat.path = path
+        sat.ds = ds
+        sat.bbox = bbox
+        return sat
+
+
+class OMHCHO(OMIL2):
+    __doc__ = """
+    OMHCHO satellite processor.
+    * bbox subsets the nTimes and nTimes_1 dimensions
+    * valid based three conditions
+      * MainDataQualityFlag == 0
+      * (XtrackQualityFlagsExpanded & 1) == 0
+      * AMFCloudFraction <= 0.3
+    """
+    _defaultkeys = (
+        'ColumnAmount', 'ReferenceSectorCorrectedVerticalColumn',
+        'AirMassFactor'
+    )
+
+    @classmethod
+    def open_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Arguments
+        ---------
+        path : str
+            Path to a TropOMI OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+            of 0, 0
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: OMI
+            Satellite processing instance
+        """
+        import xarray as xr
+        omtmp = OMIL2.open_dataset(path, bbox=bbox, **kwargs)
+        ds = omtmp.ds
+        ds['valid'] = (
+            (ds['MainDataQualityFlag'] == 0)
+            & ((ds['XtrackQualityFlagsExpanded'].astype('i') & 1) == 0)
+            & (ds['AMFCloudFraction'] <= 0.3)
+        )
+        corners = {
+            'll': (slice(None, -1), slice(None, -1)),
+            'ul': (slice(None, -1), slice(1, None)),
+            'lu': (slice(1, None), slice(None, -1)),
+            'uu': (slice(1, None), slice(1, None)),
+        }
+        for key, (tslice, xslice) in corners.items():
+            ds[f'{key}_x'] = xr.DataArray(
+                ds['PixelCornerLongitudes'].isel(
+                    nTimes_1=tslice, nXtrack_1=xslice
+                ).transpose('nTimes_1', 'nXtrack_1').values,
+                dims=('nTimes', 'nXtrack')
+            )
+            ds[f'{key}_y'] = xr.DataArray(
+                ds['PixelCornerLatitudes'].isel(
+                    nTimes_1=tslice, nXtrack_1=xslice
+                ).transpose('nTimes_1', 'nXtrack_1').values,
+                dims=('nTimes', 'nXtrack')
+            )
+
+        if not ds['valid'].any():
+            raise ValueError(f'No valid pixels in {path} with {bbox}')
+        sat = cls()
+        sat.ds = ds
+        sat.bbox = bbox
+        return sat

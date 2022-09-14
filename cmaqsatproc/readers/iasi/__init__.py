@@ -1,152 +1,75 @@
 __all__ = ['IASI_NH3']
 
 from ..core import satellite
+from ...utils import EasyDataFramePoint
 
 
 class IASI_NH3(satellite):
-    @property
-    def short_description(self):
-        desc = """IASI_NH3 filters valid pixels and provides weights for
-destination polygon:
-* valid = Not missing, AMPM == 0 (AM)
-* pixel_area = diameter assumed to be 0.1 degree, which is approximately
-  the 12 km discussed in Clerbaux (doi: 10.5194/acp-9-6041-2009).
-* weights = area / uncertainty
-"""
-        return desc
+    __doc__ = """IASI Ammonia Processor
+    * bbox subsets each pixel
+    * valid = (nh3_total_column > -999) & (AMPM == 0)
+    * geometry is a 0.1 degree buffer
+    * pixel_area = diameter assumed to be 0.1 degree, which is approximately
+      the 12 km discussed in Clerbaux (doi: 10.5194/acp-9-6041-2009).
+    * weights = area
+    """
+    _defaultkeys = ('nh3_total_column',)
+    _geokeys = ('latitude', 'longitude')
 
-    @property
-    def required_args(self):
-        return (
-            'longitude', 'latitude', 'nh3_total_column',
-            'nh3_total_column_uncertainty'
+    @classmethod
+    def open_dataset(cls, path, bbox=None, **kwargs):
+        import xarray as xr
+        import numpy as np
+
+        ds = xr.open_dataset(path, decode_cf=False, **kwargs)
+        ds['valid'] = (
+            (ds['nh3_total_column'] > -999)
+            & (ds['AMPM'] == 0)
         )
+        ds.coords['time'] = np.arange(ds.dims['time'])
+        if bbox is not None:
+            swlon, swlat, nelon, nelat = bbox
+            df = ds[['latitude', 'longitude']].to_dataframe()
+            df = df.query(
+                f'longitude >= {swlon} and longitude <= {nelon}'
+                + f' and latitude >= {swlat} and latitude <= {nelat}'
+            )
+            times = df.index.get_level_values('time').values
+            ds = ds.sel(time=times)
 
-    @property
-    def ds(self):
-        if self._ds is None:
-            import xarray as xr
-            self.ds = xr.open_dataset(self.path)
+        sat = cls()
+        sat.path = path
+        sat.bbox = bbox
+        sat.ds = ds
+        return sat
 
-        return self._ds
-
-    @ds.setter
-    def ds(self, ds):
-        self._ds = ds
-
-    def to_dataframe(self, *keys, valid_only=True):
+    def to_dataframe(self, *varkeys, valid=True, geo=False):
         """
-        Export keys to a dataframe for only valid values.
-
         Arguments
         ---------
-        keys : list
-            List of keys to pull from the self.ds or self.df for all valid
-            pixels.
-        valid_only : bool
-            Default True. Only export a dataframe where valid_idx.
+        varkeys : iterable
+            Keys to use in the dataframe. Defaults to class._defaultkeys that
+            is class specific
+        valid : bool
+            If true, only return valid pixels.
+        geo : bool
+            Add geometry to output a geopandas.GeoDataFrame
 
         Returns
         -------
-        df : pandas.Dataframe
-            Dataframe with columns keys
+        df : pandas.DataFrame or geopandas.GeoDataFrame
         """
-        # Mostly copied from core, but the dataset input is not CF compliant
-        # There is no valid coordinate. Theoretically, orbit/scanline/pixel
-        # should be uniquely identifying. The file, however, is setup with
-        # a time coordiante...
-        #
-        # * time is duplicated many times
-        # * orbit_number has invalid values, which prevents us from using
-        #   it as an index
-        props = {}
-        if self.df is None:
-            df = self.ds[list(keys)].to_dataframe().reset_index()[list(keys)]
-            for key in keys:
-                if key in self.ds.data_vars:
-                    props[key] = self.ds[key].attrs
-        else:
-            df = self.df[list(keys)]
-            for key in keys:
-                props[key] = self.df[key].attrs
+        df = satellite.to_dataframe(self, *varkeys, valid=valid, geo=False)
+        if not (geo is False):
+            import geopandas as gpd
+            if geo is True:
+                geo = EasyDataFramePoint
 
-        if valid_only:
-            outdf = df.join(
-                self.valid_index[[]], how='inner'
+            gdf = self.to_dataframe(*self._geokeys)
+            gdf['x'] = gdf['longitude']
+            gdf['y'] = gdf['latitude']
+            gdf = gpd.GeoDataFrame(
+                gdf, geometry=geo(gdf).buffer(0.1), crs=4326
             )
-        else:
-            outdf = df
-
-        for key in keys:
-            if key in props:
-                outdf[key].attrs.update(props[key])
-
-        return outdf
-
-    @property
-    def valid_index(self):
-        if self._valididx is None:
-            df = self.to_dataframe(
-                'nh3_total_column', 'AMPM',
-                valid_only=False
-            )
-            self._valididx = df.query(
-                'nh3_total_column == nh3_total_column'
-                + ' and AMPM == 0'
-            )
-        return self._valididx
-
-    @property
-    def geodf(self):
-        """
-        Create a base geopandas dataframe with a geometry
-        """
-        import geopandas as gpd
-        if self._geodf is None:
-            df = self.to_dataframe(
-                'latitude', 'longitude'
-            ).join(self.valid_index[[]], how='inner')
-            self._geodf = gpd.GeoDataFrame(
-                df[[]],
-                geometry=gpd.points_from_xy(
-                    df['longitude'], df['latitude']
-                ).buffer(0.1),
-                crs=4326
-            )
-        return self._geodf
-
-    def weights(self, *args, **kwds):
-        """
-        Combines intx_fracarea with
-        * area_factor = (1- (area - area_min) / area_max)
-        * uncertainty_factor = 1 / ColumnAmountNO2Std
-
-        See https://acdisc.gesdisc.eosdis.nasa.gov/data/
-        Aura_OMI_Level3/OMNO2d.003/doc/README.OMNO2.pdf
-        section 6.3 for more detail
-        """
-        wgtdf = satellite.weights(self, *args, **kwds)
-        # Currently thowing an warning due to calculation in spherical space.
-        # Using area in a relative form, so for now that is okay.
-        area = wgtdf['geometry'].area
-        area_factor = area
-        uncertainty_factor = 1 / self.to_dataframe(
-            'nh3_total_column_uncertainty'
-        ).loc[
-            wgtdf.index, 'nh3_total_column_uncertainty'
-        ]
-        wgtdf['weights'] = (
-            wgtdf['intx_fracarea'] * area_factor * uncertainty_factor
-        )
-        return wgtdf
-
-    @classmethod
-    def process(
-        cls, links, grid,
-        varkeys2d=('nh3_total_column', 'nh3_total_column_uncertainty',),
-        varkeys3d=None, verbose=0
-    ):
-        return satellite.process(
-            links, grid, varkeys2d=varkeys2d, varkeys3d=varkeys3d,
-            verbose=verbose
-        )
+            df = gdf[['geometry']].join(df)
+        return df

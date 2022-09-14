@@ -13,10 +13,16 @@ def gdal_to_xrdataarray(path):
     if 'valid_range' in attrs:
         vmin, vmax = eval(attrs['valid_range'])
         data = np.ma.masked_greater(np.ma.masked_less(data, vmin), vmax)
+    try:
+        offset = np.asarray(attrs.get('add_offset', 0), dtype=data.dtype)
+        scale = np.asarray(attrs.get('scale_factor', 1), dtype=data.dtype)
+    except Exception:
+        offset = np.asarray(attrs.get('add_offset', 0), dtype='d')
+        scale = np.asarray(attrs.get('scale_factor', 1), dtype='d')
     finaldata = (
-        float(attrs.get('add_offset', 0))
+        offset
         + np.ma.masked_values(data, -28672)
-        * float(attrs.get('scale_factor', 1))
+        * scale
     )
     return xr.DataArray(
         finaldata,
@@ -26,7 +32,7 @@ def gdal_to_xrdataarray(path):
     )
 
 
-def gdalhdf4_to_xrdataset(path):
+def gdalhdf4_to_xrdataset(path, unpack=False):
     import pyproj
     import numpy as np
     from osgeo import gdal
@@ -94,6 +100,21 @@ def gdalhdf4_to_xrdataset(path):
             )
         )
     )
-    # outds.coords['x_bnds'] = xbnds
-    # outds.coords['y_bnds'] = ybnds
+    if unpack:
+        outds['AOD_QA_Bits'] = xr.DataArray(
+            np.unpackbits(
+                outds.AOD_QA.values.view('uint8'), bitorder='little'
+            ).reshape(outds.AOD_QA.shape + (16,))[..., ::-1],
+            dims=('nCandidate', 'y', 'x', 'bits'), name='QABits',
+            attrs=dict(
+                units='None',
+                description=(
+                    'count from right 15,14,13...,0\n'
+                    + outds.AOD_QA.attrs['data description']
+                )
+            )
+        )
+
+    outds.coords['x_bounds'] = xbnds
+    outds.coords['y_bounds'] = ybnds
     return outds

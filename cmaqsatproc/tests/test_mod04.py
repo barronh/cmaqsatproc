@@ -33,58 +33,96 @@ def modis_example_df():
 
 def modis_example_ds():
     import xarray as xr
+    import numpy as np
 
     ds = xr.Dataset.from_dataframe(modis_example_df())
+    Cell_Along_Swath_Edges = np.concatenate(
+        [
+            ds.Cell_Along_Swath[:1],
+            (
+                ds.Cell_Along_Swath[1:].values
+                + ds.Cell_Along_Swath[:-1].values
+            ) / 2,
+            ds.Cell_Along_Swath[-1:]
+        ], axis=0
+    )
+    Cell_Across_Swath_Edges = np.concatenate(
+        [
+            ds.Cell_Across_Swath[:1],
+            (
+                ds.Cell_Across_Swath[1:].values
+                + ds.Cell_Across_Swath[:-1].values
+            ) / 2,
+            ds.Cell_Across_Swath[-1:]
+        ], axis=0
+    )
+    lat_edges = ds.Latitude.interp(
+        Cell_Along_Swath=Cell_Along_Swath_Edges,
+        Cell_Across_Swath=Cell_Across_Swath_Edges
+    )
+    lon_edges = ds.Longitude.interp(
+        Cell_Along_Swath=Cell_Along_Swath_Edges,
+        Cell_Across_Swath=Cell_Across_Swath_Edges
+    )
+    corner_slices = {
+        'll': (slice(None, -1), slice(None, -1)),
+        'lu': (slice(None, -1), slice(1, None)),
+        'ul': (slice(1, None), slice(None, -1)),
+        'uu': (slice(1, None), slice(1, None)),
+    }
+    for corner, (xslice, aslice) in corner_slices.items():
+        ds[f'{corner}_x'] = xr.DataArray(
+            lon_edges.isel(
+                Cell_Along_Swath=aslice, Cell_Across_Swath=xslice
+            ),
+            dims=ds.Longitude.dims,
+            coords=ds.Longitude.coords,
+        )
+        ds[f'{corner}_y'] = xr.DataArray(
+            lat_edges.isel(
+                Cell_Along_Swath=aslice, Cell_Across_Swath=xslice
+            ),
+            dims=ds.Longitude.dims,
+            coords=ds.Longitude.coords,
+        )
+    ds['valid'] = ds['Land_Ocean_Quality_Flag'] > 1
     outds = ds.drop_vars(['dx', 'dy'])
     return outds
 
 
-def test_modis():
+def checksat(sat):
+    import geopandas as gpd
+    from shapely.geometry import box
+
     df = modis_example_df()
-    ds = modis_example_ds()
-
-    sat = readers.modis.MOD04.from_dataset(ds)
-    df2 = sat.export_dataframe()
-    assert(
-        (
-            df2.loc[:, df.columns].drop(['dx', 'dy'], axis=1)
-            == df.drop(['dx', 'dy'], axis=1)
-        ).all().all()
+    inkey = 'Optical_Depth_Land_And_Ocean'
+    satdf = sat.to_dataframe(inkey)
+    assert ((df[inkey] == satdf[inkey]).all())
+    gdf = gpd.GeoDataFrame(
+        dict(ROW=[0], COL=[0], Val=[df[inkey].mean()]),
+        geometry=[box(-179, 0, 179, 89)], crs=4326
+    ).set_index(['ROW', 'COL']).to_crs(3785)
+    l3 = sat.to_level3(inkey, grid=gdf[['geometry']])
+    diff = (
+        l3['Cell_Across_Swath', 'Cell_Along_Swath'][inkey] - gdf['Val']
     )
+    pctdiff = diff / gdf['Val'] * 100
+    assert ((pctdiff.abs() < 5).all())
 
 
-def test_modis_valid():
-    df = modis_example_df()
-    ds = modis_example_ds()
-    ds['Land_Ocean_Quality_Flag'][1, 1] = 0
-    ds['Land_Ocean_Quality_Flag'][0, 0] = 0
-    ds['Land_Ocean_Quality_Flag'][2, 2] = 0
-    sat = readers.modis.MOD04.from_dataset(ds)
-    df2 = sat.export_dataframe()
-    assert((df.shape[0] - 3) == df2.shape[0])
-
-
-def test_satellite_weights():
-    from .. import cmaq
-
+def test_from_dataset():
     ds = modis_example_ds()
     sat = readers.modis.MOD04.from_dataset(ds)
+    checksat(sat)
 
-    cg = cmaq.CMAQGrid('108US3')
-    wgt = sat.weights(cg.geodf)
-    wgtd1 = sat.weighted(
-        'Optical_Depth_Land_And_Ocean', wgtdf=wgt, groupkeys=['ROW', 'COL']
-    )
-    assert(
-        wgtd1['Optical_Depth_Land_And_Ocean'].min()
-        >= ds['Optical_Depth_Land_And_Ocean'].min()
-    )
-    assert(
-        wgtd1['Optical_Depth_Land_And_Ocean'].max()
-        <= ds['Optical_Depth_Land_And_Ocean'].max()
-    )
-    wgtd2 = sat.weighted(
-        'Optical_Depth_Land_And_Ocean', othdf=cg.geodf,
-        groupkeys=['ROW', 'COL']
-    )
-    assert((wgtd1 == wgtd2).all().all())
+
+def test_open_dataset():
+    import tempfile
+    import os
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        outpath = os.path.join(tmpdirname, 'testomihcho.nc')
+        ds = modis_example_ds()
+        ds.to_netcdf(outpath)
+        sat = readers.modis.MOD04.open_dataset(outpath)
+        checksat(sat)

@@ -9,11 +9,25 @@ def _default_griddesc(GDNAM):
 
     with tempfile.NamedTemporaryFile() as gdfile:
         gdfile.write(b"""' '
+'LATLON'
+  1  0.0 0.0 0.0 0.0 0.0
 'POLSTE_HEMI'
   6         1.000        45.000       -98.000       -98.000        90.000
 'LamCon_40N_97W'
   2        33.000        45.000       -97.000       -97.000        40.000
 ' '
+'US_1deg'
+'LATLON'               -140.0        20.0      1.0      1.0   90   40 1
+'US_0pt1deg'
+'LATLON'               -140.0        20.0      0.1      0.1  900  400 1
+'global_1deg'
+'LATLON'               -180.0       -90.0      1.0      1.0  360  180 1
+'global_0pt1deg'
+'LATLON'               -180.0       -90.0      0.1      0.1 3600 1800 1
+'global_2x2.5'
+'LATLON'               -181.5       -89.0      2.5      2.0  144   89 1
+'global_4x5'
+'LATLON'               -182.5       -88.0      5.0      4.0   72   44 1
 '108NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 108000.0 108000.0  187  187 1
 '324NHEMI2'
@@ -51,6 +65,16 @@ def _default_griddesc(GDNAM):
 
 
 class CMAQGrid:
+    @classmethod
+    def from_gf(cls, gf):
+        out = cls.__new__(cls)
+        out.GDNAM = gf.GDNAM.strip()
+        out.gf = gf
+        out.proj = out.gf.getproj(withgrid=True, projformat='proj4')
+        out._geodf = None
+        out._bbox = None
+        return out
+
     def __init__(self, GDNAM, gdpath=None):
         """
         Arguments
@@ -71,10 +95,10 @@ class CMAQGrid:
                 gdpath, format='griddesc', GDNAM=GDNAM
             )
         self.GDNAM = GDNAM
-        self._gf = gf.subset(['DUMMY'])
-        self._gf.SDATE = 1970001
-        self._gf.updatetflag(overwrite=True)
-        self.proj = self._gf.getproj(withgrid=True, projformat='proj4')
+        self.gf = gf.subset(['DUMMY'])
+        self.gf.SDATE = 1970001
+        self.gf.updatetflag(overwrite=True)
+        self.proj = self.gf.getproj(withgrid=True, projformat='proj4')
         self._geodf = None
         self._bbox = None
 
@@ -89,8 +113,8 @@ class CMAQGrid:
             import numpy as np
             from shapely.geometry import Polygon
 
-            nr = self._gf.NROWS
-            nc = self._gf.NCOLS
+            nr = self.gf.NROWS
+            nc = self.gf.NCOLS
             rows = np.arange(nr + 1)
             cols = np.arange(nc + 1)
             se = np.array([cols, cols * 0])
@@ -121,7 +145,7 @@ class CMAQGrid:
         ge = g.geometry.iloc[0].envelope.exterior
         nelon, nelat = np.max(ge.xy, axis=1)
         swlon, swlat = np.min(ge.xy, axis=1)
-        if self._gf.GDTYP == 6:
+        if self.gf.GDTYP == 6:
             nelat = 90
             swlon = -180
             nelon = 180
@@ -158,6 +182,9 @@ class CMAQGrid:
         import numpy as np
         if rename is None:
             rename = {key: key for key in df.columns}
+        elif callable(rename):
+            rename = {key: rename(key) for key in df.columns}
+
         if isinstance(TSTEP, str):
             TSTEP = df.index.get_level_values(TSTEP)
         if isinstance(LAY, str):
@@ -214,7 +241,7 @@ class CMAQGrid:
         """
         import numpy as np
 
-        outf = self._gf.renameVariable('DUMMY', varkeys[0]).mask(values=0)
+        outf = self.gf.renameVariable('DUMMY', varkeys[0]).mask(values=0)
         nz = len(vglvls) - 1
         if nz > 1:
             outf = outf.slice(LAY=[0] * nz)
@@ -246,8 +273,8 @@ class CMAQGrid:
             import pandas as pd
             import geopandas as gpd
             import numpy as np
-            nr = self._gf.NROWS
-            nc = self._gf.NCOLS
+            nr = self.gf.NROWS
+            nc = self.gf.NCOLS
             rows = np.arange(nr)
             cols = np.arange(nc)
             midx = pd.MultiIndex.from_product([rows, cols])

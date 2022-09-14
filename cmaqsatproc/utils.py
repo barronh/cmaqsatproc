@@ -1,14 +1,45 @@
 __all__ = [
     'getcmrlinks', 'getcmrgranules', 'centertobox', 'cornertobox',
     'EasyRowPolygon', 'weight_vars', 'rootremover', 'csp_formatwarning',
-    'csp_formatwarnings'
+    'csp_formatwarnings', 'grouped_weighted_avg', 'row_to_poly'
 ]
 import warnings
 
 
-_ckeys = ['LL', 'LU', 'UU', 'UL', 'LL']
-_xcrnrkeys = [f'{ckey}_Longitude' for ckey in _ckeys]
-_ycrnrkeys = [f'{ckey}_Latitude' for ckey in _ckeys]
+_ckeys = ['ll', 'lu', 'uu', 'ul']
+_xcrnrkeys = [f'{ckey}_x' for ckey in _ckeys]
+_ycrnrkeys = [f'{ckey}_y' for ckey in _ckeys]
+
+
+def grouped_weighted_avg(values, weights, by):
+    numerator = values.multiply(
+        weights, axis=0
+    ).groupby(by).sum()
+    denominator = weights.groupby(by).sum()
+    outdf = numerator.divide(denominator, axis=0)
+    outdf['weight_sum'] = denominator
+    return outdf
+
+
+def row_to_poly(row, wrap=False):
+    from shapely.geometry import Polygon
+    import numpy as np
+    coords = np.asarray([
+        (row['ll_x'], row['ll_y']),
+        (row['lu_x'], row['lu_y']),
+        (row['uu_x'], row['uu_y']),
+        (row['ul_x'], row['ul_y']),
+        (row['ll_x'], row['ll_y']),
+    ])
+    if wrap:
+        minx = coords[:, 0].min()
+        maxx = coords[:, 0].mix()
+        dx = maxx - minx
+        if dx > 90:
+            x = coords[:, 0]
+            coords[:, 0] = np.where(x > 0, -180, x)
+
+    return Polygon(coords)
 
 
 def getcmrgranules(
@@ -228,7 +259,7 @@ def EasyRowPolygon(row, wrap=True):
     return Polygon(np.asarray([x, y]).T)
 
 
-def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
+def EasyDataFramePoint(df, wrap=True, progress=False, lowmem=False):
     """
     Create polygons from a row with corners of a pixel specificied using
     columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
@@ -241,8 +272,32 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
     Arguments
     ---------
     df : pandas.DataFrame
-        Must contain LL, LU, UU, UL for Longitude and Latitude (e.g.,
-        LL_Longitude, LL_Latitude)
+        Must contain x, y
+
+    Returns
+    -------
+    points : list
+        List of shapely.geometry.Polygons
+    """
+    import geopandas as gpd
+    points = gpd.points_from_xy(df['x'].values, df['y'].values)
+    return points
+
+
+def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
+    """
+    Create polygons from a row with corners of a pixel specificied using
+    columns ll_x, ll_y ... uu_x, uu_y.
+
+    The wrap functionality prevents polygons from straddling the dateline.
+
+    (Same functionality as EasyRowPolygon, but intended to be faster due to
+    the ability to rapidly apply wrapping to multiple rows at a time.)
+
+    Arguments
+    ---------
+    df : pandas.DataFrame
+        Must contain ll, lu, uu, ul for x and y (e.g., ll_x, ll_y)
     wrap : bool
         If True (default), each polygon that crosses the dateline will be
         truncated to the Western portion.
