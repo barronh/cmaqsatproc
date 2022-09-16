@@ -1,7 +1,7 @@
 __all__ = [
     'getcmrlinks', 'getcmrgranules', 'centertobox', 'cornertobox',
     'EasyRowPolygon', 'weight_vars', 'rootremover', 'csp_formatwarning',
-    'csp_formatwarnings', 'grouped_weighted_avg', 'row_to_poly'
+    'csp_formatwarnings', 'grouped_weighted_avg', 'row_to_poly', 'walk_groups'
 ]
 import warnings
 
@@ -9,6 +9,15 @@ import warnings
 _ckeys = ['ll', 'lu', 'uu', 'ul']
 _xcrnrkeys = [f'{ckey}_x' for ckey in _ckeys]
 _ycrnrkeys = [f'{ckey}_y' for ckey in _ckeys]
+
+
+def walk_groups(f, gkey, outputs=None):
+    if outputs is None:
+        outputs = []
+    for key in sorted(f.groups.keys()):
+        outputs.append(f'{gkey}/{key}')
+        walk_groups(f[key], f'{gkey}/{key}', outputs)
+    return outputs
 
 
 def grouped_weighted_avg(values, weights, by):

@@ -10,6 +10,28 @@ class TropOMI(satellite):
     _defaultkeys = ()
 
     @classmethod
+    def _open_hierarchical_dataset(cls, path, bbox=None, isvalid=0.5, **kwargs):
+        import xarray as xr
+        datakey = 'PRODUCT'
+        geokey = 'PRODUCT/SUPPORT_DATA/GEOLOCATIONS'
+        detkey = 'PRODUCT/SUPPORT_DATA/DETAILED_RESULTS'
+        inpkey = 'PRODUCT/SUPPORT_DATA/INPUT_DATA'
+
+        dss = [
+            xr.open_dataset(path, group=datakey, **kwargs),
+            xr.open_dataset(path, group=geokey, **kwargs),
+            xr.open_dataset(path, group=detkey, **kwargs),
+            xr.open_dataset(path, group=inpkey, **kwargs),
+        ]
+        ds = xr.merge(dss)
+        ds = cls.prep_dataset(ds, bbox=bbox, isvalid=isvalid, path=path)
+        sat = cls()
+        sat.path = path
+        sat.ds = ds
+        sat.bbox = bbox
+        return sat
+
+    @classmethod
     def open_dataset(cls, path, bbox=None, isvalid=0.5, **kwargs):
         """
         Arguments
@@ -30,8 +52,11 @@ class TropOMI(satellite):
             Satellite processing instance
         """
         import xarray as xr
-        import numpy as np
         ds = xr.open_dataset(path, **kwargs)
+        if len(ds.dims) == 0:
+            return cls._open_hierarchical_dataset(
+                path, bbox=bbox, isvalid=isvalid, **kwargs
+            )
         rename = {
             k: k.replace('PRODUCT_', '').replace(
                 'SUPPORT_DATA_DETAILED_RESULTS_', ''
@@ -44,6 +69,17 @@ class TropOMI(satellite):
         }
         rename.update({k: k.replace('PRODUCT_', '') for k in ds.dims})
         ds = ds.rename(rename)
+        ds = cls.prep_dataset(ds, bbox=bbox, isvalid=isvalid, path=path)
+        sat = cls()
+        sat.path = path
+        sat.ds = ds.reset_coords()
+        sat.bbox = bbox
+        return sat
+
+    @classmethod
+    def prep_dataset(cls, ds, bbox=None, isvalid=0.5, path=None):
+        import xarray as xr
+        import numpy as np
         if bbox is not None:
             swlon, swlat, nelon, nelat = bbox
             lldf = ds[['latitude', 'longitude']].to_dataframe().query(
@@ -108,12 +144,7 @@ class TropOMI(satellite):
                     lon_edges[corner_slice], dims=dims, coords=coords
                 )
         ds['valid'] = ds['qa_value'] > isvalid
-
-        sat = cls()
-        sat.path = path
-        sat.ds = ds.reset_coords()
-        sat.bbox = bbox
-        return sat
+        return ds
 
     @classmethod
     def shorten_name(cls, key):

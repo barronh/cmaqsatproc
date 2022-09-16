@@ -1,6 +1,7 @@
 __all__ = ['OMI']
 
 from ..core import satellite
+from ...utils import walk_groups
 
 
 class OMIL2(satellite):
@@ -8,6 +9,61 @@ class OMIL2(satellite):
     Default OMI satellite processor.
     * bbox subsets the nTimes and nTimes_1  dimensions
     """
+
+    @classmethod
+    def _open_hierarchical_dataset(cls, path, bbox=None, **kwargs):
+        import netCDF4
+        import xarray as xr
+        tmpf = netCDF4.Dataset(path)
+        datakey, = [
+            gk for gk in walk_groups(tmpf, '') if gk.endswith('Data Fields')
+        ]
+        geokey, = [
+            gk for gk in walk_groups(tmpf, '')
+            if gk.endswith('Geolocation Fields')
+        ]
+        del tmpf
+        datads = xr.open_dataset(path, group=datakey, **kwargs)
+        geods = xr.open_dataset(path, group=geokey, **kwargs)
+
+        dimbylen = {
+            4: 'nCorners'
+        }
+        dimbylen[datads.dims['phony_dim_0']] = 'nTimes'
+        dimbylen[datads.dims['phony_dim_1']] = 'nXtrack'
+        dimbylen[datads.dims['phony_dim_2']] = 'nPresLevels'
+        dimbylen[datads.dims['phony_dim_0'] + 1] = 'nTimes_1'
+        dimbylen[datads.dims['phony_dim_1'] + 1] = 'nXtrack_1'
+        dimbylen[4] = 'nCorners'
+
+        redatadims = {k: dimbylen.get(v, k) for k, v in datads.dims.items()}
+        regeodims = {k: dimbylen.get(v, k) for k, v in geods.dims.items()}
+        ds = xr.merge([datads.rename(**redatadims), geods.rename(**regeodims)])
+        ds = cls.prep_dataset(ds, bbox=bbox, path=path)
+        sat = cls()
+        sat.path = path
+        sat.ds = ds
+        sat.bbox = bbox
+        return sat
+
+    @classmethod
+    def prep_dataset(cls, ds, bbox=None, path=None):
+        if bbox is not None:
+            swlon, swlat, nelon, nelat = bbox
+            df = ds[['Latitude', 'Longitude']].to_dataframe()
+            df = df.query(
+                f'Latitude >= {swlat} and Latitude <= {nelat}'
+                + f' and Longitude >= {swlon} and Longitude <= {nelon}'
+            )
+            times = df.index.get_level_values('nTimes').unique()
+            if len(times) < 0:
+                raise ValueError(f'{path} has no values in {bbox}')
+            ds = ds.isel(
+                nTimes=slice(times.min(), times.max() + 1)
+            )
+            if 'nTimes_1' in ds.dims:
+                ds = ds.isel(nTimes_1=slice(times.min(), times.max() + 2))
+        return ds
 
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
@@ -30,22 +86,9 @@ class OMIL2(satellite):
         import xarray as xr
 
         ds = xr.open_dataset(path, **kwargs).reset_coords()
-        if bbox is not None:
-            swlon, swlat, nelon, nelat = bbox
-            df = ds[['Latitude', 'Longitude']].to_dataframe()
-            df = df.query(
-                f'Latitude >= {swlat} and Latitude <= {nelat}'
-                + f' and Longitude >= {swlon} and Longitude <= {nelon}'
-            )
-            times = df.index.get_level_values('nTimes').unique()
-            if len(times) < 0:
-                raise ValueError(f'{path} has no values in {bbox}')
-            ds = ds.isel(
-                nTimes=slice(times.min(), times.max() + 1)
-            )
-            if 'nTimes_1' in ds.dims:
-                ds = ds.isel(nTimes_1=slice(times.min(), times.max() + 2))
-
+        if len(ds.dims) == 0:
+            return cls._open_hierarchical_dataset(path, bbox=bbox, **kwargs)
+        ds = cls.prep_dataset(ds, bbox=bbox, path=path)
         sat = cls()
         sat.path = path
         sat.ds = ds

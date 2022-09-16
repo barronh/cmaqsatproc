@@ -2,6 +2,14 @@ __all__ = ['CMAQGrid']
 
 from .utils import centertobox
 
+known_overpasstimes = dict(
+    aura=13.75,
+    terra=10.5,
+    aqua=13.5,
+    metop_am=9.5,
+    metop_pm=21.5,
+)
+
 
 def _default_griddesc(GDNAM):
     import PseudoNetCDF as pnc
@@ -289,3 +297,116 @@ class CMAQGrid:
                 geometry=geoms, index=midx, crs=self.proj
             )
         return self._geodf
+
+    def get_tz(self, method='longitude'):
+        import numpy as np
+        import xarray as xr
+        if method != 'longitude':
+            raise ValueError('only longitude is supported at this time')
+        i = np.arange(self.gf.NCOLS)
+        j = np.arange(self.gf.NROWS)
+        I, J = np.meshgrid(i, j)
+        lon, lat = self.gf.ij2ll(I, J)
+        tz = xr.DataArray((lon / 15), dims=('ROW', 'COL'))
+        return tz
+
+    def get_lst(self, times, method='longitude'):
+        import numpy as np
+        import xarray as xr
+        tz = self.get_tz()
+        utc_hour = np.array([
+            time.hour + time.minute / 60 + time.second / 3600
+            for time in times
+        ])
+        utc_hour = xr.DataArray(
+            utc_hour,
+            dims=('TSTEP',)
+        )
+        lst_hour = (tz + utc_hour).transpose('TSTEP', 'ROW', 'COL') % 24
+        return lst_hour
+
+    def is_overpass(self, times, method='longitude', satellite=None):
+        import xarray as xr
+        LST = self.get_lst(times, method=method)
+        if satellite is None:
+            # Overpass in UTC space
+            overpasstimes = known_overpasstimes
+        else:
+            if isinstance(satellite, dict):
+                overpasstimes = satellite
+            else:
+                overpasstimes = {satellite: known_overpasstimes[satellite]}
+        isoverpass = {
+            key: ((LST >= (midh - 1)) & (LST <= (midh + 1)))
+            for key, midh in overpasstimes.items()
+        }
+        return xr.Dataset(isoverpass)
+
+    def mean_overpass(self, inputf, satellite, method='longitude', times=None):
+        import xarray as xr
+        if times is None:
+            try:
+                times = inputf.getTimes()
+            except Exception:
+                times = inputf['TSTEP']
+        isoverpass = self.is_overpass(
+            times, method=method, satellite=satellite
+        )[satellite]
+        keys = [
+            key for key, var in inputf.variables.items()
+            if var.dims == ('TSTEP', 'LAY', 'ROW', 'COL')
+        ]
+        if isinstance(inputf, xr.Dataset):
+            output = inputf[keys].where(isoverpass).mean('TSTEP')
+            for key in keys:
+                output[key].attrs.update(inputf[key].attrs)
+            output.attrs.update(inputf.attrs)
+        else:
+            output = xr.Dataset({
+                key: xr.DataArray(
+                    var, dims=var.dimensions, attrs=var.getncatts()
+                ).where(isoverpass).mean('TSTEP')
+                for key, var in inputf.variables.items()
+                if key in keys
+            })
+            output.attrs.update(inputf.getncatts())
+        return output
+
+    @classmethod
+    def mole_per_m2(self, metf, add=True):
+        import warnings
+        # copied from
+        # https://github.com/USEPA/CMAQ/blob/main/CCTM/src/ICL/fixed/const/
+        # CONST.EXT
+        R = 8.314459848
+        MWAIR = 0.0289628
+        if 'ZF' in metf.variables:
+            DZ = metf['ZF'].copy()
+            DZ[1:] = DZ[1:] - metf['ZF'][:-1]
+            if 'DENS' in metf.variables:
+                MOL_PER_M2 = metf['DENS'] / MWAIR * DZ
+            elif (
+                'PRES' in metf.variables and 'TEMP' in metf.variables
+            ):
+                P = metf['PRES']
+                T = metf['TEMP']
+                MOL_PER_M2 = P / R / T * DZ
+                if 'Q' in metf.variables:
+                    MWH2O = 0.01801528
+                    # Q = gH2O/kgAir
+                    Q = metf['Q']
+                    MOLH2O_PER_MOLAIR = Q * 1000 / MWH2O * MWAIR
+                    MOL_PER_M2 = MOL_PER_M2 * (1 - MOLH2O_PER_MOLAIR)
+                else:
+                    warnings.warn('Using wet mole density')
+            else:
+                raise KeyError(
+                    'You file has ZF, but must also have DENS or PRES/TEMP'
+                    + '(optionally Q)'
+                )
+        else:
+            raise KeyError('Must have ZF and DENS or PRES/TEMP')
+        if add:
+            metf['MOL_PER_M2'] = MOL_PER_M2
+
+        return MOL_PER_M2
