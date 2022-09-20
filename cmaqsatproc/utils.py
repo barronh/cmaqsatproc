@@ -441,3 +441,50 @@ def csp_showwarning(message, category, filename, lineno, file=None, line=None):
         file = sys.stdout
     warnstr = csp_formatwarning(message, category, filename, lineno, line=line)
     file.write(warnstr, flush=True)
+
+def coord_interp(coordout, coordin, varin, verbose=0, interp='numpy', outdim='LAY', indim='LAY', ascending=True, **kwds):
+    """
+    Arguments
+    ---------
+    coordout : xarray.DataArray
+        n-dimensional (must have outdim) where values of coordout are the coordinate
+    coordin : xarray.DataArray
+        n-dimensional (must have indim) where values of coordin are the coordinate
+    varin : xarray.DataArray
+        n-dimensional (must have indim) where values will be interpolated
+    **kwds : mappable
+        supplied as keywords to numpy interp
+
+    Returns
+    -------
+    out : xarray.DataArray
+        varin interpolated to coordout
+    """
+    import xarray as xr
+    import numpy as np
+
+    if interp.lower() == 'numpy':
+        def interp1d(data, x, xi, **kwds):
+            return np.interp(xi, x, data, **kwds)
+    else:
+        def interp1d(data, x, xi, **kwds):
+            from scipy import interpolate
+            f = interpolate.interp1d(x, data, fill_value='extrapolate')
+            return f(xi)
+    tempdimname = 'temp_dim_name'
+    X = coordout.rename(**{outdim: tempdimname})
+    XP = coordin.sortby(indim, ascending=ascending)
+    FP = varin.sortby(indim, ascending=ascending)
+    interped = xr.apply_ufunc(
+        interp1d,
+        FP,
+        XP,
+        X,
+        input_core_dims=[[indim], [indim], [tempdimname]],
+        output_core_dims=[[tempdimname]],
+        exclude_dims=set((indim,)),
+        vectorize=True,
+        kwargs=kwds
+    )
+    out = interped.rename(**{tempdimname: outdim})
+    return out

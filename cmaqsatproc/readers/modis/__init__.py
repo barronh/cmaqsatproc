@@ -100,8 +100,23 @@ provides weights for destination polygon:
         return sat
 
 
-MOD04_L2 = MOD04
-MOD04_3K = MOD04
+class MOD04_L2(MOD04):
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'MOD04_L2')
+        return MOD04.cmr_links(method=method, **kwargs)
+
+
+class MOD04_3K(MOD04):
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'MOD04_3K')
+        return MOD04.cmr_links(method=method, **kwargs)
+
 
 
 class MODISL3(satellite):
@@ -200,7 +215,7 @@ destination polygon:
 
     def to_level3(
         self, *varkeys, grid, griddims=None, weighting='equal',
-        as_dataset=False, verbose=0
+        as_dataset=True, verbose=0
     ):
         """
         Arguments

@@ -1,4 +1,4 @@
-__all__ = ['TropOMI']
+__all__ = ['TropOMI', 'TropOMINO2', 'TropOMICO', 'TropOMIHCHO', 'TropOMICH4']
 from ..core import satellite
 
 
@@ -115,8 +115,8 @@ class TropOMI(satellite):
                 'll': 0, 'ul': 1, 'uu': 2, 'lu': 3,
             }
             for cornerkey, corner_slice in corner_slices.items():
-                ds[f'{cornerkey}_y'] = lat_bnds.sel(corner=corner_slice)
-                ds[f'{cornerkey}_x'] = lon_bnds.sel(corner=corner_slice)
+                ds[f'{cornerkey}_y'] = lat_bnds.isel(corner=corner_slice)
+                ds[f'{cornerkey}_x'] = lon_bnds.isel(corner=corner_slice)
         else:
             lat_edges = ds.latitude.interp(
                 scanline=scanline_edges, ground_pixel=pixel_edges,
@@ -144,6 +144,12 @@ class TropOMI(satellite):
                     lon_edges[corner_slice], dims=dims, coords=coords
                 )
         ds['valid'] = ds['qa_value'] > isvalid
+        if bbox is not None:
+            ds['valid'] = ds['valid'] & (
+                (ds['latitude'] >= swlat) & (ds['latitude'] <= nelat)
+                & (ds['longitude'] >= swlon) & (ds['longitude'] <= nelon)
+            )
+
         return ds
 
     @classmethod
@@ -162,26 +168,89 @@ class TropOMI(satellite):
         key = key.replace('pressure', 'pres')
         return key
 
+    @classmethod
+    def cmaq_sw(cls, overf, outputs, amfkey):
+        from ...utils import coord_interp
+        pres = (
+            (
+                outputs['tm5_constant_b'].mean('vertices')
+                * outputs['surface_pressure']
+            ) + outputs['tm5_constant_a'].mean('vertices')
+        )
+        sw_trop = (
+            outputs['averaging_kernel'].where(
+                outputs['tm5_tropopause_layer_index'] >= outputs['layer'],
+            )
+            * outputs[amfkey]
+        )
+        q_sw_trop = coord_interp(
+            overf['PRES'], pres, sw_trop,
+            indim='layer', outdim='LAY', ascending=False
+        )
+        return q_sw_trop
+
+    @classmethod
+    def cmaq_amf(cls, overf, outputs, amfkey, key='NO2_PER_M2'):
+        """
+        Calculates the Tropospheric Averaging Kernel
+        """
+        q_sw_trop = cls.cmaq_sw(overf, ouputs, amfkey=amfkey)
+        denom = overf[key].sum('LAY')
+        q_amf = (q_sw_trop * overf[key]).sum('LAY') / denom
+        return q_amf.where(denom != 0)
+
 
 class TropOMICO(TropOMI):
-    _defaultkeys = ('carbonmonoxide_total_column',)
+    _defaultkeys = ('carbonmonoxide_total_column', 'column_averaging_kernel', 'layer')
     __doc__ = """
     TropOMICO satellite processor.
     * bbox subsets the scanline dimensions
     * valid = qa_value >= threshold (default 0.5)
     """
 
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'S5P_L2__CO____')
+        return TropOMI.cmr_links(method=method, **kwargs)
+
 
 class TropOMINO2(TropOMI):
     _defaultkeys = (
-        'air_mass_factor_troposphere', 'nitrogendioxide_tropospheric_column',
-        'nitrogendioxide_total_column'
+        'air_mass_factor_total', 'air_mass_factor_troposphere', 'nitrogendioxide_tropospheric_column',
+        'nitrogendioxide_total_column', 'averaging_kernel', 'tm5_constant_a',
+        'tm5_constant_b', 'tm5_tropopause_layer_index', 'surface_pressure'
     )
     __doc__ = """
     TropOMINO2 satellite processor.
     * bbox subsets the scanline dimensions
     * valid = qa_value >= threshold (default 0.5)
     """
+
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'S5P_L2__NO2___')
+        return TropOMI.cmr_links(method=method, **kwargs)
+
+    @classmethod
+    def cmaq_sw(cls, overf, outputs, amfkey='air_mass_factor_total'):
+        return TropOMI.cmaq_sw(overf, outputs, amfkey=amfkey)
+
+    @classmethod
+    def cmaq_amf(cls, overf, outputs, amfkey='air_mass_factor_total'):
+        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey)
+
+    @classmethod
+    def cmaq_ak(cls, overf, outputs, amfkey='air_mass_factor_total'):
+        """
+        Calculates the Tropospheric Averaging Kernel
+        """
+        q_sw_trop = cls.cmaq_sw(overf, ouputs, amfkey=amfkey)
+        q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
+        return q_ak
 
 
 class TropOMICH4(TropOMI):
@@ -191,3 +260,37 @@ class TropOMICH4(TropOMI):
     * bbox subsets the scanline dimensions
     * valid = qa_value >= threshold (default 0.5)
     """
+
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'S5P_L2__CH4___')
+        return TropOMI.cmr_links(method=method, **kwargs)
+
+
+class TropOMIHCHO(TropOMI):
+    __doc__ = """
+    TropOMINO2 satellite processor.
+    * bbox subsets the scanline dimensions
+    * valid = qa_value >= threshold (default 0.5)
+    """
+    _defaultkeys = (
+        'formaldehyde_profile_apriori', 'averaging_kernel'
+        'formaldehyde_tropospheric_vertical_column'
+    )
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'S5P_L2__HCHO__')
+        return TropOMI.cmr_links(method=method, **kwargs)
+
+    @classmethod
+    def cmaq_ak(cls, overf, outputs):
+        """
+        Calculates the Tropospheric Averaging Kernel
+        """
+        q_sw_trop = cls.cmaq_sw(overf, ouputs)
+        q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
+        return q_ak

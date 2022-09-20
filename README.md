@@ -9,9 +9,7 @@ Satellite Processors designed for simple CMAQ comparisons.
 
 ## What makes it simple?
 
-Components are complex, but coupled with easy preconfigured
-pipelines. A pipeline knows how components fit together to make
-running easy.
+Objects for each type of thing are specialized to make it easy.
 
 ```
 import pandas as pd

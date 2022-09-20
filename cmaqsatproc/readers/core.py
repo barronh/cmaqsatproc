@@ -15,6 +15,68 @@ class satellite:
     )
 
     @classmethod
+    def cmr_links(cls, method='opendap', **kwds):
+        """
+        method : str
+            Options are opendap, download, or s3
+        """
+        from copy import copy
+        from ..utils import getcmrlinks
+        kwds = copy(kwds)
+        down_f = (
+            lambda x: (
+                'opendap' not in x['href']
+                and (
+                    x['href'].endswith('he5')
+                    or x['href'].endswith('nc')
+                    or x['href'].endswith('hdf')
+                )
+                and x['href'].startswith('http')
+            )
+        )
+        s3_f = (
+            lambda x: (
+                'opendap' not in x['href']
+                and (
+                    x['href'].endswith('he5')
+                    or x['href'].endswith('nc')
+                    or x['href'].endswith('hdf')
+                )
+                and x['href'].startswith('s3')
+            )
+        )
+        open_f = (
+            lambda x: 'opendap' in x['href']
+            and (
+                not x['href'].endswith('html')
+                or  x['href'].endswith('.nc.html')
+                or  x['href'].endswith('.he5.html')
+                or  x['href'].endswith('.hdf.html')
+            )
+        )
+        kwds.setdefault(
+            'filterfunc', {
+                'opendap': open_f, 's3': s3_f, 'download': down_f
+            }[method]
+        )
+
+        rawlinks = sorted(getcmrlinks(**kwds))
+        # MODIS requires extra processing because OpenDAP links from CMR are
+        # to the html interface instead of to the file itself.
+        #
+        # Conceptually, this may apply to any/all datasets
+        if method != 'opendap':
+            links = rawlinks
+        else:
+            links = []
+            for link in rawlinks:
+                if link.endswith('.html'):
+                    link = link[:-5]
+                links.append(link)
+
+        return links
+
+    @classmethod
     def from_dataset(cls, ds, path='unknown'):
         """
         Arguments
@@ -131,7 +193,7 @@ class satellite:
 
     def to_level3(
         self, *varkeys, grid, griddims=None, weighting='area',
-        as_dataset=False, verbose=0
+        as_dataset=True, verbose=0
     ):
         """
         Arguments
@@ -188,6 +250,7 @@ class satellite:
         if verbose > 0:
             print('Adding weights', flush=True)
         self.add_weights(intx, option=weighting)
+        justweight = intx[['weight']]
         overlays = {}
         for dimset, keys in dimsets.items():
             if verbose > 0:
@@ -198,12 +261,12 @@ class satellite:
             df = self.to_dataframe(*keys, geo=False)
             if verbose > 1:
                 print(' - Adding intx geometry', flush=True)
-            df = intx.join(df)
+            df = justweight.join(df)
             # Geometry objects are not weightable
             if verbose > 1:
                 print(' - Weighting', flush=True)
             gdf = grouped_weighted_avg(
-                df.drop('geometry', axis=1), df['weight'], outdims
+                df, df['weight'], outdims
             )
             if verbose > 1:
                 print(' - Adding attributes', flush=True)
@@ -219,7 +282,10 @@ class satellite:
             dss = {}
             for dimks, outdf in overlays.items():
                 dss[dimks] = xr.Dataset.from_dataframe(outdf)
-            outds = xr.merge(dss.values())
+            outds = xr.merge(dss.values()).reindex(**{
+                griddim: grid.index.get_level_values(griddim).unique()
+                for griddim in griddims
+            })
             for key in outds.variables:
                 if key in self.ds.variables:
                     outds[key].attrs.update(self.ds[key].attrs)
@@ -232,14 +298,35 @@ class satellite:
             )
             outds.attrs['updated'] = datetime.now().strftime('%FT%H:%M:%S%z')
             outds.attrs['history'] = ''
+            outds.attrs['crs'] = grid.crs.srs
             return outds
 
         return overlays
 
     @classmethod
+    def cmr_to_level3(
+        cls, temporal, grid, griddims=None, weighting='area', bbox=None,
+        verbose=0, varkeys=None, as_dataset=True, link_kwargs=None, **kwargs
+    ):
+        from copy import copy
+        if link_kwargs is None:
+            link_kwargs = {}
+        link_kwargs = copy(link_kwargs)
+        if bbox is None:
+            grid.unary_union.envelope
+        link_kwargs.setdefault('method', 'opendap')
+        links = cls.cmr_links(
+            temporal=temporal, bbox=bbox, **link_kwargs
+        )
+        return cls.paths_to_level3(
+            links, grid=grid, griddims=griddims, weighting=weighting, bbox=bbox,
+            verbose=verbose, varkeys=varkeys, as_dataset=as_dataset, **kwargs
+        )
+
+    @classmethod
     def paths_to_level3(
         cls, paths, grid, griddims=None, weighting='area', bbox=None,
-        verbose=0, varkeys=None, as_dataset=False, **kwargs
+        verbose=0, varkeys=None, as_dataset=True, **kwargs
     ):
         """
         Iteratively apply
@@ -264,7 +351,7 @@ class satellite:
                 sat = cls.open_dataset(path, bbox=bbox, **kwargs)
                 withdata[path] = sat.to_level3(
                     *varkeys, grid=grid, griddims=griddims,
-                    weighting=weighting, verbose=verbose
+                    weighting=weighting, verbose=verbose, as_dataset=False
                 )
             except Exception as e:
                 nodata[path] = repr(e)
@@ -318,6 +405,44 @@ class satellite:
             )
             outds.attrs['history'] = str(nodata)
             outds.attrs['updated'] = datetime.now().strftime('%FT%H:%M:%S%z')
+            outds.attrs['crs'] = grid.crs.srs
             return outds
 
         return outputs, nodata
+
+    @classmethod
+    def to_cmaqvertical(cls, cmaqmid, satmid, satvar):
+        """
+        # y = interp(x, xp, yp)
+        # for qsw, x=cmaqmid, xp=satmid, yp=satvar
+        """
+        import xarray as xr
+        import numpy as np
+        nr = int(cmaqmid['ROW'].max()) + 1
+        nc = int(cmaqmid['COL'].max()) + 1
+        nl = cmaqmid['LAY'].size
+        qsw = xr.DataArray(
+            np.ma.masked_all((1, nl, nr, nc), dtype='f'),
+            dims=('TSTEP', 'LAY', 'ROW', 'COL')
+        )
+        #qno2 = xr.DataArray(
+        #    np.ma.masked_all((1, omno2f.dims['nPresLevels'], nr, nc), dtype='f'),
+        #    dims=('TSTEP', 'LAY', 'ROW', 'COL')
+        #)
+
+        for r in satmid['ROW']:
+            print(end='.', flush=True)
+            xprow = satmid.sel(ROW=r)
+            if np.isnan(xprow).all():
+                continue
+            yprow = satvar.sel(ROW=r)
+            xrow = cmaqmid.sel(ROW=r)
+            #yrow = overf['NO2'].sel(ROW=r)
+            for c in satmid['COL']:
+                xp = xprow.sel(COL=c)[::-1]
+                if not np.isnan(xp).all():
+                    x = xrow.sel(COL=c)
+                    y = yrow.sel(COL=c)
+                    yp = yprow.sel(COL=c)[::-1]
+                    qsw[0, :, r, c] = np.interp(x, xp, yp)
+                    #qno2[0, :, r, c] = np.interp(xp[::-1], x[::-1], y[::-1])

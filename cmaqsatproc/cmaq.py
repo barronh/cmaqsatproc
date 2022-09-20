@@ -78,9 +78,7 @@ class CMAQGrid:
         out = cls.__new__(cls)
         out.GDNAM = gf.GDNAM.strip()
         out.gf = gf
-        out.proj = out.gf.getproj(withgrid=True, projformat='proj4')
-        out._geodf = None
-        out._bbox = None
+        out.proj4string = out.gf.getproj(withgrid=True, projformat='proj4')
         return out
 
     def __init__(self, GDNAM, gdpath=None):
@@ -95,28 +93,42 @@ class CMAQGrid:
             a few test domains (1188NHEMI2, 108US1).
         """
         import PseudoNetCDF as pnc
-        if gdpath is None:
-            gf = _default_griddesc(GDNAM)
-            gf.HISTORY = 'From GRIDDESC'
-        else:
-            gf = pnc.pncopen(
-                gdpath, format='griddesc', GDNAM=GDNAM
-            )
+        import warnings
+        with warnings.catch_warnings(record=True):
+            if gdpath is None:
+                gf = _default_griddesc(GDNAM)
+                gf.HISTORY = 'From GRIDDESC'
+            else:
+                gf = pnc.pncopen(
+                    gdpath, format='griddesc', GDNAM=GDNAM
+                )
         self.GDNAM = GDNAM
         self.gf = gf.subset(['DUMMY'])
         self.gf.SDATE = 1970001
         self.gf.updatetflag(overwrite=True)
-        self.proj = self.gf.getproj(withgrid=True, projformat='proj4')
-        self._geodf = None
-        self._bbox = None
+        self.proj4string = self.gf.getproj(withgrid=True, projformat='proj4')
 
+    @property
+    def proj(self):
+        if not hasattr(self, '_proj'):
+            import pyproj
+            self._proj = pyproj.Proj(self.proj4string)
+        return self._proj
+            
+    @property
+    def cno(self):
+        if not hasattr(self, '_cno'):
+            import pycno
+            self._cno = pycno.cno(self.proj)
+        return self._cno
+            
     @property
     def exterior(self):
         """
         Exterior polygon using row/col exterior points. This is archived
         from the dataframe once for efficiency.
         """
-        if self._bbox is None:
+        if not hasattr(self, '_bbox'):
             import geopandas as gpd
             import numpy as np
             from shapely.geometry import Polygon
@@ -131,7 +143,7 @@ class CMAQGrid:
             we = np.array([rows * 0, rows[::-1]])
             points = np.concatenate([se, ee, ne, we], axis=1)
             self._bbox = gpd.GeoDataFrame(
-                geometry=[Polygon(points.T)], crs=self.proj
+                geometry=[Polygon(points.T)], crs=self.proj4string
             )
 
         return self._bbox
@@ -277,7 +289,7 @@ class CMAQGrid:
 
     @property
     def geodf(self):
-        if self._geodf is None:
+        if not hasattr(self, '_geodf'):
             import pandas as pd
             import geopandas as gpd
             import numpy as np
@@ -294,7 +306,7 @@ class CMAQGrid:
                         centertobox(xc=c + 0.5, yc=r + 0.5, width=1, height=1)
                     )
             self._geodf = gpd.GeoDataFrame(
-                geometry=geoms, index=midx, crs=self.proj
+                geometry=geoms, index=midx, crs=self.proj4string
             )
         return self._geodf
 
@@ -382,7 +394,7 @@ class CMAQGrid:
         MWAIR = 0.0289628
         if 'ZF' in metf.variables:
             DZ = metf['ZF'].copy()
-            DZ[1:] = DZ[1:] - metf['ZF'][:-1]
+            DZ[1:] = DZ[1:] - metf['ZF'][:-1].values
             if 'DENS' in metf.variables:
                 MOL_PER_M2 = metf['DENS'] / MWAIR * DZ
             elif (

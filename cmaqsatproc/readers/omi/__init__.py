@@ -135,7 +135,15 @@ class OMNO2(OMIL2):
       * XTrackQualityFlags == 0
       * CloudFraction <= 0.3
     """
-    _defaultkeys = ('ColumnAmountNO2Trop', 'AmfTrop')
+    _defaultkeys = (
+        'ColumnAmountNO2Trop', 'AmfTrop', 'ColumnAmountNO2Trop', 'AmfTrop',
+        'ScatteringWeight', 'ScatteringWtPressure', 'TropopausePressure',
+        'TerrainPressure',
+    )
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwds):
+        kwds.setdefault('short_name', 'OMNO2')
+        return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
@@ -178,6 +186,35 @@ class OMNO2(OMIL2):
         sat.bbox = bbox
         return sat
 
+    @classmethod
+    def cmaq_sw(cls, overf, outputs):
+        from ...utils import coord_interp
+        qpres_hpa = overf['PRES'] / 100
+        sat_press = outputs['ScatteringWtPressure'].copy()
+        sat_press.isel(nPresLevels=0)[:] = qpres_hpa.isel(LAY=0)
+        introp = outputs['TropopausePressure'] < qpres_hpa
+        q_sw = coord_interp(
+            qpres_hpa,
+            sat_press,
+            outputs['ScatteringWeight'],
+            indim='nPresLevels', outdim='LAY', ascending=False,
+        ).where(introp)
+        return q_sw
+
+    @classmethod
+    def cmaq_amf(cls, overf, outputs, key='NO2_PER_M2'):
+        q_sw = cls.cmaq_sw(overf, outputs)
+        q_var = overf[key].where(~q_sw.isnull())
+        denom = q_var.sum('LAY')
+        cmaqamf = (q_sw * q_var).sum('LAY') / denom
+        return cmaqamf.where(denom != 0)
+
+    @classmethod
+    def cmaq_ak(cls, overf, outputs):
+        q_sw = cls.cmaq_sw(overf, outputs)
+        q_ak = q_sw / outputs['AmfTrop']
+        return q_ak
+
 
 class OMHCHO(OMIL2):
     __doc__ = """
@@ -190,8 +227,14 @@ class OMHCHO(OMIL2):
     """
     _defaultkeys = (
         'ColumnAmount', 'ReferenceSectorCorrectedVerticalColumn',
-        'AirMassFactor'
+        'AirMassFactor', 'ScatteringWeights', 'ClimatologyLevels'
     )
+
+
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwds):
+        kwds.setdefault('short_name', 'OMHCHO')
+        return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
@@ -245,3 +288,32 @@ class OMHCHO(OMIL2):
         sat.ds = ds
         sat.bbox = bbox
         return sat
+
+
+    @classmethod
+    def cmaq_sw(cls, overf, outputs):
+        from ...utils import coord_interp
+        qpres_hpa = overf['PRES'] / 100
+        sat_press = outputs['ClimatologyLevels'].copy()
+        sat_press.isel(nLevels=0)[:] = qpres_hpa.isel(LAY=0)
+        q_sw = coord_interp(
+            qpres_hpa,
+            sat_press,
+            outputs['ScatteringWeights'],
+            indim='nLevels', outdim='LAY', ascending=False,
+        )
+        return q_sw
+
+    @classmethod
+    def cmaq_amf(cls, overf, outputs, key='FORM_PER_M2'):
+        q_sw = cls.cmaq_sw(overf, outputs)
+        q_var = overf[key].where(~q_sw.isnull())
+        denom = q_var.sum('LAY')
+        cmaqamf = (q_sw * q_var).sum('LAY') / denom
+        return cmaqamf.where(denom != 0)
+
+    @classmethod
+    def cmaq_ak(cls, overf, outputs):
+        q_sw = cls.cmaq_sw(overf, outputs)
+        q_ak = q_sw / outputs['AirMassFactor']
+        return q_ak
