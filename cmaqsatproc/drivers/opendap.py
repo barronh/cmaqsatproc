@@ -162,7 +162,8 @@ def add_opendap_parser(subparsers):
         )
     )
     opendapparser.add_argument(
-        '-O', '--overwrite', default=False, action='store_true'
+        '-O', '--overwrite', default=False, action='store_true',
+        help='--outpath will be removed before running the command'
     )
     opendapparser.add_argument(
         '--outpath', default=None,

@@ -10,13 +10,7 @@ known_overpasstimes = dict(
     metop_pm=21.5,
 )
 
-
-def _default_griddesc(GDNAM):
-    import PseudoNetCDF as pnc
-    import tempfile
-
-    with tempfile.NamedTemporaryFile() as gdfile:
-        gdfile.write(b"""' '
+default_griddesc_txt = b"""' '
 'LATLON'
   1  0.0 0.0 0.0 0.0 0.0
 'POLSTE_HEMI'
@@ -66,7 +60,15 @@ def _default_griddesc(GDNAM):
 'LamCon_40N_97W'   -2952000.0  -2772000.0  36000.0  36000.0  172  148 1
 '108US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
-' '""")
+' '"""
+
+
+def _default_griddesc(GDNAM):
+    import PseudoNetCDF as pnc
+    import tempfile
+
+    with tempfile.NamedTemporaryFile() as gdfile:
+        gdfile.write(default_griddesc_txt)
         gdfile.flush()
         outf = pnc.pncopen(gdfile.name, format='griddesc', GDNAM=GDNAM)
     return outf
@@ -81,7 +83,7 @@ class CMAQGrid:
         out.proj4string = out.gf.getproj(withgrid=True, projformat='proj4')
         return out
 
-    def __init__(self, GDNAM, gdpath=None):
+    def __init__(self, GDNAM, gdpath=None, help=False):
         """
         Arguments
         ---------
@@ -91,7 +93,14 @@ class CMAQGrid:
             Path to GRIDDESC file. If None, then a default is provided with
             access to typical EPA domains (12US1, 12US2, 36US3, 108NHEMI2) and
             a few test domains (1188NHEMI2, 108US1).
+        help : bool
+            If help is True, print default griddesc text to stdout. Because
+            GDNAM is required, use a null string with help=True. For example,
+            CMAQGrid('', help=True)
         """
+        if help:
+            print(default_griddesc_txt.decode())
+
         import PseudoNetCDF as pnc
         import warnings
         with warnings.catch_warnings(record=True):
@@ -108,6 +117,8 @@ class CMAQGrid:
             self.proj4string = self.gf.getproj(
                 withgrid=True, projformat='proj4'
             )
+        if GDNAM is None:
+            GDNAM = self.gf.GDNAM.strip()
         self.GDNAM = GDNAM
 
     @property

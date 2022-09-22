@@ -144,7 +144,8 @@ def add_localdisk_parser(subparsers):
         )
     )
     localdiskparser.add_argument(
-        '-O', '--overwrite', default=False, action='store_true'
+        '-O', '--overwrite', default=False, action='store_true',
+        help='--outpath will be removed before running the command'
     )
     localdiskparser.add_argument(
         '--outpath', default=None,
@@ -178,7 +179,11 @@ def add_localdisk_parser(subparsers):
     )
     localdiskparser.add_argument(
         'gdnam', metavar='GDNAM',
-        help='Name CMAQ Grid, either known by cmaqsatproc or in GRIDDESC'
+        help=(
+            'Name CMAQ Grid, either known by cmaqsatproc or in GRIDDESC'
+            + ' (e.g., 12US1, 36US2, 108NHEMI1, global_1x1, global_0pt1deg,'
+            + ' 108US1, US_1deg, etc)'
+        )
     )
     localdiskparser.add_argument(
         'inpaths', nargs='+',
