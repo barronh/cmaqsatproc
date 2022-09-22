@@ -140,7 +140,7 @@ def add_localdisk_parser(subparsers):
         'localdisk',
         help=(
             'Create custom Level2 csv (csv) or Level3 (l3) file using data'
-            + ' fromfiles on your local disk.'
+            + ' from files on your local disk.'
         )
     )
     localdiskparser.add_argument(

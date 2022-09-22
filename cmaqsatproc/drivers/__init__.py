@@ -8,7 +8,7 @@ import argparse
 parser = argparse.ArgumentParser(prog='cmaqsatproc')
 subparsers = parser.add_subparsers(
     dest='command', title='subcommands',
-    description='valid subcommands',
+    description='Valid subcommands are show below:',
     help='For help on subcommands run %(prog)s subcommand -h'
 )
 opendap.add_opendap_parser(subparsers)
