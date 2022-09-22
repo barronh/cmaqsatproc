@@ -36,6 +36,10 @@ class IASI_NH3(satellite):
             )
             times = df.index.get_level_values('time').values
             ds = ds.sel(time=times)
+            ds['valid'] = ds['valid'] & (
+                (ds['latitude'] >= swlat) & (ds['latitude'] <= nelat)
+                & (ds['longitude'] >= swlon) & (ds['longitude'] <= nelon)
+            )
 
         sat = cls()
         sat.path = path
@@ -43,7 +47,7 @@ class IASI_NH3(satellite):
         sat.ds = ds
         return sat
 
-    def to_dataframe(self, *varkeys, valid=True, geo=False):
+    def to_dataframe(self, *varkeys, valid=True, geo=False, default_keys=False):
         """
         Arguments
         ---------
@@ -59,13 +63,15 @@ class IASI_NH3(satellite):
         -------
         df : pandas.DataFrame or geopandas.GeoDataFrame
         """
-        df = satellite.to_dataframe(self, *varkeys, valid=valid, geo=False)
+        df = satellite.to_dataframe(
+            self, *varkeys, valid=valid, geo=False, default_keys=default_keys
+        )
         if not (geo is False):
             import geopandas as gpd
             if geo is True:
                 geo = EasyDataFramePoint
 
-            gdf = self.to_dataframe(*self._geokeys)
+            gdf = self.to_dataframe(*self._geokeys, valid=valid)
             gdf['x'] = gdf['longitude']
             gdf['y'] = gdf['latitude']
             gdf = gpd.GeoDataFrame(

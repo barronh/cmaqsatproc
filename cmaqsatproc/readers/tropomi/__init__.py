@@ -194,14 +194,16 @@ class TropOMI(satellite):
         """
         Calculates the Tropospheric Averaging Kernel
         """
-        q_sw_trop = cls.cmaq_sw(overf, ouputs, amfkey=amfkey)
+        q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
         denom = overf[key].sum('LAY')
         q_amf = (q_sw_trop * overf[key]).sum('LAY') / denom
-        return q_amf.where(denom != 0)
+        return q_amf.where((denom != 0) & ~q_sw_trop.isnull().all('LAY'))
 
 
 class TropOMICO(TropOMI):
-    _defaultkeys = ('carbonmonoxide_total_column', 'column_averaging_kernel', 'layer')
+    _defaultkeys = (
+        'carbonmonoxide_total_column', 'column_averaging_kernel', 'layer'
+    )
     __doc__ = """
     TropOMICO satellite processor.
     * bbox subsets the scanline dimensions
@@ -218,9 +220,10 @@ class TropOMICO(TropOMI):
 
 class TropOMINO2(TropOMI):
     _defaultkeys = (
-        'air_mass_factor_total', 'air_mass_factor_troposphere', 'nitrogendioxide_tropospheric_column',
-        'nitrogendioxide_total_column', 'averaging_kernel', 'tm5_constant_a',
-        'tm5_constant_b', 'tm5_tropopause_layer_index', 'surface_pressure'
+        'air_mass_factor_total', 'air_mass_factor_troposphere',
+        'nitrogendioxide_tropospheric_column', 'nitrogendioxide_total_column',
+        'averaging_kernel', 'tm5_constant_a', 'tm5_constant_b',
+        'tm5_tropopause_layer_index', 'surface_pressure'
     )
     __doc__ = """
     TropOMINO2 satellite processor.
@@ -248,7 +251,7 @@ class TropOMINO2(TropOMI):
         """
         Calculates the Tropospheric Averaging Kernel
         """
-        q_sw_trop = cls.cmaq_sw(overf, ouputs, amfkey=amfkey)
+        q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
         q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
         return q_ak
 
@@ -279,6 +282,7 @@ class TropOMIHCHO(TropOMI):
         'formaldehyde_profile_apriori', 'averaging_kernel'
         'formaldehyde_tropospheric_vertical_column'
     )
+
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         from copy import copy
@@ -291,6 +295,6 @@ class TropOMIHCHO(TropOMI):
         """
         Calculates the Tropospheric Averaging Kernel
         """
-        q_sw_trop = cls.cmaq_sw(overf, ouputs)
+        q_sw_trop = cls.cmaq_sw(overf, outputs)
         q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
         return q_ak

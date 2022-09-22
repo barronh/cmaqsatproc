@@ -49,9 +49,9 @@ class satellite:
             lambda x: 'opendap' in x['href']
             and (
                 not x['href'].endswith('html')
-                or  x['href'].endswith('.nc.html')
-                or  x['href'].endswith('.he5.html')
-                or  x['href'].endswith('.hdf.html')
+                or x['href'].endswith('.nc.html')
+                or x['href'].endswith('.he5.html')
+                or x['href'].endswith('.hdf.html')
             )
         )
         kwds.setdefault(
@@ -130,7 +130,7 @@ class satellite:
     def ds(self, ds):
         self._ds = ds
 
-    def to_dataframe(self, *varkeys, valid=True, geo=False):
+    def to_dataframe(self, *varkeys, valid=True, geo=False, default_keys=False):
         """
         Arguments
         ---------
@@ -147,6 +147,10 @@ class satellite:
         df : pandas.DataFrame or geopandas.GeoDataFrame
         """
         keys = list(self._stdkeys) + list(varkeys)
+        if default_keys:
+            keys = keys + list(self._defaultkeys)
+        if not valid:
+            keys = [key for key in keys if key != 'valid']
         df = self.ds[keys].to_dataframe()
         if valid:
             df = df.query('valid == True')
@@ -161,8 +165,9 @@ class satellite:
                 gdf, geometry=geo(gdf), crs=self._crs
             ).drop(list(self._geokeys), axis=1)
             df = gdf[['geometry']].join(df)
-        if 'valid' not in varkeys:
-            df = df.drop('valid', axis=1)
+        if 'valid' in df.columns:
+            if 'valid' not in varkeys:
+                df = df.drop('valid', axis=1)
         for key in df.columns:
             if key in self.ds.variables:
                 df[key].attrs.update(self.ds[key].attrs)
@@ -259,15 +264,37 @@ class satellite:
             if verbose > 1:
                 print(' - Making dataframe', flush=True)
             df = self.to_dataframe(*keys, geo=False)
+            if verbose > 2:
+                print(f'   - Dataframe as {df.shape[0]} rows', flush=True)
             if verbose > 1:
                 print(' - Adding intx geometry', flush=True)
-            df = justweight.join(df)
-            # Geometry objects are not weightable
-            if verbose > 1:
-                print(' - Weighting', flush=True)
-            gdf = grouped_weighted_avg(
-                df, df['weight'], outdims
-            )
+            if any([n in dimset for n in justweight.index.names]):
+                df = justweight.join(df)
+                if verbose > 2:
+                    print(
+                        f'   - Weighted inputs has {df.shape[0]} rows',
+                        flush=True
+                    )
+                # Geometry objects are not weightable
+                if verbose > 1:
+                    print(' - Weighting', flush=True)
+                gdf = grouped_weighted_avg(
+                    df, df['weight'], outdims
+                )
+            else:
+                gdf = self.to_dataframe(*keys, geo=False, valid=False)
+                # tmpgrid = grid.drop('geometry', axis=1).copy()
+                # tmpgrid['none'] = 1
+                # gdf = tmpgrid.set_index('none', append=True).join(
+                #     df.set_index('none', append=True)
+                # ).droplevel('none')
+                # gdf['weight_sum'] = 1
+
+            if verbose > 2:
+                print(
+                    f'   - Weighted outputs has {gdf.shape[0]} rows',
+                    flush=True
+                )
             if verbose > 1:
                 print(' - Adding attributes', flush=True)
             for key in gdf.columns:
@@ -375,9 +402,13 @@ class satellite:
                 dimdfs, keys=keys, names=['path']
             )
             outdims = list(dimdfs[0].index.names)
-            combinedf = grouped_weighted_avg(
-                combinedf, combinedf['weight_sum'], outdims
-            )
+            if 'weight_sum' not in combinedf.columns:
+                combinedf = combinedf.groupby(outdims).mean()
+            else:
+                combinedf = grouped_weighted_avg(
+                    combinedf, combinedf['weight_sum'], outdims
+                )
+
             for key in combinedf.columns:
                 if key in attrs:
                     combinedf[key].attrs.update(attrs[key])
@@ -389,6 +420,7 @@ class satellite:
             dss = {}
             for dimks, outdf in outputs.items():
                 dss[dimks] = xr.Dataset.from_dataframe(outdf)
+
             outds = xr.merge(dss.values()).reindex(**{
                 griddim: grid.index.get_level_values(griddim).unique()
                 for griddim in griddims
@@ -409,40 +441,3 @@ class satellite:
             return outds
 
         return outputs, nodata
-
-    @classmethod
-    def to_cmaqvertical(cls, cmaqmid, satmid, satvar):
-        """
-        # y = interp(x, xp, yp)
-        # for qsw, x=cmaqmid, xp=satmid, yp=satvar
-        """
-        import xarray as xr
-        import numpy as np
-        nr = int(cmaqmid['ROW'].max()) + 1
-        nc = int(cmaqmid['COL'].max()) + 1
-        nl = cmaqmid['LAY'].size
-        qsw = xr.DataArray(
-            np.ma.masked_all((1, nl, nr, nc), dtype='f'),
-            dims=('TSTEP', 'LAY', 'ROW', 'COL')
-        )
-        #qno2 = xr.DataArray(
-        #    np.ma.masked_all((1, omno2f.dims['nPresLevels'], nr, nc), dtype='f'),
-        #    dims=('TSTEP', 'LAY', 'ROW', 'COL')
-        #)
-
-        for r in satmid['ROW']:
-            print(end='.', flush=True)
-            xprow = satmid.sel(ROW=r)
-            if np.isnan(xprow).all():
-                continue
-            yprow = satvar.sel(ROW=r)
-            xrow = cmaqmid.sel(ROW=r)
-            #yrow = overf['NO2'].sel(ROW=r)
-            for c in satmid['COL']:
-                xp = xprow.sel(COL=c)[::-1]
-                if not np.isnan(xp).all():
-                    x = xrow.sel(COL=c)
-                    y = yrow.sel(COL=c)
-                    yp = yprow.sel(COL=c)[::-1]
-                    qsw[0, :, r, c] = np.interp(x, xp, yp)
-                    #qno2[0, :, r, c] = np.interp(xp[::-1], x[::-1], y[::-1])

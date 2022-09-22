@@ -118,7 +118,6 @@ class MOD04_3K(MOD04):
         return MOD04.cmr_links(method=method, **kwargs)
 
 
-
 class MODISL3(satellite):
     __doc__ = """OMNO2 filters valid pixels and provides weights for
 destination polygon:
@@ -129,7 +128,7 @@ destination polygon:
     _defaultkeys = ('Optical_Depth_055',)
     _geokeys = ('x', 'y')
 
-    def to_dataframe(self, *varkeys, valid=True, geo=False):
+    def to_dataframe(self, *varkeys, valid=True, geo=False, default_keys=False):
         """
         Arguments
         ---------
@@ -145,7 +144,9 @@ destination polygon:
         -------
         df : pandas.DataFrame or geopandas.GeoDataFrame
         """
-        df = satellite.to_dataframe(self, *varkeys, valid=valid, geo=False)
+        df = satellite.to_dataframe(
+            self, *varkeys, valid=valid, geo=False, default_keys=default_keys
+        )
         if not (geo is False):
             import geopandas as gpd
             if geo is True:

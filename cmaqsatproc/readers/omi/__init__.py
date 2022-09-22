@@ -1,4 +1,4 @@
-__all__ = ['OMI']
+__all__ = ['OMIL2', 'OMNO2', 'OMHCHO']
 
 from ..core import satellite
 from ...utils import walk_groups
@@ -140,6 +140,7 @@ class OMNO2(OMIL2):
         'ScatteringWeight', 'ScatteringWtPressure', 'TropopausePressure',
         'TerrainPressure',
     )
+
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         kwds.setdefault('short_name', 'OMNO2')
@@ -230,7 +231,6 @@ class OMHCHO(OMIL2):
         'AirMassFactor', 'ScatteringWeights', 'ClimatologyLevels'
     )
 
-
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         kwds.setdefault('short_name', 'OMHCHO')
@@ -288,7 +288,6 @@ class OMHCHO(OMIL2):
         sat.ds = ds
         sat.bbox = bbox
         return sat
-
 
     @classmethod
     def cmaq_sw(cls, overf, outputs):

@@ -102,11 +102,13 @@ class CMAQGrid:
                 gf = pnc.pncopen(
                     gdpath, format='griddesc', GDNAM=GDNAM
                 )
+            self.gf = gf.subset(['DUMMY'])
+            self.gf.SDATE = 1970001
+            self.gf.updatetflag(overwrite=True)
+            self.proj4string = self.gf.getproj(
+                withgrid=True, projformat='proj4'
+            )
         self.GDNAM = GDNAM
-        self.gf = gf.subset(['DUMMY'])
-        self.gf.SDATE = 1970001
-        self.gf.updatetflag(overwrite=True)
-        self.proj4string = self.gf.getproj(withgrid=True, projformat='proj4')
 
     @property
     def proj(self):
@@ -114,14 +116,14 @@ class CMAQGrid:
             import pyproj
             self._proj = pyproj.Proj(self.proj4string)
         return self._proj
-            
+
     @property
     def cno(self):
         if not hasattr(self, '_cno'):
             import pycno
             self._cno = pycno.cno(self.proj)
         return self._cno
-            
+
     @property
     def exterior(self):
         """

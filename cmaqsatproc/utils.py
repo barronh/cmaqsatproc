@@ -442,14 +442,20 @@ def csp_showwarning(message, category, filename, lineno, file=None, line=None):
     warnstr = csp_formatwarning(message, category, filename, lineno, line=line)
     file.write(warnstr, flush=True)
 
-def coord_interp(coordout, coordin, varin, verbose=0, interp='numpy', outdim='LAY', indim='LAY', ascending=True, **kwds):
+
+def coord_interp(
+    coordout, coordin, varin, verbose=0, interp='numpy',
+    outdim='LAY', indim='LAY', ascending=True, **kwds
+):
     """
     Arguments
     ---------
     coordout : xarray.DataArray
-        n-dimensional (must have outdim) where values of coordout are the coordinate
+        n-dimensional (must have outdim) where values of coordout are the
+        coordinate
     coordin : xarray.DataArray
-        n-dimensional (must have indim) where values of coordin are the coordinate
+        n-dimensional (must have indim) where values of coordin are the
+        coordinate
     varin : xarray.DataArray
         n-dimensional (must have indim) where values will be interpolated
     **kwds : mappable
