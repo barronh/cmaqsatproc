@@ -178,6 +178,14 @@ class OMNO2(OMIL2):
             & (ds['XTrackQualityFlags'] == 0)
             & (ds['CloudFraction'] <= 0.3)
         )
+        if bbox is not None:
+            swlon, swlat, nelon, nelat = bbox
+            ds['valid'] = (
+                ds['valid']
+                & (ds['Latitude'] >= swlat) & (ds['Latitude'] <= nelat)
+                & (ds['Longitude'] >= swlon) & (ds['Longitude'] <= nelon)
+            )
+
         if not ds['valid'].any():
             raise ValueError(f'No valid pixels in {path} with {bbox}')
 
@@ -192,7 +200,9 @@ class OMNO2(OMIL2):
         from ...utils import coord_interp
         qpres_hpa = overf['PRES'] / 100
         sat_press = outputs['ScatteringWtPressure'].copy()
-        sat_press.isel(nPresLevels=0)[:] = qpres_hpa.isel(LAY=0)
+        # No need to overwrite surface pressure
+        # numpy.interp automatically extends the lowest level
+        # sat_press.isel(nPresLevels=0)[:] = qpres_hpa.isel(LAY=0)
         introp = outputs['TropopausePressure'] < qpres_hpa
         q_sw = coord_interp(
             qpres_hpa,
@@ -262,6 +272,13 @@ class OMHCHO(OMIL2):
             & ((ds['XtrackQualityFlagsExpanded'].astype('i') & 1) == 0)
             & (ds['AMFCloudFraction'] <= 0.3)
         )
+        if bbox is not None:
+            swlon, swlat, nelon, nelat = bbox
+            ds['valid'] = (
+                ds['valid']
+                & (ds['Latitude'] >= swlat) & (ds['Latitude'] <= nelat)
+                & (ds['Longitude'] >= swlon) & (ds['Longitude'] <= nelon)
+            )
         corners = {
             'll': (slice(None, -1), slice(None, -1)),
             'ul': (slice(None, -1), slice(1, None)),

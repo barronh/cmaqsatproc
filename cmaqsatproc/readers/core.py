@@ -345,6 +345,10 @@ class satellite:
         links = cls.cmr_links(
             temporal=temporal, bbox=bbox, **link_kwargs
         )
+        if verbose > 1:
+            print(len(links), links)
+        elif verbose > 0:
+            print(len(links), 'first link', links[0])
         return cls.paths_to_level3(
             links, grid=grid, griddims=griddims, weighting=weighting, bbox=bbox,
             verbose=verbose, varkeys=varkeys, as_dataset=as_dataset, **kwargs

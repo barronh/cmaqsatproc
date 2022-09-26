@@ -1,4 +1,4 @@
-__all__ = ['CMAQGrid']
+__all__ = ['CMAQGrid', 'open_ioapi']
 
 from .utils import centertobox
 
@@ -19,25 +19,25 @@ default_griddesc_txt = b"""' '
   2        33.000        45.000       -97.000       -97.000        40.000
 ' '
 'US_1deg'
-'LATLON'               -140.0        20.0      1.0      1.0   90   40 1
+'LATLON'              -140.00        20.0      1.0      1.0   90   40 1
 'US_0pt1deg'
-'LATLON'               -140.0        20.0      0.1      0.1  900  400 1
+'LATLON'              -140.00        20.0      0.1      0.1  900  400 1
 'global_1deg'
-'LATLON'               -180.0       -90.0      1.0      1.0  360  180 1
+'LATLON'              -180.00       -90.0      1.0      1.0  360  180 1
 'global_0pt1deg'
-'LATLON'               -180.0       -90.0      0.1      0.1 3600 1800 1
+'LATLON'              -180.00       -90.0      0.1      0.1 3600 1800 1
 'global_2x2.5'
-'LATLON'               -181.5       -89.0      2.5      2.0  144   89 1
+'LATLON'              -181.25       -89.0      2.5      2.0  144   89 1
 'global_4x5'
-'LATLON'               -182.5       -88.0      5.0      4.0   72   44 1
+'LATLON'              -182.50       -88.0      5.0      4.0   72   44 1
 '108NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 108000.0 108000.0  187  187 1
 '324NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 324000.0 324000.0   63   63 1
 '1188NHEMI2'
 'POLSTE_HEMI'     -10098000.0 -10098000.0 1188000. 1188000.   17   17 1
-'1188US1'
-'LamCon_40N_97W'   -2556000.0  -1728000.0 1188000. 1188000.    6    4 1
+'972US1'
+'LamCon_40N_97W'   -2556000.0  -1728000.0 972000.0 972000.0   6    4 1
 '324US1'
 'LamCon_40N_97W'   -2556000.0  -1728000.0 324000.0 324000.0   17   12 1
 '108US1'
@@ -83,7 +83,7 @@ class CMAQGrid:
         out.proj4string = out.gf.getproj(withgrid=True, projformat='proj4')
         return out
 
-    def __init__(self, GDNAM, gdpath=None, help=False):
+    def __init__(self, GDNAM, gdpath=None):
         """
         Arguments
         ---------
@@ -92,15 +92,9 @@ class CMAQGrid:
         gdpath : str or None
             Path to GRIDDESC file. If None, then a default is provided with
             access to typical EPA domains (12US1, 12US2, 36US3, 108NHEMI2) and
-            a few test domains (1188NHEMI2, 108US1).
-        help : bool
-            If help is True, print default griddesc text to stdout. Because
-            GDNAM is required, use a null string with help=True. For example,
-            CMAQGrid('', help=True)
+            a few test domains (1188NHEMI2, 108US1). See default_griddesc_txt
+            for more details about default domains.
         """
-        if help:
-            print(default_griddesc_txt.decode())
-
         import PseudoNetCDF as pnc
         import warnings
         with warnings.catch_warnings(record=True):
@@ -310,7 +304,7 @@ class CMAQGrid:
             nc = self.gf.NCOLS
             rows = np.arange(nr)
             cols = np.arange(nc)
-            midx = pd.MultiIndex.from_product([rows, cols])
+            midx = pd.MultiIndex.from_product([rows + 0.5, cols + 0.5])
             midx.names = 'ROW', 'COL'
             geoms = []
             for r in rows:
@@ -339,10 +333,15 @@ class CMAQGrid:
         import numpy as np
         import xarray as xr
         tz = self.get_tz()
-        utc_hour = np.array([
-            time.hour + time.minute / 60 + time.second / 3600
-            for time in times
-        ])
+        if isinstance(times, xr.DataArray):
+            utc_hour = (
+                times.dt.hour + times.dt.minute / 60. + times.dt.second / 3600.
+            )
+        else:
+            utc_hour = np.array([
+                time.hour + time.minute / 60 + time.second / 3600
+                for time in times
+            ])
         utc_hour = xr.DataArray(
             utc_hour,
             dims=('TSTEP',)
@@ -435,3 +434,72 @@ class CMAQGrid:
             metf['MOL_PER_M2'] = MOL_PER_M2
 
         return MOL_PER_M2
+
+def open_ioapi(path, **kwargs):
+    import xarray as xr
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime
+    qf = xr.open_dataset(path)
+    if 'TFLAG' in qf.data_vars:
+        times = pd.to_datetime([
+            datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
+            for JDATE, TIME in qf.data_vars['TFLAG'][:, 0].values
+        ])
+    else:
+        date = datetime.strptime(f'{qf.SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
+        nt = qf.dims['TSTEP']
+        dm = (qf.attrs['TSTEP'] % 10000) // 100
+        ds = (qf.attrs['TSTEP'] % 100)
+        dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
+        times = pd.date_range(date, periods=nt, freq=f'{dh}H')
+
+    popts = {k: v for k, v in qf.attrs.items()}
+    popts['R'] = 6370000.
+    popts['x_0'] = -qf.attrs['XORIG']
+    popts['y_0'] = -qf.attrs['YORIG']
+
+    if qf.GDTYP == 1:
+        projtmpl = '+proj=lonlat +lat_0={YCENT} +lon_0={XCENT} +R={R} +no_defs'
+    elif qf.GDTYP == 2:
+        projtmpl = (
+            '+proj=lcc +lat_0={YCENT} +lon_0={P_GAM} +lat_1={P_ALP}'
+            + ' +lat_2={P_BET} +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL}'
+            + ' +no_defs'
+        )
+    elif qf.GDTYP == 6:
+        popts['lat_0'] = popts['P_ALP'] * 90
+        projtmpl = (
+            '+proj=stere +lat_0={lat_0} +lat_ts={P_BET} +lon_0={P_GAM}'
+            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
+        )
+    elif qf.GDTYP == 7:
+        projtmpl = (
+            '+proj=merc +lat_ts=0 +lon_0={YCENT}'
+            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
+        )
+        mapdef.latitude_of_projection_origin = ifileo.YCENT
+        mapdef.longitude_of_central_meridian = ifileo.XCENT
+        mapdef.false_northing = -ifileo.YORIG
+        mapdef.false_easting = -ifileo.XORIG
+    else:
+        projtmpl = None
+
+    qf.coords['TSTEP'] = times
+    qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
+    if projtmpl is None:
+        warnings.warn((
+            'Unknown project ({GDTYP}); currently support lonlat (1), lcc (2), polar'
+            + ' stereograpic (6), equatorial mercator (7)'
+        ).format(**popts))
+    else:
+        qf.attrs['crs'] = projtmpl.format(**popts)
+        row = np.arange(qf.dims['ROW']) + 0.5
+        col = np.arange(qf.dims['COL']) + 0.5
+        if qf.GDTYP == 1:
+            row = row * popts['YCELL'] + popts['YORIG']
+            col = col * popts['XCELL'] + popts['XORIG']
+        qf.coords['ROW'] = row 
+        qf.coords['COL'] = col
+
+    return qf

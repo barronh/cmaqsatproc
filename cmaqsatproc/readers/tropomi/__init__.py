@@ -223,7 +223,7 @@ class TropOMINO2(TropOMI):
         'air_mass_factor_total', 'air_mass_factor_troposphere',
         'nitrogendioxide_tropospheric_column', 'nitrogendioxide_total_column',
         'averaging_kernel', 'tm5_constant_a', 'tm5_constant_b',
-        'tm5_tropopause_layer_index', 'surface_pressure'
+        'tm5_tropopause_layer_index'
     )
     __doc__ = """
     TropOMINO2 satellite processor.
