@@ -42,7 +42,8 @@ cg = csp.cmaq.CMAQGrid(GDNAM)
 satreader = csp.readers.reader_dict[readername]
 
 outputs = satreader.cmr_to_level3(
-    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox()
+    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox(),
+    grid=cg.geodf[['geometry']]
 )
 outputs.to_netcdf(outpath)
 ```
@@ -64,7 +65,8 @@ outpath = f'{readername}_{date}_{GDNAM}.nc'
 
 paths = sorted(glob(f'/local/path/to/*{date}*.h5'))
 outputs = satreader.paths_to_level3(
-    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox()
+    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox(),
+    grid=cg.geodf[['geometry']]
 )
 outputs.to_netcdf(outpath)
 ```
@@ -152,21 +154,23 @@ several places. Although urls tend to update, the links below are currently usef
 * https://docs.opendap.org/index.php/DAP_Clients_-_Authentication
 
 To summarize those resources, make a user-access-only `.netrc` file. Then, make
-a `.dodsrc` file that points to the `.netrc` file and a `.urs_cookies` file:
+a `.dodsrc` file that points to the `.netrc` file and a `.urs_cookies` file.
+The commands below achieve this goal, but will overwrite anything you already
+have there:
 
 ```bash
 touch ~/.netrc
+touch ~/.urs_cookies
 chmod 0600 ~/.netrc
+cat << EOF > ~/.dodsrc
+HTTP.NETRC=${HOME}/.netrc
+HTTP.COOKIEJAR=${HOME}/.urs_cookies
+EOF
 # where <uid> and <password> are your Earthdata credentials
 cat << EOF >> ~/.netrc
 machine urs.earthdata.nasa.gov
   login <uid>
   password <password>
-EOF
-
-cat << EOF >> ~.dodsrc
-HTTP.NETRC=${HOME}/.netrc
-HTTP.COOKIEJAR=${HOME}/.urs_cookies
 EOF
 ```
 
