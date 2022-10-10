@@ -92,8 +92,8 @@ satreader = csp.readers.reader_dict[readername]
 
 satf = xr.open_dataset(satpath)
 
-qf = cmaqsatproc.cmaq.open_ioapi('CCTM_CONC_{date}.nc')
-mf = cmaqsatproc.cmaq.open_ioapi('METCRO3D_{date}.nc')
+qf = cmaqsatproc.cmaq.open_ioapi(f'CCTM_CONC_{date}.nc')
+mf = cmaqsatproc.cmaq.open_ioapi(f'METCRO3D_{date}.nc')
 qf['DENS'] = mf['DENS']
 qf['ZF'] = mf['ZF']
 qf['PRES'] = mf['PRES']
@@ -104,11 +104,11 @@ qf['PRES'] = mf['PRES']
 overf = cg.mean_overpass(qf, satellite='aura')
 n_per_m2 = cg.mole_per_m2(overf, add=True)
 overf['NO2_PER_M2'] = n_per_m2 * overf['NO2'] / 1e6
-amf = overf['AmfTropCMAQ'] = satreader.cmaq_amf(overf, outputs)
-ak = overf['CMAQ_AK'] = satreader.cmaq_ak(overf, outputs)
+amf = overf['AmfTropCMAQ'] = satreader.cmaq_amf(overf, satf)
+ak = overf['CMAQ_AK'] = satreader.cmaq_ak(overf, satf)
 overf['VCDNO2_CMAQ'] = overf['NO2_PER_M2'].where(~ak.isnull()).sum('LAY').where(~amf.isnull())
 overf['VCDNO2_OMI_CMAQ'] = (
-    outputs['ColumnAmountNO2Trop'] * outputs['AmfTrop'] / overf['AmfTropCMAQ']
+    satf['ColumnAmountNO2Trop'] * satf['AmfTrop'] / overf['AmfTropCMAQ']
 )
 overf.to_netcdf(cmaqsatpath)
 ```

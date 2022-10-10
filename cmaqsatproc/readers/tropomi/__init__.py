@@ -52,6 +52,7 @@ class TropOMI(satellite):
             Satellite processing instance
         """
         import xarray as xr
+        kwargs.setdefault('decode_coords', False)
         ds = xr.open_dataset(path, **kwargs)
         if len(ds.dims) == 0:
             return cls._open_hierarchical_dataset(
@@ -93,6 +94,8 @@ class TropOMI(satellite):
                 raise ValueError(f'{path} has no values in {bbox}')
 
             ds = ds.sel(scanline=slice(sval.min() - 1, sval.max() + 1))
+        ds['cn_x'] = ds['longitude']
+        ds['cn_y'] = ds['latitude']
 
         scanline = ds.scanline.values
         scanline_edges = xr.DataArray(
@@ -150,6 +153,10 @@ class TropOMI(satellite):
                 & (ds['longitude'] >= swlon) & (ds['longitude'] <= nelon)
             )
 
+        if not ds['valid'].any():
+            import warnings
+            warnings.warn('No valid pixels')
+
         return ds
 
     @classmethod
@@ -187,6 +194,8 @@ class TropOMI(satellite):
             overf['PRES'], pres, sw_trop,
             indim='layer', outdim='LAY', ascending=False
         )
+        q_sw_trop.attrs.update(outputs['averaging_kernel'].attrs)
+        q_sw_trop.attrs['var_desc'] = 'AK * AMF'.ljust(80)
         return q_sw_trop
 
     @classmethod
@@ -197,7 +206,9 @@ class TropOMI(satellite):
         q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
         denom = overf[key].sum('LAY')
         q_amf = (q_sw_trop * overf[key]).sum('LAY') / denom
-        return q_amf.where((denom != 0) & ~q_sw_trop.isnull().all('LAY'))
+        q_amf = q_amf.where((denom != 0) & ~q_sw_trop.isnull().all('LAY'))
+        q_amf.attrs.update(q_sw_trop.attrs)
+        return q_amf
 
 
 class TropOMICO(TropOMI):
@@ -223,7 +234,7 @@ class TropOMINO2(TropOMI):
         'air_mass_factor_total', 'air_mass_factor_troposphere',
         'nitrogendioxide_tropospheric_column', 'nitrogendioxide_total_column',
         'averaging_kernel', 'tm5_constant_a', 'tm5_constant_b',
-        'tm5_tropopause_layer_index'
+        'tm5_tropopause_layer_index', 'surface_pressure'
     )
     __doc__ = """
     TropOMINO2 satellite processor.
@@ -253,7 +264,41 @@ class TropOMINO2(TropOMI):
         """
         q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
         q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
+        q_ak.attrs.update(q_sw_trop.attrs)
         return q_ak
+
+    @classmethod
+    def cmaq_process(cls, qf, satl3f):
+        """
+        """
+        # OMI is on the aura satellite, so we create an average overpass
+        overf = qf.csp.mean_overpass(satellite='aura')
+        n_per_m2 = overf.csp.mole_per_m2(add=True)
+        overf['NO2_PER_M2'] = n_per_m2 * overf['NO2'] / 1e6
+        overf['NO2_PER_M2'].attrs.update(overf['NO2'].attrs)
+        overf['NO2_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
+
+        ak = overf['NO2_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
+        overf['NO2_SW_CMAQ'] = cls.cmaq_sw(overf, satl3f)
+        # uses AK for tropopause
+        overf['VCDNO2_CMAQ'] = overf.csp.apply_ak('NO2_PER_M2', ak / ak)
+        # uses AK for vertical weighting
+        overf['VCDNO2_CMAQ_TOMI'] = overf.csp.apply_ak('NO2_PER_M2', ak)
+        # Recalculate satellite
+        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f)
+
+        overf['VCDNO2_TOMI_CMAQ'] = (
+            satl3f['nitrogendioxide_tropospheric_column']
+            * satl3f['air_mass_factor_troposphere'] / amf
+        )
+        overf['VCDNO2_TOMI_CMAQ'].attrs.update(
+            satl3f['nitrogendioxide_tropospheric_column'].attrs
+        )
+        overf['VCDNO2_TOMI_CMAQ'].attrs['var_desc'] = (
+            'TropOMI_NO2 x TropOMI_AMF / CMAQ_AMF'
+        ).ljust(80)
+
+        return overf
 
 
 class TropOMICH4(TropOMI):
@@ -274,13 +319,15 @@ class TropOMICH4(TropOMI):
 
 class TropOMIHCHO(TropOMI):
     __doc__ = """
-    TropOMINO2 satellite processor.
+    TropOMIHCHO satellite processor.
     * bbox subsets the scanline dimensions
     * valid = qa_value >= threshold (default 0.5)
     """
     _defaultkeys = (
-        'formaldehyde_profile_apriori', 'averaging_kernel'
-        'formaldehyde_tropospheric_vertical_column'
+        'formaldehyde_profile_apriori', 'averaging_kernel',
+        'formaldehyde_tropospheric_air_mass_factor',
+        'formaldehyde_tropospheric_vertical_column',
+        'surface_pressure'
     )
 
     @classmethod
@@ -296,5 +343,36 @@ class TropOMIHCHO(TropOMI):
         Calculates the Tropospheric Averaging Kernel
         """
         q_sw_trop = cls.cmaq_sw(overf, outputs)
-        q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
+        q_ak = q_sw_trop / outputs['formaldehyde_tropospheric_air_mass_factor']
         return q_ak
+
+    @classmethod
+    def cmaq_process(cls, qf, satl3f):
+        """
+        """
+        # OMI is on the aura satellite, so we create an average overpass
+        overf = qf.csp.mean_overpass(satellite='aura')
+        n_per_m2 = overf.csp.mole_per_m2(add=True)
+        overf['FORM_PER_M2'] = n_per_m2 * overf['FORM'] / 1e6
+
+        ak = overf['FORM_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
+        overf['FORM_SW_CMAQ'] = cls.cmaq_sw(overf, satl3f)
+        # uses AK for tropopause
+        overf['VCDFORM_CMAQ'] = overf.csp.apply_ak('FORM_PER_M2', ak / ak)
+        # uses AK for vertical weighting
+        overf['VCDFORM_CMAQ_TOMI'] = overf.csp.apply_ak('FORM_PER_M2', ak)
+        # Recalculate satellite
+        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f)
+
+        overf['VCDHCHO_TOMI_CMAQ'] = (
+            satl3f['formaldehyde_tropospheric_vertical_column']
+            * satl3f['formaldehyde_tropospheric_air_mass_factor'] / amf
+        )
+        overf['VCDHCHO_TOMI_CMAQ'].attrs.update(
+            satl3f['formaldehyde_tropospheric_vertical_column'].attrs
+        )
+        overf['VCDHCHO_TOMI_CMAQ'].attrs['var_desc'] = (
+            'TropOMI_NO2 x TropOMI_AMF / CMAQ_AMF'
+        ).ljust(80)
+
+        return overf

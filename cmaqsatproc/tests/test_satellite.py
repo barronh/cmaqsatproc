@@ -50,6 +50,14 @@ def dataset_example():
             ),
         )
     )
+    ds['cn_x'] = (
+        ds['ll_x'] + ds['ul_x']
+        + ds['lu_x'] + ds['uu_x']
+    ) / 4
+    ds['cn_y'] = (
+        ds['ll_y'] + ds['ul_y']
+        + ds['lu_y'] + ds['uu_y']
+    ) / 4
     return ds
 
 
@@ -73,4 +81,4 @@ def test_satellite():
     ).set_index(['ROW', 'COL'])
     with warnings.catch_warnings(record=True):
         l3 = sat.to_level3('Val', grid=gdf[['geometry']])
-    assert ((l3['nTimes', 'nXtrack']['Val'] == gdf['Val']).all())
+    assert ((l3['Val'].values.ravel() == gdf['Val'].values).all())

@@ -1,9 +1,7 @@
 __all__ = [
-    'getcmrlinks', 'getcmrgranules', 'centertobox', 'cornertobox',
-    'EasyRowPolygon', 'weight_vars', 'rootremover', 'csp_formatwarning',
-    'csp_formatwarnings', 'grouped_weighted_avg', 'row_to_poly', 'walk_groups'
+    'getcmrlinks', 'getcmrgranules', 'rootremover', 'grouped_weighted_avg',
+    'walk_groups', 'EasyDataFramePoint', 'EasyDataFramePolygon', 'cdconvert'
 ]
-import warnings
 
 
 _ckeys = ['ll', 'lu', 'uu', 'ul']
@@ -28,27 +26,6 @@ def grouped_weighted_avg(values, weights, by):
     outdf = numerator.divide(denominator, axis=0)
     outdf['weight_sum'] = denominator
     return outdf
-
-
-def row_to_poly(row, wrap=False):
-    from shapely.geometry import Polygon
-    import numpy as np
-    coords = np.asarray([
-        (row['ll_x'], row['ll_y']),
-        (row['lu_x'], row['lu_y']),
-        (row['uu_x'], row['uu_y']),
-        (row['ul_x'], row['ul_y']),
-        (row['ll_x'], row['ll_y']),
-    ])
-    if wrap:
-        minx = coords[:, 0].min()
-        maxx = coords[:, 0].mix()
-        dx = maxx - minx
-        if dx > 90:
-            x = coords[:, 0]
-            coords[:, 0] = np.where(x > 0, -180, x)
-
-    return Polygon(coords)
 
 
 def getcmrgranules(
@@ -140,143 +117,10 @@ def getcmrlinks(*args, filterfunc=None, **kwds):
     return links
 
 
-def centertobox(xc, yc, width, height):
+def EasyDataFramePoint(df, xkey='cn_x', ykey='cn_y'):
     """
-    Return a polygon using a fixed width (2*hdx) and height (2*hdy)
-    where the corners are offset from the center by hdx and hdy
-
-    Arguments
-    ---------
-    xc, yc : scalar
-        x,y-coordinates for the center of the polygon
-    width, height : scalar
-        Width and height (Half on each side)
-
-    Returns
-    -------
-    poly : shapely.geometry.Polygon
-        Polygon with exterior points at
-        x = xc - hdx, x + hdx, x + hdx, x - hdx, x - hdx
-        y = yc - hdy, y + hdy, y + hdy, y - hdy, y - hdy
-    """
-    from shapely.geometry import box
-
-    hdx = width / 2
-    hdy = height / 2
-    return box(xc - hdx, yc - hdy, xc + hdx, yc + hdy)
-
-
-def cornertobox(xc, yc, width, height):
-    """
-    Return a polygon using a fixed width (2*hdx) and height (2*hdy)
-    where the corners are offset from the center by hdx and hdy
-
-    Arguments
-    ---------
-    xc, yc : scalar
-        x,y-coordinates for the corner of the polygon
-    width, height : scalar
-        Width and height
-
-    Returns
-    -------
-    poly : shapely.geometry.Polygon
-        Polygon with exterior points at
-        x = xc, x + width, x + width, x, x
-        y = yc, y + height, y + height, y, y
-    """
-    from shapely.geometry import box
-    return box(xc, yc, xc + width, yc + height)
-
-
-def weight_vars(withweights, *aggkeys, groupkeys=('ROW', 'COL')):
-    """
-    Arguments
-    ---------
-    withweights : pandas.DataFrame
-    aggkeys : keys
-    groupkeys : iterable
-
-    Returns
-    -------
-    agg : pandas.DataFrame
-    """
-    notweighted = ['weights'] + list(groupkeys)
-    aggattrs = {
-        key: withweights[key].attrs
-        for key in withweights.columns
-    }
-    dropkeys = ['geometry', 'dest_geometry']
-    dropkeys = [k for k in dropkeys if k in withweights.columns]
-    weighted = withweights.drop(
-        dropkeys, axis=1, inplace=False
-    ).multiply(withweights.weights, axis=0)
-    # overwrite weights with original values
-    for key in notweighted:
-        if key not in weighted.index.names:
-            weighted[key] = withweights[key]
-    # Groupby and sum
-    aggweighted = weighted.groupby(groupkeys).sum()
-    # Divide weighted values by the sum of weights
-    agg = aggweighted.divide(aggweighted.weights, axis=0)
-    # Overwrite with the sum of weights
-    for key in notweighted:
-        if key not in groupkeys:
-            agg[key] = aggweighted[key]
-
-    for key in agg.columns:
-        if key in aggattrs:
-            agg[key].attrs.update(aggattrs[key])
-
-    return agg
-
-
-def EasyRowPolygon(row, wrap=True):
-    """
-    Create polygons from a row with corners of a pixel specificied using
-    columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
-
-    The wrap functionality prevents polygons from straddling the dateline.
-
-    Arguments
-    ---------
-    row : pandas.DataFrame row
-        Must contain LL, LU, UU, UL for Longitude and Latitude (e.g.,
-        LL_Longitude, LL_Latitude)
-    wrap : bool
-        If True (default), each polygon that crosses the dateline will be
-        truncated to the Western portion.
-
-    Returns
-    -------
-    poly : shapely.geometry.Polygon
-    """
-    from shapely.geometry import Polygon
-    import numpy as np
-
-    x = row[_xcrnrkeys].values
-    y = row[_ycrnrkeys].values
-    if wrap:
-        dx = x.max() - x.min()
-        if dx > 90:
-            x = np.where(x > 0, -180, x)
-
-    # Conceivably apply the same approach to the pole
-    # dy = y.max() - y.min()
-    # if dy > 45:
-    #     y = np.where(y < 0, 90, y)
-    return Polygon(np.asarray([x, y]).T)
-
-
-def EasyDataFramePoint(df, wrap=True, progress=False, lowmem=False):
-    """
-    Create polygons from a row with corners of a pixel specificied using
-    columns LL_Longitude, LL_Latitude... UU_Longitude, UU_Latitude.
-
-    The wrap functionality prevents polygons from straddling the dateline.
-
-    (Same functionality as EasyRowPolygon, but intended to be faster due to
-    the ability to rapidly apply wrapping to multiple rows at a time.)
+    Thin wrapper on geopandas.points_from_xy. Create points from a rows with
+    centers named xkey and ykey.
 
     Arguments
     ---------
@@ -289,7 +133,7 @@ def EasyDataFramePoint(df, wrap=True, progress=False, lowmem=False):
         List of shapely.geometry.Polygons
     """
     import geopandas as gpd
-    points = gpd.points_from_xy(df['x'].values, df['y'].values)
+    points = gpd.points_from_xy(df[xkey].values, df[ykey].values)
     return points
 
 
@@ -299,9 +143,6 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
     columns ll_x, ll_y ... uu_x, uu_y.
 
     The wrap functionality prevents polygons from straddling the dateline.
-
-    (Same functionality as EasyRowPolygon, but intended to be faster due to
-    the ability to rapidly apply wrapping to multiple rows at a time.)
 
     Arguments
     ---------
@@ -390,59 +231,6 @@ def rootremover(strlist, insert=False):
     return stem, short_strlist
 
 
-def csp_formatwarning(message, category, filename, lineno, line=None):
-    """
-    Simplify warnings that come from cmaqsatproc. All others will remain in
-    standard format.
-    """
-    if 'cmaqsatproc' in filename:
-        filename = 'cmaqsatproc' + filename.split('cmaqsatproc')[-1]
-        if category in (UserWarning, RuntimeWarning):
-            category = 'Note:'
-        else:
-            category = str(category).split("'")[1] + ':'
-        warnstr = f'{filename}:{lineno}:{category} {message}\n'
-    else:
-        warnstr = warnings.formatwarning(
-            message=message, category=category,
-            filename=filename, lineno=lineno,
-            line=line
-        )
-    return warnstr
-
-
-def csp_formatwarnings(warning_list, asstr=True):
-    """
-    Apply csp_formatwarnings to a list of warnings. If asstr is true,
-    concatenate the results.
-    """
-    fmt_warning_list = []
-    for w in warning_list:
-        fmt_warning_list.append(
-            csp_formatwarning(
-                message=w.message, category=w.category,
-                filename=w.filename, lineno=w.lineno, line=w.line
-            )
-        )
-    if asstr:
-        return ''.join(fmt_warning_list)
-    else:
-        return fmt_warning_list
-
-
-def csp_showwarning(message, category, filename, lineno, file=None, line=None):
-    """
-    Could be used to overwrite warnings.showwarning. For any other modules,
-    warnings will still be shown as normal. For cmaqsatproc warnings, a special
-    format is applied
-    """
-    import sys
-    if file is None:
-        file = sys.stdout
-    warnstr = csp_formatwarning(message, category, filename, lineno, line=line)
-    file.write(warnstr, flush=True)
-
-
 def coord_interp(
     coordout, coordin, varin, verbose=0, interp='numpy',
     outdim='LAY', indim='LAY', ascending=True, **kwds
@@ -494,3 +282,44 @@ def coord_interp(
     )
     out = interped.rename(**{tempdimname: outdim})
     return out
+
+
+def cdconvert(inval, inunit, outunit):
+    """
+    Converts between du, mole m**-2, and molecules cm**-2
+    """
+
+    inunit = inunit.strip().lower().replace('^', '**')
+    outunit = outunit.strip().lower().replace('^', '**')
+
+    if inunit == outunit:
+        return inval
+    elif inunit == 'du':
+        if outunit == 'mole m**-2':
+            return inval / 1e5 * 101325 / 8.314 / 273.15
+        else:
+            return cdconvert(
+                cdconvert(inval, inunit, 'mole m**-2'), 'mole m**-2', outunit
+            )
+    elif inunit == 'molecules cm**-2':
+        if outunit == 'mole m**-2':
+            return inval / 6.022e23 * 1e4
+        else:
+            return cdconvert(
+                cdconvert(inval, inunit, 'mole m**-2'), 'mole m**-2', outunit
+            )
+    elif inunit == 'mole m**-2':
+        if outunit == 'du':
+            return inval * (1 / 1e5 * 101325 / 8.314 / 273.15)**-1
+        elif outunit == 'molecules cm**-2':
+            return inval * 6.022e23 / 1e4
+        else:
+            raise KeyError(
+                f'unknown outunit ({outunit}); use du, mole m**-2, or'
+                + ' molecules cm**-2'
+            )
+    else:
+        raise KeyError(
+            f'unknown inunit ({inunit}); use du, mole m**-2, or'
+            + ' molecules cm**-2'
+        )

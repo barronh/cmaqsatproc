@@ -6,13 +6,18 @@ from ..utils import EasyDataFramePolygon, grouped_weighted_avg, rootremover
 class satellite:
     _crs = 4326
     _defaultkeys = ()
-    _stdkeys = ('valid',)
+    _validkey = 'valid'
     _geokeys = (
         'll_x', 'll_y',
         'lu_x', 'lu_y',
         'uu_x', 'uu_y',
         'ul_x', 'ul_y',
+        'cn_x', 'cn_y'
     )
+
+    @property
+    def _defgeofunc(self):
+        return EasyDataFramePolygon
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
@@ -29,6 +34,7 @@ class satellite:
                 and (
                     x['href'].endswith('he5')
                     or x['href'].endswith('nc')
+                    or x['href'].endswith('h5')
                     or x['href'].endswith('hdf')
                 )
                 and x['href'].startswith('http')
@@ -40,6 +46,7 @@ class satellite:
                 and (
                     x['href'].endswith('he5')
                     or x['href'].endswith('nc')
+                    or x['href'].endswith('h5')
                     or x['href'].endswith('hdf')
                 )
                 and x['href'].startswith('s3')
@@ -51,6 +58,7 @@ class satellite:
                 not x['href'].endswith('html')
                 or x['href'].endswith('.nc.html')
                 or x['href'].endswith('.he5.html')
+                or x['href'].endswith('.h5.html')
                 or x['href'].endswith('.hdf.html')
             )
         )
@@ -146,24 +154,37 @@ class satellite:
         -------
         df : pandas.DataFrame or geopandas.GeoDataFrame
         """
-        keys = list(self._stdkeys) + list(varkeys)
         if default_keys:
-            keys = keys + list(self._defaultkeys)
-        if not valid:
-            keys = [key for key in keys if key != 'valid']
+            varkeys = list(varkeys) + list(self._defaultkeys)
+        validdims = self.ds[self._validkey].dims
+        usevalid = len(varkeys) == 0
+        for varkey in varkeys:
+            for dk in self.ds[varkey].dims:
+                if dk in validdims:
+                    usevalid = True
+
+        if usevalid and valid:
+            keys = [self._validkey] + list(varkeys)
+        else:
+            keys = list(varkeys)
+
         df = self.ds[keys].to_dataframe()
-        if valid:
+        if valid and usevalid:
             df = df.query('valid == True')
         if not (geo is False):
-            import geopandas as gpd
-            if geo is True:
-                geo = EasyDataFramePolygon
-            gdf = self.to_dataframe(*self._geokeys, valid=valid)
-            if gdf.shape[0] == 0:
-                raise ValueError('No valid pixels')
-            gdf = gpd.GeoDataFrame(
-                gdf, geometry=geo(gdf), crs=self._crs
-            ).drop(list(self._geokeys), axis=1)
+            if hasattr(self, '_geodf'):
+                gdf = self._geodf
+            else:
+                import geopandas as gpd
+                if geo is True:
+                    geo = self._defgeofunc
+                gdf = self.to_dataframe(*self._geokeys, valid=valid)
+                if gdf.shape[0] == 0:
+                    raise ValueError('No valid pixels')
+                gdf = gpd.GeoDataFrame(
+                    gdf, geometry=geo(gdf), crs=self._crs
+                ).drop(list(self._geokeys), axis=1)
+                self._geodf = gdf
             df = gdf[['geometry']].join(df)
         if 'valid' in df.columns:
             if 'valid' not in varkeys:
@@ -173,7 +194,8 @@ class satellite:
                 df[key].attrs.update(self.ds[key].attrs)
         return df
 
-    def add_weights(self, intx, option='equal'):
+    @classmethod
+    def add_weights(cls, intx, option='equal'):
         """
         Add Weights to intersection dataframe (intx) using predefined options:
         * 'equal' uses equal weights for all overlapping pixels
@@ -217,7 +239,9 @@ class satellite:
         outputs : dict
             Dictionary of outputs by output dimensions
         """
+        import pandas as pd
         import geopandas as gpd
+        import time
         if len(varkeys) == 0:
             varkeys = [
                 k for k in self._defaultkeys if k in list(self.ds.data_vars)
@@ -234,53 +258,94 @@ class satellite:
             dimsets.setdefault(dims, []).append(key)
         if verbose > 1:
             print('dimsets', dimsets)
+            t0 = time.time()
 
         if verbose > 0:
             print('Making geometry', flush=True)
+
+        if verbose > 1:
+            t0 = time.time()
         # Index is lost during overlay, and must be recreated
         geodf = self.to_dataframe(geo=True).to_crs(grid.crs)[['geometry']]
-        if verbose > 1:
-            print(f'Geometry has {geodf.shape[0]} rows')
+        geodf['source_area'] = geodf['geometry'].area
+        # possible_matches_index = grid.sindex.intersection(geodf.total_bounds)
+        # igrid = grid.iloc[possible_matches_index]
         if geodf.shape[0] == 0:
             raise ValueError('No valid pixels')
+        if verbose > 1:
+            print(
+                f'Geometry has {geodf.shape[0]} rows'
+                + f' ({time.time() - t0:.1f}s)'
+            )
+            t0 = time.time()
         myidx = list(geodf.index.names) + list(grid.index.names)
         if verbose > 0:
             print('Making overlay', flush=True)
+
         intx = gpd.overlay(
-            geodf.reset_index(), grid.reset_index(), how='intersection'
+            geodf.reset_index(), grid.reset_index(), how='intersection',
+            keep_geom_type=False, make_valid=True
         )
         intx.set_index(myidx, inplace=True)
+
         if verbose > 1:
-            print(f'Overlay has {intx.shape[0]} rows')
+            print(
+                f'Overlay has {intx.shape[0]} rows '
+                + f'({time.time() - t0:.1f}s)'
+            )
+            t0 = time.time()
+
         if verbose > 0:
             print('Adding weights', flush=True)
+
         self.add_weights(intx, option=weighting)
         justweight = intx[['weight']]
         overlays = {}
         for dimset, keys in dimsets.items():
             if verbose > 0:
                 print('Working on', dimset, flush=True)
-            outdims = griddims + [k for k in dimset if k not in myidx]
+            outdims = griddims
             if verbose > 1:
+                t0 = time.time()
                 print(' - Making dataframe', flush=True)
             df = self.to_dataframe(*keys, geo=False)
             if verbose > 2:
-                print(f'   - Dataframe as {df.shape[0]} rows', flush=True)
-            if verbose > 1:
-                print(' - Adding intx geometry', flush=True)
+                print(f'   - Dataframe has {df.shape[0]} rows', flush=True)
             if any([n in dimset for n in justweight.index.names]):
-                df = justweight.join(df)
+                notgeodims = set(dimset).difference(justweight.index.names)
+                notgeodims = [dk for dk in dimset if dk in notgeodims]
+                if verbose > 1:
+                    print(' - Adding intx geometry', flush=True)
+                    t0 = time.time()
+                if len(notgeodims) > 0:
+                    mjustweight = justweight.copy()
+                    wkey = ('weight',) + ('',) * len(notgeodims)
+                    wskey = ('weight_sum',) + ('',) * len(notgeodims)
+                    mjustweight.columns = pd.MultiIndex.from_tuples(
+                        [wkey], names=[None] + notgeodims
+                    )
+                    df = mjustweight.join(df.unstack(notgeodims))
+                else:
+                    wkey = 'weight'
+                    df = justweight.join(df)
                 if verbose > 2:
                     print(
-                        f'   - Weighted inputs has {df.shape[0]} rows',
+                        f'   - Weighted inputs has {df.shape[0]} rows'
+                        + f' ({time.time() - t0:.1f}s)',
                         flush=True
                     )
+                    t0 = time.time()
                 # Geometry objects are not weightable
                 if verbose > 1:
                     print(' - Weighting', flush=True)
                 gdf = grouped_weighted_avg(
-                    df, df['weight'], outdims
+                    df, df[wkey], outdims
                 )
+                if len(notgeodims) > 0:
+                    ngdf = gdf.drop([wkey, wskey], axis=1).stack(notgeodims)
+                    ngdf['weight'] = gdf[wkey]
+                    ngdf['weight_sum'] = gdf[wskey]
+                    gdf = ngdf
             else:
                 gdf = self.to_dataframe(*keys, geo=False, valid=False)
                 # tmpgrid = grid.drop('geometry', axis=1).copy()
@@ -292,7 +357,8 @@ class satellite:
 
             if verbose > 2:
                 print(
-                    f'   - Weighted outputs has {gdf.shape[0]} rows',
+                    f'   - Weighted outputs has {gdf.shape[0]} rows'
+                    f' ({time.time() - t0:.1f}s)',
                     flush=True
                 )
             if verbose > 1:

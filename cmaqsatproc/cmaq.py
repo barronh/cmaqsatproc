@@ -1,6 +1,6 @@
-__all__ = ['CMAQGrid', 'open_ioapi']
+__all__ = ['open_griddesc', 'open_ioapi']
 
-from .utils import centertobox
+import xarray as xr
 
 known_overpasstimes = dict(
     aura=13.75,
@@ -63,6 +63,81 @@ default_griddesc_txt = b"""' '
 ' '"""
 
 
+def griddesc(griddesc_txt):
+    from collections import OrderedDict
+    gddefns = OrderedDict()
+    prjdefns = OrderedDict()
+    # lines with ' ' are separators
+    reallines = [
+        l for l in griddesc_txt.split('\n') if l.strip() not in ("''", "' '")
+    ]
+    # All definitions come in pairs of lines. The first is the name and the
+    # second is either all numeric for projections or, for grids, a string
+    #  projection name followed by numeric grid definitions
+    prjattrkeys = ['GDTYP', 'P_ALP', 'P_BET', 'P_GAM', 'XCENT', 'YCENT']
+    gdattrkeys = [
+        'PRJNAME', 'XORIG', 'YORIG', 'XCELL', 'YCELL', 'NCOLS',
+        'NROWS', 'NTHIK'
+    ]
+    for name, defn in zip(reallines[0:-1:2], reallines[1::2]):
+        name = eval(name)
+        values = defn.split()
+        if "'" in defn:
+            gddefn = dict(zip(gdattrkeys, values))
+            gddefn['PRJNAME'] = eval(gddefn['PRJNAME'])
+            gddefn['GDNAM'] = name
+            gddefn['XORIG'] = float(gddefn['XORIG'])
+            gddefn['YORIG'] = float(gddefn['YORIG'])
+            gddefn['XCELL'] = float(gddefn['XCELL'])
+            gddefn['YCELL'] = float(gddefn['YCELL'])
+            gddefn['NCOLS'] = int(gddefn['NCOLS'])
+            gddefn['NROWS'] = int(gddefn['NROWS'])
+            gddefn['NTHIK'] = int(gddefn['NTHIK'])
+            gddefns[name] = gddefn
+        else:
+            prjdefn = dict(zip(prjattrkeys, values))
+            prjdefn['PRJNAME'] = name
+            prjdefn['GDTYP'] = int(prjdefn['GDTYP'])
+            prjdefn['P_ALP'] = float(prjdefn['P_ALP'])
+            prjdefn['P_BET'] = float(prjdefn['P_BET'])
+            prjdefn['P_GAM'] = float(prjdefn['P_GAM'])
+            prjdefn['XCENT'] = float(prjdefn['XCENT'])
+            prjdefn['YCENT'] = float(prjdefn['YCENT'])
+            prjdefns[name] = prjdefn
+    for name, defn in gddefns.items():
+        defn.update(prjdefns[defn['PRJNAME']])
+    return gddefns
+
+
+def griddesc_from_attrs(attrs):
+    import numpy as np
+    attrs['crs'] = get_proj4string(attrs)
+    outf = xr.Dataset(
+        data_vars=dict(),
+        coords=dict(
+            ROW=np.arange(attrs['NROWS']) + 0.5,
+            COL=np.arange(attrs['NCOLS']) + 0.5,
+        ), attrs=attrs
+    )
+    return outf
+
+
+def open_griddesc(GDNAM, gdpath=None):
+    import os
+    if gdpath is None:
+        griddesc_txt = default_griddesc_txt.decode()
+    else:
+        if os.path.exists(gdpath):
+            griddesc_txt = open(gdpath).read()
+        else:
+            griddesc_txt = gdpath
+
+    gdattrs = griddesc(griddesc_txt)
+    attrs = gdattrs[GDNAM]
+    outf = griddesc_from_attrs(attrs)
+    return outf
+
+
 def _default_griddesc(GDNAM):
     import PseudoNetCDF as pnc
     import tempfile
@@ -74,46 +149,99 @@ def _default_griddesc(GDNAM):
     return outf
 
 
-class CMAQGrid:
-    @classmethod
-    def from_gf(cls, gf):
-        out = cls.__new__(cls)
-        out.GDNAM = gf.GDNAM.strip()
-        out.gf = gf
-        out.proj4string = out.gf.getproj(withgrid=True, projformat='proj4')
-        return out
+def get_proj4string(attrs):
+    import copy
+    popts = copy.copy(attrs)
+    popts['R'] = 6370000.
+    popts['x_0'] = -attrs['XORIG']
+    popts['y_0'] = -attrs['YORIG']
 
-    def __init__(self, GDNAM, gdpath=None):
-        """
-        Arguments
-        ---------
-        GDNAM : str
-            Name of domain
-        gdpath : str or None
-            Path to GRIDDESC file. If None, then a default is provided with
-            access to typical EPA domains (12US1, 12US2, 36US3, 108NHEMI2) and
-            a few test domains (1188NHEMI2, 108US1). See default_griddesc_txt
-            for more details about default domains.
-        """
-        import PseudoNetCDF as pnc
-        import warnings
-        with warnings.catch_warnings(record=True):
-            if gdpath is None:
-                gf = _default_griddesc(GDNAM)
-                gf.HISTORY = 'From GRIDDESC'
-            else:
-                gf = pnc.pncopen(
-                    gdpath, format='griddesc', GDNAM=GDNAM
-                )
-            self.gf = gf.subset(['DUMMY'])
-            self.gf.SDATE = 1970001
-            self.gf.updatetflag(overwrite=True)
-            self.proj4string = self.gf.getproj(
-                withgrid=True, projformat='proj4'
-            )
-        if GDNAM is None:
-            GDNAM = self.gf.GDNAM.strip()
-        self.GDNAM = GDNAM
+    if popts['GDTYP'] == 1:
+        projtmpl = '+proj=lonlat +lat_0={YCENT} +lon_0={XCENT} +R={R} +no_defs'
+    elif popts['GDTYP'] == 2:
+        projtmpl = (
+            '+proj=lcc +lat_0={YCENT} +lon_0={P_GAM} +lat_1={P_ALP}'
+            + ' +lat_2={P_BET} +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL}'
+            + ' +no_defs'
+        )
+    elif popts['GDTYP'] == 6:
+        popts['lat_0'] = popts['P_ALP'] * 90
+        projtmpl = (
+            '+proj=stere +lat_0={lat_0} +lat_ts={P_BET} +lon_0={P_GAM}'
+            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
+        )
+    elif popts['GDTYP'] == 7:
+        projtmpl = (
+            '+proj=merc +lat_ts=0 +lon_0={XCENT}'
+            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
+        )
+    else:
+        return None
+    return projtmpl.format(**popts)
+
+
+def open_ioapi(path, **kwargs):
+    import xarray as xr
+    import pandas as pd
+    import numpy as np
+    from datetime import datetime
+    import warnings
+
+    qf = xr.open_dataset(path)
+    if 'TFLAG' in qf.data_vars:
+        times = pd.to_datetime([
+            datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
+            for JDATE, TIME in qf.data_vars['TFLAG'][:, 0].values
+        ])
+    elif 'TSTEP' in qf.coords:
+        tstep = qf.coords['TSTEP']
+        if tstep.size == 1:
+            tstep = [tstep]
+        times = [
+            datetime(
+                t.dt.year, t.dt.month, t.dt.day, t.dt.hour, t.dt.minute,
+                t.dt.second
+            ) for t in tstep
+        ]
+    else:
+        date = datetime.strptime(f'{qf.SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
+        nt = qf.dims['TSTEP']
+        dm = (qf.attrs['TSTEP'] % 10000) // 100
+        ds = (qf.attrs['TSTEP'] % 100)
+        dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
+        times = pd.date_range(date, periods=nt, freq=f'{dh}H')
+
+    qf.coords['TSTEP'] = times
+    qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
+    crs = get_proj4string(qf.attrs)
+    if crs is None:
+        warnings.warn((
+            'Unknown project ({GDTYP}); currently support lonlat (1), lcc (2),'
+            + ' polar stereograpic (6), equatorial mercator (7)'
+        ).format(GDTYP=qf.attrs['GDTYP']))
+    else:
+        qf.attrs['crs'] = crs
+        row = np.arange(qf.dims['ROW']) + 0.5
+        col = np.arange(qf.dims['COL']) + 0.5
+        if qf.GDTYP == 1:
+            row = row * qf.attrs['YCELL'] + qf.attrs['YORIG']
+            col = col * qf.attrs['XCELL'] + qf.attrs['XORIG']
+        qf.coords['ROW'] = row
+        qf.coords['COL'] = col
+
+    return qf
+
+
+@xr.register_dataset_accessor("csp")
+class CmaqSatProcAccessor:
+    def __init__(self, xarray_obj):
+        self._obj = xarray_obj
+
+    @property
+    def proj4string(self):
+        if not hasattr(self, '_proj4string'):
+            self._proj4string = get_proj4string(self._obj.attrs)
+        return self._proj4string
 
     @property
     def proj(self):
@@ -126,8 +254,29 @@ class CMAQGrid:
     def cno(self):
         if not hasattr(self, '_cno'):
             import pycno
-            self._cno = pycno.cno(self.proj)
+            self._cno = pycno.cno(proj=self.proj)
         return self._cno
+
+    @property
+    def geodf(self):
+        if not hasattr(self, '_geodf'):
+            import pandas as pd
+            import geopandas as gpd
+            from shapely.geometry import box
+            rows = self._obj['ROW'].values
+            cols = self._obj['COL'].values
+            midx = pd.MultiIndex.from_product([rows, cols])
+            midx.names = 'ROW', 'COL'
+            geoms = []
+            for r in rows:
+                for c in cols:
+                    geoms.append(
+                        box(c - 0.5, r - 0.5, c + 0.5, r + 0.5)
+                    )
+            self._geodf = gpd.GeoDataFrame(
+                geometry=geoms, index=midx, crs=self.proj4string
+            )
+        return self._geodf
 
     @property
     def exterior(self):
@@ -140,10 +289,12 @@ class CMAQGrid:
             import numpy as np
             from shapely.geometry import Polygon
 
-            nr = self.gf.NROWS
-            nc = self.gf.NCOLS
-            rows = np.arange(nr + 1)
-            cols = np.arange(nc + 1)
+            nr = self._obj.attrs['NROWS']
+            nc = self._obj.attrs['NCOLS']
+            rowc = self._obj['ROW'].values
+            colc = self._obj['COL'].values
+            rows = np.append(rowc - 0.5, rowc[-1] + 0.5)
+            cols = np.append(colc - 0.5, colc[-1] + 0.5)
             se = np.array([cols, cols * 0])
             ee = np.array([rows * 0 + nc + 1, rows])
             ne = np.array([cols[::-1], cols * 0 + nr + 1])
@@ -172,166 +323,30 @@ class CMAQGrid:
         ge = g.geometry.iloc[0].envelope.exterior
         nelon, nelat = np.max(ge.xy, axis=1)
         swlon, swlat = np.min(ge.xy, axis=1)
-        if self.gf.GDTYP == 6:
+        if self._obj.attrs['GDTYP'] == 6:
             nelat = 90
             swlon = -180
             nelon = 180
         return (swlon, swlat, nelon, nelat)
-
-    def to_ioapi(
-        self, df, TSTEP=0, LAY=0, ROW='ROW', COL='COL', rename=None, **kwds
-    ):
-        """
-        Create an IOAPI file from a dataframe.
-
-        Arguments
-        ---------
-        df : pandas.Dataframe
-            Columns represent output data. attrs of the dataframe and columns
-            will be used to construct metadata for the ioapi file.
-        TSTEP : int
-        LAY : int
-        ROW : str
-            Index name to use for IOAPI rows
-        COL : str
-            Index name to use for IOAPI cols
-        rename : mappable
-            Optional dictionary to rename df columns to make IOAPI variable
-            names. Useful for making sure columns are less than 16 characters.
-        kwds : mappable
-            Keywords passed through to the template function.
-
-        Returns
-        -------
-        outf : PseudoNetCDF.cmaqfiles.ioapi_base
-            Output file
-        """
-        import numpy as np
-        if rename is None:
-            rename = {key: key for key in df.columns}
-        elif callable(rename):
-            rename = {key: rename(key) for key in df.columns}
-
-        if isinstance(TSTEP, str):
-            TSTEP = df.index.get_level_values(TSTEP)
-        if isinstance(LAY, str):
-            LAY = df.index.get_level_values(LAY)
-            vglvls_mid, layer_idx = np.unique(LAY, return_inverse=True)
-            vglvls_edge = np.interp(
-                np.arange(vglvls_mid.size + 1) - 0.5,
-                np.arange(vglvls_mid.size),
-                vglvls_mid
-            )
-            LAY = layer_idx
-        else:
-            vglvls_edge = np.asarray([1, 0])
-        if isinstance(ROW, str):
-            ROW = df.index.get_level_values(ROW)
-        if isinstance(COL, str):
-            COL = df.index.get_level_values(COL)
-
-        if 'vglvls' not in kwds:
-            kwds['vglvls'] = vglvls_edge
-
-        varkeys = sorted(rename)
-        outkeys = [rename[key] for key in varkeys]
-        outf = self.template(outkeys, **kwds)
-        outf.setncatts(df.attrs)
-        for varkey in varkeys:
-            outkey = rename.get(varkey, varkey)
-            varo = outf.variables[outkey]
-            ds = df[varkey]
-            varo[TSTEP, LAY, ROW, COL] = ds.values
-            varo.setncatts(ds.attrs)
-
-        return outf
-
-    def template(self, varkeys, vglvls=(1, 0), vgtop=5000, ntsteps=1, **kwds):
-        """
-        Create an empty IOAPI file with variables that have arbitrary values
-
-        Arguments
-        ---------
-        varkeys : list
-            List of strings to make as variables.
-        vglvls : iterable
-            Iterable of IOAPI level edges
-        vgtop : scalar
-            Top of the IOAPI model
-        ntsteps : int
-            Number of output time steps
-
-        Returns
-        -------
-        outf : PseudoNetCDF.cmaqfiles.ioapi_base
-            NetCDF-like file with arbitrary values for all varkeys
-        """
-        import numpy as np
-
-        outf = self.gf.renameVariable('DUMMY', varkeys[0]).mask(values=0)
-        nz = len(vglvls) - 1
-        if nz > 1:
-            outf = outf.slice(LAY=[0] * nz)
-        if ntsteps > 1:
-            outf = outf.slice(TSTEP=[0] * nz)
-        outf.VGLVLS = np.asarray(vglvls, dtype='f')
-        outf.VGTOP = np.float32(vgtop)
-        outf.setncatts(kwds)
-        del outf.dimensions['nv']
-        del outf.Conventions
-        tmpvar = outf.variables[varkeys[0]]
-        del tmpvar.coordinates
-        tmpvar.long_name = varkeys[0].ljust(16)
-        tmpvar.var_desc = varkeys[0].ljust(80)
-        tmpvar.units = 'unknown'
-        for varkey in varkeys[1:]:
-            newvar = outf.copyVariable(outf.variables[varkeys[0]], key=varkey)
-            newvar.long_name = varkey.ljust(16)
-            newvar.var_desc = varkey.ljust(80)
-
-        outf.updatemeta()
-        outf.updatetflag(overwrite=True)
-        outf.variables.move_to_end('TFLAG', last=False)
-        return outf
-
-    @property
-    def geodf(self):
-        if not hasattr(self, '_geodf'):
-            import pandas as pd
-            import geopandas as gpd
-            import numpy as np
-            nr = self.gf.NROWS
-            nc = self.gf.NCOLS
-            rows = np.arange(nr)
-            cols = np.arange(nc)
-            midx = pd.MultiIndex.from_product([rows + 0.5, cols + 0.5])
-            midx.names = 'ROW', 'COL'
-            geoms = []
-            for r in rows:
-                for c in cols:
-                    geoms.append(
-                        centertobox(xc=c + 0.5, yc=r + 0.5, width=1, height=1)
-                    )
-            self._geodf = gpd.GeoDataFrame(
-                geometry=geoms, index=midx, crs=self.proj4string
-            )
-        return self._geodf
 
     def get_tz(self, method='longitude'):
         import numpy as np
         import xarray as xr
         if method != 'longitude':
             raise ValueError('only longitude is supported at this time')
-        i = np.arange(self.gf.NCOLS)
-        j = np.arange(self.gf.NROWS)
-        I, J = np.meshgrid(i, j)
-        lon, lat = self.gf.ij2ll(I, J)
+        x = self._obj['COL'].values
+        y = self._obj['ROW'].values
+        X, Y = np.meshgrid(x, y)
+        lon, lat = self.proj(X, Y, inverse=True)
         tz = xr.DataArray((lon / 15), dims=('ROW', 'COL'))
         return tz
 
-    def get_lst(self, times, method='longitude'):
+    def get_lst(self, times=None, method='longitude'):
         import numpy as np
         import xarray as xr
+        if times is None:
+            times = self._obj['TSTEP']
+
         tz = self.get_tz()
         if isinstance(times, xr.DataArray):
             utc_hour = (
@@ -349,9 +364,9 @@ class CMAQGrid:
         lst_hour = (tz + utc_hour).transpose('TSTEP', 'ROW', 'COL') % 24
         return lst_hour
 
-    def is_overpass(self, times, method='longitude', satellite=None):
+    def is_overpass(self, times=None, method='longitude', satellite=None):
         import xarray as xr
-        LST = self.get_lst(times, method=method)
+        LST = self.get_lst(times=times, method=method)
         if satellite is None:
             # Overpass in UTC space
             overpasstimes = known_overpasstimes
@@ -366,13 +381,9 @@ class CMAQGrid:
         }
         return xr.Dataset(isoverpass)
 
-    def mean_overpass(self, inputf, satellite, method='longitude', times=None):
+    def mean_overpass(self, satellite, method='longitude', times=None):
         import xarray as xr
-        if times is None:
-            try:
-                times = inputf.getTimes()
-            except Exception:
-                times = inputf['TSTEP']
+        inputf = self._obj
         isoverpass = self.is_overpass(
             times, method=method, satellite=satellite
         )[satellite]
@@ -394,19 +405,27 @@ class CMAQGrid:
                 if key in keys
             })
             output.attrs.update(inputf.getncatts())
+        output.coords['TSTEP'] = inputf['TSTEP'].isel(TSTEP=0)
         return output
 
-    @classmethod
-    def mole_per_m2(self, metf, add=True):
+    def mole_per_m2(self, metf=None, add=True):
         import warnings
         # copied from
         # https://github.com/USEPA/CMAQ/blob/main/CCTM/src/ICL/fixed/const/
         # CONST.EXT
         R = 8.314459848
         MWAIR = 0.0289628
+        if metf is None:
+            metf = self._obj
         if 'ZF' in metf.variables:
-            DZ = metf['ZF'].copy()
-            DZ[1:] = DZ[1:] - metf['ZF'][:-1].values
+            ZF = metf['ZF']
+            # Layer 1 and the difference above it.
+            DZ = xr.concat([
+                ZF.isel(LAY=slice(None, 1)), ZF.diff('LAY', n=1)
+            ], dim='LAY')
+            DZ.attrs.update(ZF.attrs)
+            DZ.attrs['long_name'] = 'DZ'.ljust(16)
+            DZ.attrs['var_desc'] = 'diff(ZF)'.ljust(80)
             if 'DENS' in metf.variables:
                 MOL_PER_M2 = metf['DENS'] / MWAIR * DZ
             elif (
@@ -430,76 +449,20 @@ class CMAQGrid:
                 )
         else:
             raise KeyError('Must have ZF and DENS or PRES/TEMP')
+        MOL_PER_M2.attrs.update(dict(
+            long_name='MOL_PER_M2'.ljust(16),
+            var_desc='air areal density'.ljust(80),
+            units='mole/m**2'.ljust(16)
+        ))
         if add:
-            metf['MOL_PER_M2'] = MOL_PER_M2
+            self._obj['MOL_PER_M2'] = MOL_PER_M2
 
         return MOL_PER_M2
 
-def open_ioapi(path, **kwargs):
-    import xarray as xr
-    import pandas as pd
-    import numpy as np
-    from datetime import datetime
-    qf = xr.open_dataset(path)
-    if 'TFLAG' in qf.data_vars:
-        times = pd.to_datetime([
-            datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
-            for JDATE, TIME in qf.data_vars['TFLAG'][:, 0].values
-        ])
-    else:
-        date = datetime.strptime(f'{qf.SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
-        nt = qf.dims['TSTEP']
-        dm = (qf.attrs['TSTEP'] % 10000) // 100
-        ds = (qf.attrs['TSTEP'] % 100)
-        dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
-        times = pd.date_range(date, periods=nt, freq=f'{dh}H')
-
-    popts = {k: v for k, v in qf.attrs.items()}
-    popts['R'] = 6370000.
-    popts['x_0'] = -qf.attrs['XORIG']
-    popts['y_0'] = -qf.attrs['YORIG']
-
-    if qf.GDTYP == 1:
-        projtmpl = '+proj=lonlat +lat_0={YCENT} +lon_0={XCENT} +R={R} +no_defs'
-    elif qf.GDTYP == 2:
-        projtmpl = (
-            '+proj=lcc +lat_0={YCENT} +lon_0={P_GAM} +lat_1={P_ALP}'
-            + ' +lat_2={P_BET} +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL}'
-            + ' +no_defs'
-        )
-    elif qf.GDTYP == 6:
-        popts['lat_0'] = popts['P_ALP'] * 90
-        projtmpl = (
-            '+proj=stere +lat_0={lat_0} +lat_ts={P_BET} +lon_0={P_GAM}'
-            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
-        )
-    elif qf.GDTYP == 7:
-        projtmpl = (
-            '+proj=merc +lat_ts=0 +lon_0={YCENT}'
-            + ' +x_0={x_0} +y_0={y_0} +R={R} +to_meter={XCELL} +no_defs'
-        )
-        mapdef.latitude_of_projection_origin = ifileo.YCENT
-        mapdef.longitude_of_central_meridian = ifileo.XCENT
-        mapdef.false_northing = -ifileo.YORIG
-        mapdef.false_easting = -ifileo.XORIG
-    else:
-        projtmpl = None
-
-    qf.coords['TSTEP'] = times
-    qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
-    if projtmpl is None:
-        warnings.warn((
-            'Unknown project ({GDTYP}); currently support lonlat (1), lcc (2), polar'
-            + ' stereograpic (6), equatorial mercator (7)'
-        ).format(**popts))
-    else:
-        qf.attrs['crs'] = projtmpl.format(**popts)
-        row = np.arange(qf.dims['ROW']) + 0.5
-        col = np.arange(qf.dims['COL']) + 0.5
-        if qf.GDTYP == 1:
-            row = row * popts['YCELL'] + popts['YORIG']
-            col = col * popts['XCELL'] + popts['XORIG']
-        qf.coords['ROW'] = row 
-        qf.coords['COL'] = col
-
-    return qf
+    def apply_ak(self, key, ak):
+        pcd = self._obj[key]
+        validak = ~ak.isnull()
+        validcell = validak.any('LAY')
+        out = (pcd * ak).sum('LAY').where(validcell)
+        out.attrs.update(pcd.attrs)
+        return out

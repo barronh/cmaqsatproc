@@ -93,7 +93,9 @@ class OMPSL2(satellite):
             if len(sval) < 0:
                 raise ValueError(f'{path} has no values in {bbox}')
 
-            ds = ds.sel(DimAlongTrack=slice(sval.min() - 1, sval.max() + 1))
+            ds = ds.sel(
+                DimAlongTrack=slice(max(sval.min() - 1, 0), sval.max() + 1)
+            )
 
         DimAlongTrack = ds.DimAlongTrack.values
         DimAlongTrack_edges = xr.DataArray(
@@ -149,11 +151,18 @@ class OMPSL2(satellite):
             (ds['GroundPixelQualityFlags'] == 0)
             & (ds['PixelQualityFlags'] == 0)
         )
+        ds['cn_x'] = ds['Longitude']
+        ds['cn_y'] = ds['Latitude']
+
         if bbox is not None:
             ds['valid'] = ds['valid'] & (
                 (ds['Latitude'] >= swlat) & (ds['Latitude'] <= nelat)
                 & (ds['Longitude'] >= swlon) & (ds['Longitude'] <= nelon)
             )
+
+        if not ds['valid'].any():
+            import warnings
+            warnings.warn('No valid pixels')
 
         return ds
 

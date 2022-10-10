@@ -2,7 +2,6 @@ __all__ = ['MODISL3', 'MOD04', 'MOD04_3K', 'MOD04_L2', 'modis_readers']
 
 from ..core import satellite
 from ...utils import EasyDataFramePoint, grouped_weighted_avg
-from ...cmaq import CMAQGrid
 from . import modis_readers
 
 
@@ -14,7 +13,6 @@ provides weights for destination polygon:
 * weight = intx_fracarea
 """
     _defaultkeys = ('Optical_Depth_Land_And_Ocean',)
-    _stdkeys = ('valid',)
 
     @classmethod
     def shorten_name(cls, key):
@@ -93,6 +91,7 @@ provides weights for destination polygon:
         if not ds['valid'].any():
             import warnings
             warnings.warn('No valid pixels')
+
         sat = cls()
         sat.path = path
         sat.ds = ds
@@ -223,7 +222,7 @@ destination polygon:
         ---------
         varkeys : iterable
             See to_dataframe
-        grid : geopandas.GeoDataFrame or CMAQGrid
+        grid : geopandas.GeoDataFrame or xr.Dataset
             Defines the grid used as the L3 destination
         griddims : iterable
             Defaults to grid.index.names
@@ -235,16 +234,19 @@ destination polygon:
         outputs : dict
             Dictionary of outputs by output dimensions
         """
-        if isinstance(grid, CMAQGrid) and weighting == 'equal':
+        import xarray as xr
+
+        if isinstance(grid, xr.Dataset) and weighting == 'equal':
             df = self.to_dataframe('Optical_Depth_055')
             lon, lat = self.proj(
                 df.index.get_level_values('x').values,
                 df.index.get_level_values('y').values,
                 inverse=True
             )
-            i, j = grid.gf.ll2ij(lon, lat)
-            df['ROW'] = j
-            df['COL'] = i
+            i, j = grid.csp.proj(lon, lat)
+            # find nearest row/col
+            df['ROW'] = grid['ROW'].sel(ROW=j, method='nearest')
+            df['COL'] = grid['COL'].sel(COL=i, method='nearest')
             df['weight'] = 1
             df.set_index(['ROW', 'COL'], append=True, inplace=True)
             outdf = grouped_weighted_avg(df, df['weight'], ['ROW', 'COL'])

@@ -8,7 +8,6 @@ class VIIRS_L2(satellite):
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
     """
-    _stdkeys = ('valid',)
     _defaultkeys = ('Optical_Depth_Land_And_Ocean', 'Land_Ocean_Quality_Flag')
 
     @classmethod

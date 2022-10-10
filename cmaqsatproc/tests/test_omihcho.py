@@ -31,11 +31,11 @@ def omi_example_df():
 """),
         names=names
     ).set_index(['nTimes', 'nXtrack'])
-    df['Latitude'] = (
+    df['cn_y'] = df['Latitude'] = (
         df['ll_y'] + df['lu_y']
         + df['ul_y'] + df['uu_y']
     ) / 4
-    df['Longitude'] = (
+    df['cn_x'] = df['Longitude'] = (
         df['ll_x'] + df['lu_x']
         + df['ul_x'] + df['uu_x']
     ) / 4
@@ -111,10 +111,8 @@ def checksat(sat):
         geometry=[box(-179, 0, 179, 89)], crs=4326
     ).set_index(['ROW', 'COL']).to_crs(3785)
     l3 = sat.to_level3(inkey, grid=gdf[['geometry']])
-    print(l3['nTimes', 'nXtrack'].to_csv())
-    print(gdf.to_csv())
     diff = (
-        l3['nTimes', 'nXtrack'][inkey] - gdf['Val']
+        l3[inkey].values.ravel() - gdf['Val'].values
     )
     pctdiff = diff / gdf['Val'] * 100
     assert ((pctdiff.abs() < 5).all())

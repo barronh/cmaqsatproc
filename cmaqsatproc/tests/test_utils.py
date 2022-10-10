@@ -34,11 +34,6 @@ def test_getcmrlinks_poly():
     assert (len(links) > 0)
 
 
-def test_centertobox():
-    wkt = utils.centertobox(0.5, 0.5, 1, 1).wkt
-    assert (wkt == 'POLYGON ((1 0, 1 1, 0 1, 0 0, 1 0))')
-
-
 def test_easypoly():
     import numpy as np
     import pandas as pd
@@ -53,29 +48,31 @@ def test_easypoly():
         uu_y=[1, 1, -89],
         ul_y=[0, 0, 89]
     ))
-    gdf = gpd.GeoDataFrame(
-        df, geometry=df.apply(utils.EasyRowPolygon, axis=1), crs=4326
+    opts = [dict(lowmem=True, wrap=False), dict(lowmem=False, wrap=True)]
+    for opt in opts:
+        gdf = gpd.GeoDataFrame(
+            df, geometry=utils.EasyDataFramePolygon(df, **opt), crs=4326
+        )
+        x, y = gdf.iloc[0].geometry.exterior.xy
+        assert (np.allclose(x, [0, 0, 1, 1, 0]))
+        assert (np.allclose(y, [0, 1, 1, 0, 0]))
+        x, y = gdf.iloc[1].geometry.exterior.xy
+        if opt['wrap']:
+            assert (np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
+        else:
+            assert (np.allclose(x, [-179.5, -179.5, 179.5, 179.5, -179.5]))
+        assert (np.allclose(y, [0, 1, 1, 0, 0]))
+        x, y = gdf.iloc[2].geometry.exterior.xy
+        assert (np.allclose(x, [0, 0, 1, 1, 0]))
+        # Known failure. No reason a polar orbiting satellite should
+        # simultaneously see both poles
+        assert (np.allclose(y, [89, -89, -89, 89, 89]))
+
+
+def test_rootremover():
+    stem, short_list = utils.rootremover(
+        ['/really/long/testing/1', '/really/long/testing/2']
     )
-    x, y = gdf.iloc[0].geometry.exterior.xy
-    assert (np.allclose(x, [0, 0, 1, 1, 0]))
-    assert (np.allclose(y, [0, 1, 1, 0, 0]))
-    x, y = gdf.iloc[1].geometry.exterior.xy
-    assert (np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
-    assert (np.allclose(y, [0, 1, 1, 0, 0]))
-    x, y = gdf.iloc[2].geometry.exterior.xy
-    assert (np.allclose(x, [0, 0, 1, 1, 0]))
-    # Known failure. No reason a satellite should simultaneously see both poles
-    assert (np.allclose(y, [89, -89, -89, 89, 89]))
-    gdf = gpd.GeoDataFrame(
-        df, geometry=utils.EasyDataFramePolygon(df), crs=4326
-    )
-    x, y = gdf.iloc[0].geometry.exterior.xy
-    assert (np.allclose(x, [0, 0, 1, 1, 0]))
-    assert (np.allclose(y, [0, 1, 1, 0, 0]))
-    x, y = gdf.iloc[1].geometry.exterior.xy
-    assert (np.allclose(x, [-179.5, -179.5, -180, -180, -179.5]))
-    assert (np.allclose(y, [0, 1, 1, 0, 0]))
-    x, y = gdf.iloc[2].geometry.exterior.xy
-    assert (np.allclose(x, [0, 0, 1, 1, 0]))
-    # Known failure. No reason a satellite should simultaneously see both poles
-    assert (np.allclose(y, [89, -89, -89, 89, 89]))
+    assert (stem == '/really/long/testing')
+    assert (short_list[0] == '{root}/1')
+    assert (short_list[1] == '{root}/2')

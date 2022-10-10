@@ -41,6 +41,10 @@ class IASI_NH3(satellite):
                 & (ds['longitude'] >= swlon) & (ds['longitude'] <= nelon)
             )
 
+        if not ds['valid'].any():
+            import warnings
+            warnings.warn('No valid pixels')
+
         sat = cls()
         sat.path = path
         sat.bbox = bbox

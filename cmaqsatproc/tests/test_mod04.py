@@ -85,6 +85,14 @@ def modis_example_ds():
             dims=ds.Longitude.dims,
             coords=ds.Longitude.coords,
         )
+    ds['cn_y'] = (
+        ds['ll_y'] + ds['lu_y']
+        + ds['ul_y'] + ds['uu_y']
+    ) / 4
+    ds['cn_x'] = (
+        ds['ll_x'] + ds['lu_x']
+        + ds['ul_x'] + ds['uu_x']
+    ) / 4
     ds['valid'] = ds['Land_Ocean_Quality_Flag'] > 1
     outds = ds.drop_vars(['dx', 'dy'])
     return outds
@@ -104,7 +112,7 @@ def checksat(sat):
     ).set_index(['ROW', 'COL']).to_crs(3785)
     l3 = sat.to_level3(inkey, grid=gdf[['geometry']])
     diff = (
-        l3['Cell_Across_Swath', 'Cell_Along_Swath'][inkey] - gdf['Val']
+        l3[inkey].values[0] - gdf['Val'].values[0]
     )
     pctdiff = diff / gdf['Val'] * 100
     assert ((pctdiff.abs() < 5).all())
