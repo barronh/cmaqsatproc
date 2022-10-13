@@ -8,8 +8,8 @@ Satellite Processors designed for simple CMAQ comparisons.
   * 2-d species like total or tropospheric columns
   * n-d vairables like averaging kernels and scattering weights.
 * convert CMAQ concentrations to L3-like products
-  * apply satellite averaging kernels to CMAQ concentrations
-  * create alternative air mass factors
+  * Apply satellite averaging kernels to CMAQ concentrations to make satellite-like CMAQ
+  * Apply CMAQ to create alternative air mass factors to make CMAQ-like satellite products.
 
 ## What makes it simple?
 
@@ -17,11 +17,11 @@ Satellite Processors designed for simple CMAQ comparisons.
 
 1. Operates on local files or dynamically finds remote files
   1. User can specify input files from their disk.
-  2. Queries NASA's Common Metadata Repository (CMR)
+  2. Queries NASA's Common Metadata Repository (CMR) or NOAA AWS
 2. Allows for spatial subsetting based on a simple box.
   1. User can specify the box based on lat/lon
   2. The CMAQ grid can be used to automatically define the box.
-3. Provides L2 access as a dataframe or makes Level 3 data
+3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
 
 ## Short Example
 
@@ -33,22 +33,22 @@ require any local files (satellite or CMAQ).
 ```
 import cmaqsatproc as csp
 
-GDNAM = '108NHEMI2'
-readername = 'OMNO2'
-date='2018-07-01'
+GDNAM = '12US1'
+readername = 'TropOMINO2'
+date = '2019-07-24'
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 
-cg = csp.cmaq.CMAQGrid(GDNAM)
+cg = csp.open_griddesc(GDNAM)
 satreader = csp.readers.reader_dict[readername]
 
 outputs = satreader.cmr_to_level3(
-    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox(),
-    grid=cg.geodf[['geometry']]
+    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z',
+    bbox=cg.bbox(), grid=cg.geodf
 )
 outputs.to_netcdf(outpath)
 ```
 
-### OMI NO2 Satellite -- Downloaded files to CMAQ-Grid
+### TropOMI NO2 Satellite -- Downloaded files to CMAQ-Grid
 
 This example assumes you ahve downloaded satellite files. The code is largely
 the same as the previous. Instead of `cmr_to_level3`, it the method uses `glob`
@@ -58,15 +58,16 @@ to make a list of files that it passes to `paths_to_level3`.
 import cmaqsatproc as csp
 from glob import glob
 
-GDNAM = '108NHEMI2'
-readername = 'OMNO2'
-date='2018-07-01'
+GDNAM = '12US1'
+readername = 'TropOMINO2'
+date = '2019-07-24'
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 
-paths = sorted(glob(f'/local/path/to/*{date}*.h5'))
+cg = csp.open_griddesc(GDNAM)
+paths = sorted(glob(f'/local/path/to/*{date}*.nc'))
 outputs = satreader.paths_to_level3(
-    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z', bbox=cg.bbox(),
-    grid=cg.geodf[['geometry']]
+    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z',
+    bbox=cg.bbox(), grid=cg.geodf
 )
 outputs.to_netcdf(outpath)
 ```
@@ -81,8 +82,8 @@ import cmaqsatproc as csp
 import xarray as xr
 
 
-GDNAM = '108NHEMI2'
-readername = 'OMNO2'
+GDNAM = '12US1'
+readername = 'TropOMINO2'
 date='2018-07-01'
 satpath = f'{readername}_{date}_{GDNAM}.nc'
 cmaqsatpath = f'{readername}_{date}_{GDNAM}_CMAQ.nc'
@@ -98,50 +99,29 @@ qf['DENS'] = mf['DENS']
 qf['ZF'] = mf['ZF']
 qf['PRES'] = mf['PRES']
 
-# OMI is on the aura satellite, so we create an average overpass
-# file using approximate Aura overpass times
-# Calculate Partial Columns for one or many species
-overf = cg.mean_overpass(qf, satellite='aura')
-n_per_m2 = cg.mole_per_m2(overf, add=True)
-overf['NO2_PER_M2'] = n_per_m2 * overf['NO2'] / 1e6
-amf = overf['AmfTropCMAQ'] = satreader.cmaq_amf(overf, satf)
-ak = overf['CMAQ_AK'] = satreader.cmaq_ak(overf, satf)
-overf['VCDNO2_CMAQ'] = overf['NO2_PER_M2'].where(~ak.isnull()).sum('LAY').where(~amf.isnull())
-overf['VCDNO2_OMI_CMAQ'] = (
-    satf['ColumnAmountNO2Trop'] * satf['AmfTrop'] / overf['AmfTropCMAQ']
-)
+overf = satreader.cmaq_process(qf, satf)
 overf.to_netcdf(cmaqsatpath)
 ```
 
 ## What assumptions are being made?
 
 * Spatial matching is pretty good
-  * For satellite products with pixel corners, fractional area weighting is used.
-  * For satellite products like MODIS, satellite pixel centers are matched to CMAQ projected grids. No attempt to apply area-fractions is made.
+  * For satellite products with pixel corners, fractional area weighting is used by default. Other options are avilable.
 * Satellite AveragingKernels are averaged
-  * within a single day
-  * within grid cells
+  * within a single day or overpass depending on configuration.
+  * within grid cells.
 * CMAQ stratosphere is using one of several methods
-  * Removed according to potential vorticity.
-  * Removed according to the WMO definition.
   * Removed according to the satellite averaging kernel.
-
-## How to?
-
-An example notebook and python script is provided in the examples folder.
-
-* ./examples/basic.ipynb
-* ./examples/opendap_l3_example.py
-* ./examples/opendap_csv_example.py
 
 ## Prerequisites
 
 * numpy
 * xarray
+* netcdf4
 * pyproj
 * pandas
 * geopandas
-* PseudoNetCDF (http://github.com/barronh/PseudoNetCDF) and associated prereqs
+* h5netcdf is required for s3 support
 
 ## OpenDAP Support
 
@@ -174,7 +154,11 @@ machine urs.earthdata.nasa.gov
 EOF
 ```
 
-Note: I have only been able to make this work if the files are in the user home directory.
+Notes:
+1. I have only been able to make this work if the files are in the user home directory.
+2. netcdf4-python version 1.6 has trouble with opendap.
+
+
 ## Diagram
 
 ```mermaid
