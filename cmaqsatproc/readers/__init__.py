@@ -31,3 +31,14 @@ reader_dict['TropOMINO2'] = reader_dict['S5P_L2__NO2___']
 reader_dict['TropOMICO'] = reader_dict['S5P_L2__CO____']
 reader_dict['TropOMIHCHO'] = reader_dict['S5P_L2__HCHO__']
 reader_dict['TropOMICH4'] = reader_dict['S5P_L2__CH4___']
+
+
+def print_reader_list():
+    """
+    Print to the screen a short description reader_dict keys and a short
+    description of the reader they are associated with.
+    """
+    for key, reader in reader_dict.items():
+        print(f'{key}: ', reader.__doc__)
+    print('For more help on any reader, use `help(reader_dict[key])`,')
+    print('where key is the reader name. e.g., help(reader_dict["OMNO2"])')

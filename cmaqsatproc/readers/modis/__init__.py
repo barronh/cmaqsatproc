@@ -6,12 +6,13 @@ from . import modis_readers
 
 
 class MOD04(satellite):
-    __doc__ = """MOD04 (MOD04_3K or MOD04_L2) filters valid pixels and
-provides weights for destination polygon:
-* valid = Land_Ocean_Quality_Flag > 1 and value == value
-* pixel_area = corners from centroids +- delta
-* weight = intx_fracarea
-"""
+    __doc__ = """
+    MOD04 (MOD04_3K or MOD04_L2) filters valid pixels and provides weights for
+    destination polygon:
+    * valid = Land_Ocean_Quality_Flag > 1 and value == value
+    * pixel_area = corners from centroids +- delta
+    * weight = intx_fracarea
+    """
     _defaultkeys = ('Optical_Depth_Land_And_Ocean',)
 
     @classmethod
@@ -132,6 +133,13 @@ provides weights for destination polygon:
 
 
 class MOD04_L2(MOD04):
+    __doc__ = """
+    MOD04_L3 filters valid pixels and provides weights for destination polygon:
+    * valid = Land_Ocean_Quality_Flag > 1 and value == value
+    * pixel_area = corners from centroids +- delta
+    * weight = intx_fracarea
+    """
+
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
@@ -155,6 +163,13 @@ class MOD04_L2(MOD04):
 
 
 class MOD04_3K(MOD04):
+    __doc__ = """
+    MOD04_3K filters valid pixels and provides weights for destination polygon:
+    * valid = Land_Ocean_Quality_Flag > 1 and value == value
+    * pixel_area = corners from centroids +- delta
+    * weight = intx_fracarea
+    """
+
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
@@ -178,12 +193,13 @@ class MOD04_3K(MOD04):
 
 
 class MODISL3(satellite):
-    __doc__ = """MODISL3 filters valid pixels and provides weights for
-destination polygon:
-* valid = Land_Ocean_Quality_Flag > 1 and value == value
-* pixel_area = corners from centroids +- delta
-* weight = intx_fracarea
-"""
+    __doc__ = """
+    MODISL3 filters valid pixels and provides weights for
+    destination polygon:
+    * valid = Land_Ocean_Quality_Flag > 1 and value == value
+    * pixel_area = corners from centroids +- delta
+    * weight = intx_fracarea
+    """
     _defaultkeys = ('Optical_Depth_055',)
     _geokeys = ('x', 'y')
 
