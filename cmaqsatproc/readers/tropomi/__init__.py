@@ -1,5 +1,47 @@
 __all__ = ['TropOMI', 'TropOMINO2', 'TropOMICO', 'TropOMIHCHO', 'TropOMICH4']
 from ..core import satellite
+import numpy as np
+
+
+# Hard-coded to match current TropOMI implementation. This allows users
+# to process less data.
+tm5_constant_a = np.array([
+    [0.0000000e+00, 2.2835938e+01, 4.2441406e+02, 1.3875469e+03,
+     3.0572656e+03, 5.5643828e+03, 8.1633750e+03, 1.1901340e+04,
+     1.4898453e+04, 1.7471840e+04, 1.9290227e+04, 2.0361816e+04,
+     2.0337863e+04, 1.9859391e+04, 1.9031289e+04, 1.8308434e+04,
+     1.7008789e+04, 1.5508257e+04, 1.3881331e+04, 1.2766873e+04,
+     1.1116662e+04, 9.5626826e+03, 8.6085254e+03, 7.3118691e+03,
+     6.1560742e+03, 4.4908174e+03, 3.3817437e+03, 2.2654316e+03,
+     1.4237701e+03, 8.2396783e+02, 4.2759250e+02, 1.9133856e+02,
+     6.9520576e+01, 1.8608931e+01],
+    [2.2835938e+01, 4.2441406e+02, 1.3875469e+03, 3.0572656e+03,
+     5.5643828e+03, 8.1633750e+03, 1.1901340e+04, 1.4898453e+04,
+     1.7471840e+04, 1.9290227e+04, 2.0361816e+04, 2.0337863e+04,
+     1.9859391e+04, 1.9031289e+04, 1.8308434e+04, 1.7008789e+04,
+     1.5508257e+04, 1.3881331e+04, 1.2766873e+04, 1.1116662e+04,
+     9.5626826e+03, 8.6085254e+03, 7.3118691e+03, 6.1560742e+03,
+     4.4908174e+03, 3.3817437e+03, 2.2654316e+03, 1.4237701e+03,
+     8.2396783e+02, 4.2759250e+02, 1.9133856e+02, 6.9520576e+01,
+     1.8608931e+01, 0.0000000e+00]
+], dtype='f').T
+
+tm5_constant_b = np.array([
+    [1.00000e+00, 9.91984e-01, 9.69513e-01, 9.31881e-01, 8.73929e-01,
+     7.90717e-01, 7.04669e-01, 5.76692e-01, 4.66003e-01, 3.58254e-01,
+     2.63242e-01, 1.68910e-01, 1.11505e-01, 7.79580e-02, 5.17730e-02,
+     3.80260e-02, 2.23550e-02, 1.18060e-02, 5.37800e-03, 2.85700e-03,
+     8.90000e-04, 1.99000e-04, 5.90000e-05, 0.00000e+00, 0.00000e+00,
+     0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00,
+     0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00],
+    [9.91984e-01, 9.69513e-01, 9.31881e-01, 8.73929e-01, 7.90717e-01,
+     7.04669e-01, 5.76692e-01, 4.66003e-01, 3.58254e-01, 2.63242e-01,
+     1.68910e-01, 1.11505e-01, 7.79580e-02, 5.17730e-02, 3.80260e-02,
+     2.23550e-02, 1.18060e-02, 5.37800e-03, 2.85700e-03, 8.90000e-04,
+     1.99000e-04, 5.90000e-05, 0.00000e+00, 0.00000e+00, 0.00000e+00,
+     0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00,
+     0.00000e+00, 0.00000e+00, 0.00000e+00, 0.00000e+00]
+], dtype='f').T
 
 
 class TropOMI(satellite):
@@ -10,7 +52,9 @@ class TropOMI(satellite):
     _defaultkeys = ()
 
     @classmethod
-    def _open_hierarchical_dataset(cls, path, bbox=None, isvalid=0.5, **kwargs):
+    def _open_hierarchical_dataset(
+        cls, path, bbox=None, isvalid=0.5, **kwargs
+    ):
         import xarray as xr
         datakey = 'PRODUCT'
         geokey = 'PRODUCT/SUPPORT_DATA/GEOLOCATIONS'
@@ -153,6 +197,13 @@ class TropOMI(satellite):
                 & (ds['longitude'] >= swlon) & (ds['longitude'] <= nelon)
             )
 
+        # The HCHO OpenDAP file constants have dimensions ('time', 'layer')
+        for vkey in ['tm5_constant_a', 'tm5_constant_b']:
+            if vkey in ds.data_vars:
+                vvar = ds[vkey]
+                if 'time' in vvar.dims:
+                    ds[vkey] = vvar.isel(time=0)
+
         if not ds['valid'].any():
             import warnings
             warnings.warn('No valid pixels')
@@ -176,20 +227,36 @@ class TropOMI(satellite):
         return key
 
     @classmethod
-    def cmaq_sw(cls, overf, outputs, amfkey):
+    def cmaq_sw(cls, overf, outputs, amfkey, tropopausekey=None):
         from ...utils import coord_interp
-        pres = (
-            (
-                outputs['tm5_constant_b'].mean('vertices')
-                * outputs['surface_pressure']
-            ) + outputs['tm5_constant_a'].mean('vertices')
-        )
-        sw_trop = (
-            outputs['averaging_kernel'].where(
-                outputs['tm5_tropopause_layer_index'] >= outputs['layer'],
+        import xarray as xr
+
+        if 'tm5_constant_b' in outputs:
+            tm5_b = outputs['tm5_constant_b']
+            if 'vertices' in tm5_b.dims:
+                tm5_b = tm5_b.mean('vertices')
+        else:
+            tm5_b = xr.DataArray(
+                tm5_constant_b.mean(1), dims=('layer',),
+                coords=[('layer', outputs['layer'])]
             )
-            * outputs[amfkey]
-        )
+        if 'tm5_constant_a' in outputs:
+            tm5_a = outputs['tm5_constant_a']
+            if 'vertices' in tm5_a.dims:
+                tm5_a = tm5_a.mean('vertices')
+        else:
+            tm5_a = xr.DataArray(
+                tm5_constant_a.mean(1), dims=('layer',),
+                coords=[('layer', outputs['layer'])]
+            )
+
+        pres = tm5_b * outputs['surface_pressure'] + tm5_a
+        ak = outputs['averaging_kernel']
+        if tropopausekey is not None:
+            ak = ak.where(outputs[tropopausekey] >= outputs['layer'])
+
+        sw_trop = ak * outputs[amfkey]
+
         q_sw_trop = coord_interp(
             overf['PRES'], pres, sw_trop,
             indim='layer', outdim='LAY', ascending=False
@@ -199,7 +266,7 @@ class TropOMI(satellite):
         return q_sw_trop
 
     @classmethod
-    def cmaq_amf(cls, overf, outputs, amfkey, key='NO2_PER_M2'):
+    def cmaq_amf(cls, overf, outputs, amfkey, key):
         """
         Calculates the Tropospheric Averaging Kernel
         """
@@ -233,8 +300,7 @@ class TropOMINO2(TropOMI):
     _defaultkeys = (
         'air_mass_factor_total', 'air_mass_factor_troposphere',
         'nitrogendioxide_tropospheric_column', 'nitrogendioxide_total_column',
-        'averaging_kernel', 'tm5_constant_a', 'tm5_constant_b',
-        'tm5_tropopause_layer_index', 'surface_pressure'
+        'averaging_kernel', 'tm5_tropopause_layer_index', 'surface_pressure'
     )
     __doc__ = """
     TropOMINO2 satellite processor.
@@ -250,12 +316,19 @@ class TropOMINO2(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
-    def cmaq_sw(cls, overf, outputs, amfkey='air_mass_factor_total'):
-        return TropOMI.cmaq_sw(overf, outputs, amfkey=amfkey)
+    def cmaq_sw(
+        cls, overf, outputs, amfkey='air_mass_factor_total',
+        tropopausekey='tm5_tropopause_layer_index'
+    ):
+        return TropOMI.cmaq_sw(
+            overf, outputs, amfkey=amfkey, tropopausekey=tropopausekey
+        )
 
     @classmethod
-    def cmaq_amf(cls, overf, outputs, amfkey='air_mass_factor_total'):
-        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey)
+    def cmaq_amf(
+        cls, overf, outputs, amfkey='air_mass_factor_total', key='NO2_PER_M2'
+    ):
+        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey, key=key)
 
     @classmethod
     def cmaq_ak(cls, overf, outputs, amfkey='air_mass_factor_total'):
@@ -268,13 +341,20 @@ class TropOMINO2(TropOMI):
         return q_ak
 
     @classmethod
-    def cmaq_process(cls, qf, satl3f):
+    def cmaq_process(cls, qf, satl3f, key='NO2'):
         """
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
         n_per_m2 = overf.csp.mole_per_m2(add=True)
-        overf['NO2_PER_M2'] = n_per_m2 * overf['NO2'] / 1e6
+        tgtvar = overf[key]
+        if tgtvar.units.strip().startswith('ppm'):
+            vmr = tgtvar / 1e6
+        elif tgtvar.units.strip().startswith('ppb'):
+            vmr = tgtvar / 1e9
+        elif tgtvar.units.strip().startswith('ppt'):
+            vmr = tgtvar / 1e12
+        overf['NO2_PER_M2'] = n_per_m2 * vmr
         overf['NO2_PER_M2'].attrs.update(overf['NO2'].attrs)
         overf['NO2_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
 
@@ -285,7 +365,7 @@ class TropOMINO2(TropOMI):
         # uses AK for vertical weighting
         overf['VCDNO2_CMAQ_TOMI'] = overf.csp.apply_ak('NO2_PER_M2', ak)
         # Recalculate satellite
-        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f)
+        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f, key='NO2_PER_M2')
 
         overf['VCDNO2_TOMI_CMAQ'] = (
             satl3f['nitrogendioxide_tropospheric_column']
@@ -338,6 +418,19 @@ class TropOMIHCHO(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
+    def cmaq_sw(
+        cls, overf, outputs, amfkey='formaldehyde_tropospheric_air_mass_factor'
+    ):
+        return TropOMI.cmaq_sw(overf, outputs, amfkey=amfkey)
+
+    @classmethod
+    def cmaq_amf(
+        cls, overf, outputs,
+        amfkey='formaldehyde_tropospheric_air_mass_factor', key='FORM_PER_M2'
+    ):
+        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey, key=key)
+
+    @classmethod
     def cmaq_ak(cls, overf, outputs):
         """
         Calculates the Tropospheric Averaging Kernel
@@ -347,13 +440,20 @@ class TropOMIHCHO(TropOMI):
         return q_ak
 
     @classmethod
-    def cmaq_process(cls, qf, satl3f):
+    def cmaq_process(cls, qf, satl3f, key='FORM'):
         """
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
         n_per_m2 = overf.csp.mole_per_m2(add=True)
-        overf['FORM_PER_M2'] = n_per_m2 * overf['FORM'] / 1e6
+        tgtvar = overf[key]
+        if tgtvar.units.strip().startswith('ppm'):
+            vmr = tgtvar / 1e6
+        elif tgtvar.units.strip().startswith('ppb'):
+            vmr = tgtvar / 1e9
+        elif tgtvar.units.strip().startswith('ppt'):
+            vmr = tgtvar / 1e12
+        overf['FORM_PER_M2'] = n_per_m2 * vmr
 
         ak = overf['FORM_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
         overf['FORM_SW_CMAQ'] = cls.cmaq_sw(overf, satl3f)
@@ -362,7 +462,9 @@ class TropOMIHCHO(TropOMI):
         # uses AK for vertical weighting
         overf['VCDFORM_CMAQ_TOMI'] = overf.csp.apply_ak('FORM_PER_M2', ak)
         # Recalculate satellite
-        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f)
+        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(
+            overf, satl3f, key='FORM_PER_M2'
+        )
 
         overf['VCDHCHO_TOMI_CMAQ'] = (
             satl3f['formaldehyde_tropospheric_vertical_column']

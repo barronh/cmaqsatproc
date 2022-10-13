@@ -17,13 +17,28 @@ class satellite:
 
     @property
     def _defgeofunc(self):
+        """
+        Function that takes a dataframe and returns geometries for each row.
+        """
         return EasyDataFramePolygon
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
+        Use utils.getcmrlinks to get links from the NASA Common Metadata Repo
+
+        Arguments
+        ---------
         method : str
             Options are opendap, download, or s3
+        kwds : mappable
+            Passed through to utils.getcmrlinks. See getcmrlinks for valid
+            keywords
+
+        Returns
+        -------
+        links : list
+            List of links to OpenDAP, http downloadable, or s3 links
         """
         from copy import copy
         from ..utils import getcmrlinks
@@ -87,6 +102,8 @@ class satellite:
     @classmethod
     def from_dataset(cls, ds, path='unknown'):
         """
+        Create a satellite object from a dataset
+
         Arguments
         ---------
         ds : xarray.Dataset
@@ -106,6 +123,9 @@ class satellite:
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
         """
+        Create a satellite object from the dataset at a path. The path can be
+        a local path or a remote path (OpenDAP or s3).
+
         Arguments
         ---------
         path : str
@@ -124,7 +144,14 @@ class satellite:
         import xarray as xr
         sat = cls()
         sat.path = path
-        sat.ds = xr.open_dataset(path, *kwargs)
+        if 's3:' in path:
+            import s3fs
+            fs = s3fs.S3FileSystem(anon=True)
+            with fs.open(path) as fileObj:
+                ds = xr.open_dataset(fileObj)
+        else:
+            ds = xr.open_dataset(path, *kwargs)
+        sat.ds = ds
         if bbox is not None:
             import warnings
             warnings.warn(f'{cls} bbox not implemented; all cells returned')
@@ -140,6 +167,10 @@ class satellite:
 
     def to_dataframe(self, *varkeys, valid=True, geo=False, default_keys=False):
         """
+        Transform the Dataset into a dataframe. This function is similar to
+        xr.Dataset.to_dataframe, but includes geopandas support and filtering
+        for valid pixels.
+
         Arguments
         ---------
         varkeys : iterable
@@ -201,11 +232,27 @@ class satellite:
         * 'equal' uses equal weights for all overlapping pixels
         * 'area' uses area of intersection for all overlapping pixels
         * other methods can be added by overriding this mehtod
+
+        Arguments
+        ---------
+        intx : geopandas.GeoDataFrame
+            Dataframe that has a geometry field that supports area
+
+        Returns
+        -------
+        None
         """
         if option == 'equal':
             intx['weight'] = 1
         elif option == 'area':
             intx['weight'] = intx.geometry.area
+            if (intx['weight'] == 0).all():
+                import warnings
+                warnings.warn(
+                    'All areas are zero, which likely means that geometries'
+                    + ' were points. Reverting to equal weights.'
+                )
+                intx['weight'] = 1
         else:
             raise KeyError(f'Unknown weighting option {option}')
 
@@ -214,7 +261,8 @@ class satellite:
     def shorten_name(self, k):
         """
         By default, nothing is done and k is returned. Override this method to
-        make short names
+        make short names that are suitable for other purposes (e.g., IOAPI 16
+        character names)
         """
         return k
 
@@ -223,6 +271,8 @@ class satellite:
         as_dataset=True, verbose=0
     ):
         """
+        Convert variables from L2 file to a custom L3 file.
+
         Arguments
         ---------
         varkeys : iterable
@@ -236,8 +286,9 @@ class satellite:
 
         Returns
         -------
-        outputs : dict
+        outputs : dict or xr.Dataset
             Dictionary of outputs by output dimensions
+            or Dataset of outputs as a dataset
         """
         import pandas as pd
         import geopandas as gpd
@@ -248,6 +299,8 @@ class satellite:
             ]
             if verbose > 0:
                 print('defaults', varkeys)
+        if isinstance(grid, gpd.GeoSeries):
+            grid = gpd.GeoDataFrame(dict(), geometry=grid)
         if griddims is None:
             griddims = list(grid.index.names)
         if verbose > 1:
@@ -301,6 +354,7 @@ class satellite:
         self.add_weights(intx, option=weighting)
         justweight = intx[['weight']]
         overlays = {}
+
         for dimset, keys in dimsets.items():
             if verbose > 0:
                 print('Working on', dimset, flush=True)
@@ -318,6 +372,8 @@ class satellite:
                     print(' - Adding intx geometry', flush=True)
                     t0 = time.time()
                 if len(notgeodims) > 0:
+                    if verbose > 1:
+                        print(f'   - Unstacking {notgeodims}', flush=True)
                     mjustweight = justweight.copy()
                     wkey = ('weight',) + ('',) * len(notgeodims)
                     wskey = ('weight_sum',) + ('',) * len(notgeodims)
@@ -327,7 +383,15 @@ class satellite:
                     df = mjustweight.join(df.unstack(notgeodims))
                 else:
                     wkey = 'weight'
-                    df = justweight.join(df)
+                    # Adding on keyword, because it is significanly faster for
+                    # some products. I would have thought the on would be
+                    # inferred by names.
+                    sharedidk = [
+                        idk for idk in df.index.names
+                        if idk in justweight.index.names
+                    ]
+                    df = justweight.join(df, on=sharedidk)
+
                 if verbose > 2:
                     print(
                         f'   - Weighted inputs has {df.shape[0]} rows'
@@ -392,6 +456,10 @@ class satellite:
             outds.attrs['updated'] = datetime.now().strftime('%FT%H:%M:%S%z')
             outds.attrs['history'] = ''
             outds.attrs['crs'] = grid.crs.srs
+            comp = dict(zlib=True, complevel=1)
+            for key, var in outds.data_vars.items():
+                var.encoding.update(comp)
+
             return outds
 
         return overlays
@@ -401,6 +469,10 @@ class satellite:
         cls, temporal, grid, griddims=None, weighting='area', bbox=None,
         verbose=0, varkeys=None, as_dataset=True, link_kwargs=None, **kwargs
     ):
+        """
+        Wrapper around cmr_links and paths_to_level3. For description of
+        keywords, see those methods.
+        """
         from copy import copy
         if link_kwargs is None:
             link_kwargs = {}
@@ -428,7 +500,9 @@ class satellite:
         """
         Iteratively apply
         output = cls(path).to_level3(*args, path=path, **kwds)
-        and then grouped_weighted_avg(output[dims]) for each dimset
+        and then grouped_weighted_avg(output[dims]) for each dimset.
+
+        For description of keywords, see to_level3.
         """
         import pandas as pd
         from copy import copy

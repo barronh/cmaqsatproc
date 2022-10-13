@@ -51,7 +51,9 @@ class IASI_NH3(satellite):
         sat.ds = ds
         return sat
 
-    def to_dataframe(self, *varkeys, valid=True, geo=False, default_keys=False):
+    def to_dataframe(
+        self, *varkeys, valid=True, geo=False, default_keys=False
+    ):
         """
         Arguments
         ---------

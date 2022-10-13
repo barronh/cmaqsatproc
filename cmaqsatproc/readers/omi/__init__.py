@@ -272,18 +272,20 @@ class OMNO2(OMIL2):
         return q_ak
 
     @classmethod
-    def cmaq_process(cls, qf, satl3f):
+    def cmaq_process(cls, qf, satl3f, key='NO2'):
         """
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
         n_per_m2 = overf.csp.mole_per_m2(add=True)
-        if overf['NO2'].units.strip().startswith('ppm'):
-            vmr = overf['NO2'] / 1e6
-        if overf['NO2'].units.strip().startswith('ppb'):
-            vmr = overf['NO2'] / 1e9
-        if overf['NO2'].units.strip().startswith('ppt'):
-            vmr = overf['NO2'] / 1e12
+        tgtvar = overf[key]
+        if tgtvar.units.strip().startswith('ppm'):
+            vmr = tgtvar / 1e6
+        elif tgtvar.units.strip().startswith('ppb'):
+            vmr = tgtvar / 1e9
+        elif tgtvar.units.strip().startswith('ppt'):
+            vmr = tgtvar / 1e12
+
         overf['NO2_PER_CM2'] = n_per_m2 * vmr * 6.022e23 / 1e4
         overf['NO2_PER_CM2'].attrs.update(overf['NO2'].attrs)
         overf['NO2_PER_CM2'].attrs['units'] = '1/cm**2'
@@ -398,7 +400,7 @@ class OMHCHO(OMIL2):
         return q_sw
 
     @classmethod
-    def cmaq_amf(cls, overf, satl3f, key='FORM_PER_M2'):
+    def cmaq_amf(cls, overf, satl3f, key='FORM_PER_CM2'):
         q_sw = cls.cmaq_sw(overf, satl3f)
         q_var = overf[key].where(~q_sw.isnull())
         denom = q_var.sum('LAY')
@@ -412,20 +414,27 @@ class OMHCHO(OMIL2):
         return q_ak
 
     @classmethod
-    def cmaq_process(cls, qf, satl3f):
+    def cmaq_process(cls, qf, satl3f, key='FORM'):
         """
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
         n_per_m2 = overf.csp.mole_per_m2(add=True)
-        overf['FORM_PER_M2'] = n_per_m2 * overf['FORM'] / 1e6
+        tgtvar = overf[key]
+        if tgtvar.units.strip().startswith('ppm'):
+            vmr = tgtvar / 1e6
+        elif tgtvar.units.strip().startswith('ppb'):
+            vmr = tgtvar / 1e9
+        elif tgtvar.units.strip().startswith('ppt'):
+            vmr = tgtvar / 1e12
+        overf['FORM_PER_CM2'] = n_per_m2 * vmr * 6.022e23 / 1e4
 
         ak = overf['FORM_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
         overf['FORM_SW_CMAQ'] = cls.cmaq_sw(overf, satl3f)
         # uses AK for tropopause
-        overf['VCDFORM_CMAQ'] = overf.csp.apply_ak('FORM_PER_M2', ak / ak)
+        overf['VCDFORM_CMAQ'] = overf.csp.apply_ak('FORM_PER_CM2', ak / ak)
         # uses AK for vertical weighting
-        overf['VCDFORM_CMAQ_OMI'] = overf.csp.apply_ak('FORM_PER_M2', ak)
+        overf['VCDFORM_CMAQ_OMI'] = overf.csp.apply_ak('FORM_PER_CM2', ak)
         # Recalculate satellite
         amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f)
 

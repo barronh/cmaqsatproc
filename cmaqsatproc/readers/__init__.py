@@ -1,20 +1,21 @@
 __all__ = [
-    'satellite', 'omi', 'omps', 'modis', 'tropomi', 'iasi', 'viirs',
+    'satellite', 'goes', 'iasi', 'modis', 'omi', 'omps', 'tropomi', 'viirs',
     'reader_dict'
 ]
 
 
 from .core import satellite
+from . import goes
+from . import iasi
+from . import modis
 from . import omi
 from . import omps
-from . import modis
 from . import tropomi
-from . import iasi
 from . import viirs
 import inspect
 
 reader_dict = {}
-for submod in [omi, omps, modis, tropomi, iasi, viirs]:
+for submod in [goes, iasi, modis, omi, omps, tropomi, viirs]:
     readers = getattr(submod, '__all__', [])
     for _readerkey in readers:
         _reader = getattr(submod, _readerkey)

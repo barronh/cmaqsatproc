@@ -1,4 +1,4 @@
-__all__ = ['OMPSL2', 'OMPSNO2']
+__all__ = ['OMPSL2', 'OMPSNO2', 'OMPSTO3']
 from ..core import satellite
 
 
@@ -147,18 +147,16 @@ class OMPSL2(satellite):
                 ds[f'{cornerkey}_x'] = xr.DataArray(
                     lon_edges[corner_slice], dims=dims, coords=coords
                 )
-        ds['valid'] = (
-            (ds['GroundPixelQualityFlags'] == 0)
-            & (ds['PixelQualityFlags'] == 0)
-        )
         ds['cn_x'] = ds['Longitude']
         ds['cn_y'] = ds['Latitude']
 
         if bbox is not None:
-            ds['valid'] = ds['valid'] & (
+            ds['valid'] = (
                 (ds['Latitude'] >= swlat) & (ds['Latitude'] <= nelat)
                 & (ds['Longitude'] >= swlon) & (ds['Longitude'] <= nelon)
             )
+        else:
+            ds['valid'] = ds['Latitude'] > -999
 
         if not ds['valid'].any():
             import warnings
@@ -184,4 +182,49 @@ class OMPSNO2(OMPSL2):
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'OMPS_NPP_NMNO2_L2')
+        return OMPSL2.cmr_links(method=method, **kwargs)
+
+    @classmethod
+    def prep_dataset(cls, ds, bbox=None, path=None):
+        OMPSL2.prep_dataset(ds, bbox=bbox, path=path)
+        ds['valid'] = (
+            ds['valid']
+            & (ds['GroundPixelQualityFlags'] == 0)
+            & (ds['PixelQualityFlags'] == 0)
+        )
+        if not ds['valid'].any():
+            import warnings
+            warnings.warn('No valid pixels')
+
+        return ds
+
+
+class OMPSTO3(OMPSL2):
+    _defaultkeys = ('ColumnAmountO3')
+    __doc__ = """
+    Default OMPS O3 satellite processor.
+    * valid when
+      * GroundPixelQualityFlags == 0
+      * QualityFlags == 0
+    """
+
+    @classmethod
+    def prep_dataset(cls, ds, bbox=None, path=None):
+        ds = OMPSL2.prep_dataset(ds, bbox=bbox, path=path)
+        ds['valid'] = (
+            ds['valid']
+            & (ds['GroundPixelQualityFlags'] == 0)
+            & (ds['QualityFlags'] == 0)
+        )
+        if not ds['valid'].any():
+            import warnings
+            warnings.warn('No valid pixels')
+
+        return ds
+
+    @classmethod
+    def cmr_links(cls, method='opendap', **kwargs):
+        from copy import copy
+        kwargs = copy(kwargs)
+        kwargs.setdefault('short_name', 'OMPS_NPP_NMTO3_L2')
         return OMPSL2.cmr_links(method=method, **kwargs)

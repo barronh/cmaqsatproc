@@ -183,7 +183,7 @@ class VIIRS_AERDT(VIIRS_L2):
 
 class VIIRS_AERDB(VIIRS_L2):
     __doc__ = """AERDB_L2_VIIRS_SNPP
-    * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate is not None
+    * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate not None
     * pixel corners are based on interpolated lat/lon
     """
 
@@ -250,6 +250,8 @@ class VIIRS_AERDB(VIIRS_L2):
             'Idx_Atrack': ds.coords['Idx_Atrack'],
             'Idx_Xtrack': ds.coords['Idx_Xtrack'],
         }
+        ds['cn_x'] = ds['Longitude']
+        ds['cn_y'] = ds['Latitude']
         for cornerkey, corner_slice in corner_slices.items():
             ds[f'{cornerkey}_y'] = xr.DataArray(
                 lat_edges[corner_slice], dims=dims, coords=coords
