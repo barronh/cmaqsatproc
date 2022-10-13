@@ -26,3 +26,8 @@ for submod in [goes, iasi, modis, omi, omps, tropomi, viirs]:
             short_name = _reader.__name__
             reader_dict[short_name] = _reader
             reader_dict[long_name] = _reader
+
+reader_dict['TropOMINO2'] = reader_dict['S5P_L2__NO2___']
+reader_dict['TropOMICO'] = reader_dict['S5P_L2__CO____']
+reader_dict['TropOMIHCHO'] = reader_dict['S5P_L2__HCHO__']
+reader_dict['TropOMICH4'] = reader_dict['S5P_L2__CH4___']

@@ -1,8 +1,8 @@
-__all__ = ['OMPSL2', 'OMPSNO2', 'OMPSTO3']
+__all__ = ['OMPS_NPP_L2', 'OMPS_NPP_NMNO2_L2', 'OMPS_NPP_NMTO3_L2']
 from ..core import satellite
 
 
-class OMPSL2(satellite):
+class OMPS_NPP_L2(satellite):
     __doc__ = """
     Default OMPS satellite processor.
     """
@@ -43,7 +43,7 @@ class OMPSL2(satellite):
 
         Returns
         -------
-        sat: OMPSL2
+        sat: OMPS_NPP_L2
             Satellite processing instance
         """
         import xarray as xr
@@ -165,7 +165,7 @@ class OMPSL2(satellite):
         return ds
 
 
-class OMPSNO2(OMPSL2):
+class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
     _defaultkeys = (
         'ColumnAmountNO2', 'ColumnAmountNO2tropo', 'ColumnAmountNO2strat',
         'CloudFraction'
@@ -182,11 +182,11 @@ class OMPSNO2(OMPSL2):
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'OMPS_NPP_NMNO2_L2')
-        return OMPSL2.cmr_links(method=method, **kwargs)
+        return OMPS_NPP_L2.cmr_links(method=method, **kwargs)
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
-        OMPSL2.prep_dataset(ds, bbox=bbox, path=path)
+        OMPS_NPP_L2.prep_dataset(ds, bbox=bbox, path=path)
         ds['valid'] = (
             ds['valid']
             & (ds['GroundPixelQualityFlags'] == 0)
@@ -199,7 +199,7 @@ class OMPSNO2(OMPSL2):
         return ds
 
 
-class OMPSTO3(OMPSL2):
+class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
     _defaultkeys = ('ColumnAmountO3')
     __doc__ = """
     Default OMPS O3 satellite processor.
@@ -210,7 +210,7 @@ class OMPSTO3(OMPSL2):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
-        ds = OMPSL2.prep_dataset(ds, bbox=bbox, path=path)
+        ds = OMPS_NPP_L2.prep_dataset(ds, bbox=bbox, path=path)
         ds['valid'] = (
             ds['valid']
             & (ds['GroundPixelQualityFlags'] == 0)
@@ -227,4 +227,4 @@ class OMPSTO3(OMPSL2):
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'OMPS_NPP_NMTO3_L2')
-        return OMPSL2.cmr_links(method=method, **kwargs)
+        return OMPS_NPP_L2.cmr_links(method=method, **kwargs)

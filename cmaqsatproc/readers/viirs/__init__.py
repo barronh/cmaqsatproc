@@ -1,9 +1,9 @@
-__all__ = ['VIIRS_L2', 'VIIRS_AERDB', 'VIIRS_AERDT']
+__all__ = ['L2_VIIRS_SNPP', 'AERDB_L2_VIIRS_SNPP', 'AERDT_L2_VIIRS_SNPP']
 # https://ladsweb.modaps.eosdis.nasa.gov/opendap/allData/5110/AERDB_L2_VIIRS_SNPP/contents.html
 from .. import satellite
 
 
-class VIIRS_L2(satellite):
+class L2_VIIRS_SNPP(satellite):
     __doc__ = """VIIRS SNPP
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
@@ -34,7 +34,7 @@ class VIIRS_L2(satellite):
         Arguments
         ---------
         path : str
-            Path to a VIIRS_L2 OpenDAP-style file
+            Path to a L2_VIIRS_SNPP OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
@@ -43,7 +43,7 @@ class VIIRS_L2(satellite):
 
         Returns
         -------
-        sat: VIIRS_L2
+        sat: L2_VIIRS_SNPP
             Satellite processing instance
         """
         import xarray as xr
@@ -106,7 +106,7 @@ class VIIRS_L2(satellite):
         return links
 
 
-class VIIRS_AERDT(VIIRS_L2):
+class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     __doc__ = """AERDT_L2_VIIRS_SNPP
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
@@ -117,7 +117,7 @@ class VIIRS_AERDT(VIIRS_L2):
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'AERDT_L2_VIIRS_SNPP')
-        return VIIRS_L2.cmr_links(method=method, **kwargs)
+        return L2_VIIRS_SNPP.cmr_links(method=method, **kwargs)
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, isvalid=2, path=None):
@@ -180,8 +180,18 @@ class VIIRS_AERDT(VIIRS_L2):
         )
         return ds
 
+    @classmethod
+    def cmaq_process(
+        cls, qf, l3
+    ):
+        saodkey = 'Optical_Depth_Land_And_Ocean'
+        overf = qf.csp.mean_overpass(satellite='aura').where(
+            ~l3[saodkey].isnull()
+        )
+        return overf
 
-class VIIRS_AERDB(VIIRS_L2):
+
+class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     __doc__ = """AERDB_L2_VIIRS_SNPP
     * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate not None
     * pixel corners are based on interpolated lat/lon
@@ -200,7 +210,7 @@ class VIIRS_AERDB(VIIRS_L2):
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'AERDB_L2_VIIRS_SNPP')
-        return VIIRS_L2.cmr_links(method=method, **kwargs)
+        return L2_VIIRS_SNPP.cmr_links(method=method, **kwargs)
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, isvalid=2, path=None):
@@ -269,3 +279,13 @@ class VIIRS_AERDB(VIIRS_L2):
             ].isnull())
         )
         return ds
+
+    @classmethod
+    def cmaq_process(
+        cls, qf, l3
+    ):
+        saodkey = 'Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate'
+        overf = qf.csp.mean_overpass(satellite='aura').where(
+            ~l3[saodkey].isnull()
+        )
+        return overf

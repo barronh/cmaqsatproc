@@ -1,4 +1,4 @@
-__all__ = ['TropOMI', 'TropOMINO2', 'TropOMICO', 'TropOMIHCHO', 'TropOMICH4']
+__all__ = ['TropOMI', 'S5P_L2__NO2___', 'S5P_L2__CO____', 'S5P_L2__HCHO__', 'S5P_L2__CH4___']
 from ..core import satellite
 import numpy as np
 
@@ -278,7 +278,7 @@ class TropOMI(satellite):
         return q_amf
 
 
-class TropOMICO(TropOMI):
+class S5P_L2__CO____(TropOMI):
     _defaultkeys = (
         'carbonmonoxide_total_column', 'column_averaging_kernel', 'layer'
     )
@@ -296,7 +296,7 @@ class TropOMICO(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
 
-class TropOMINO2(TropOMI):
+class S5P_L2__NO2___(TropOMI):
     _defaultkeys = (
         'air_mass_factor_total', 'air_mass_factor_troposphere',
         'nitrogendioxide_tropospheric_column', 'nitrogendioxide_total_column',
@@ -381,7 +381,7 @@ class TropOMINO2(TropOMI):
         return overf
 
 
-class TropOMICH4(TropOMI):
+class S5P_L2__CH4___(TropOMI):
     _defaultkeys = ('methane_mixing_ratio', 'averaging_kernel')
     __doc__ = """
     TropOMICH4 satellite processor.
@@ -397,7 +397,7 @@ class TropOMICH4(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
 
-class TropOMIHCHO(TropOMI):
+class S5P_L2__HCHO__(TropOMI):
     __doc__ = """
     TropOMIHCHO satellite processor.
     * bbox subsets the scanline dimensions
