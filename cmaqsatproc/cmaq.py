@@ -138,17 +138,6 @@ def open_griddesc(GDNAM, gdpath=None):
     return outf
 
 
-def _default_griddesc(GDNAM):
-    import PseudoNetCDF as pnc
-    import tempfile
-
-    with tempfile.NamedTemporaryFile() as gdfile:
-        gdfile.write(default_griddesc_txt)
-        gdfile.flush()
-        outf = pnc.pncopen(gdfile.name, format='griddesc', GDNAM=GDNAM)
-    return outf
-
-
 def get_proj4string(attrs):
     import copy
     popts = copy.copy(attrs)
