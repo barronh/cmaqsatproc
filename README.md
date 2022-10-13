@@ -34,42 +34,43 @@ require any local files (satellite or CMAQ).
 import cmaqsatproc as csp
 
 GDNAM = '12US1'
-readername = 'TropOMINO2'
-date = '2019-07-24'
+date='2019-07-24'
+readername = 'TropOMINO2' # or TropOMIHCHO, VIIRS_AERDB, ...
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 
 cg = csp.open_griddesc(GDNAM)
-satreader = csp.readers.reader_dict[readername]
+satreader = csp.reader_dict[readername]
 
-outputs = satreader.cmr_to_level3(
+l3 = satreader.cmr_to_level3(
     temporal=f'{date}T00:00:00Z/{date}T23:59:59Z',
-    bbox=cg.bbox(), grid=cg.geodf
+    bbox=cg.csp.bbox(), grid=cg.csp.geodf, verbose=9
 )
-outputs.to_netcdf(outpath)
+l3.to_netcdf(outpath)
 ```
 
-### TropOMI NO2 Satellite -- Downloaded files to CMAQ-Grid
+### SNPP VIIRS Deep Blue -- Downloaded files to CMAQ-Grid
 
-This example assumes you ahve downloaded satellite files. The code is largely
+This example assumes you have downloaded satellite files. The code is largely
 the same as the previous. Instead of `cmr_to_level3`, it the method uses `glob`
 to make a list of files that it passes to `paths_to_level3`.
 
 ```
-import cmaqsatproc as csp
 from glob import glob
+import cmaqsatproc as csp
 
 GDNAM = '12US1'
-readername = 'TropOMINO2'
-date = '2019-07-24'
+date='2019-07-24'
+readername = 'VIIRS_AERDB' # or TropOMIHCHO, VIIRS_AERDB, ...
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 
 cg = csp.open_griddesc(GDNAM)
-paths = sorted(glob(f'/local/path/to/*{date}*.nc'))
-outputs = satreader.paths_to_level3(
-    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z',
-    bbox=cg.bbox(), grid=cg.geodf
+satreader = csp.reader_dict[readername]
+
+paths = sorted(glob('AERDB_L2_VIIRS_SNPP*.nc'))
+l3 = satreader.paths_to_level3(
+    paths, bbox=cg.csp.bbox(), grid=cg.csp.geodf, verbose=9
 )
-outputs.to_netcdf(outpath)
+l3.to_netcdf(outpath)
 ```
 
 ### CMAQ NO2 to OMI
@@ -81,26 +82,21 @@ from the level3 satellite output is combined with CMAQ to make a comparison.
 import cmaqsatproc as csp
 import xarray as xr
 
-
 GDNAM = '12US1'
+date='2019-07-24'
 readername = 'TropOMINO2'
-date='2018-07-01'
-satpath = f'{readername}_{date}_{GDNAM}.nc'
-cmaqsatpath = f'{readername}_{date}_{GDNAM}_CMAQ.nc'
 
-cg = csp.cmaq.CMAQGrid(GDNAM)
-satreader = csp.readers.reader_dict[readername]
+satreader = csp.reader_dict[readername]
+l3 = xr.open_dataset(f'{readername}_{date}_{GDNAM}.nc')
 
-satf = xr.open_dataset(satpath)
-
-qf = cmaqsatproc.cmaq.open_ioapi(f'CCTM_CONC_{date}.nc')
-mf = cmaqsatproc.cmaq.open_ioapi(f'METCRO3D_{date}.nc')
+qf = csp.open_ioapi(f'CCTM_CONC_{date}_{GDNAM}.nc')[['NO2']]
+mf = csp.open_ioapi(f'METCRO3D_{date}_{GDNAM}.nc')
 qf['DENS'] = mf['DENS']
 qf['ZF'] = mf['ZF']
 qf['PRES'] = mf['PRES']
-
-overf = satreader.cmaq_process(qf, satf)
-overf.to_netcdf(cmaqsatpath)
+# Create satellite according to CMAQ, and CMAQ according to satellite
+overf = satreader.cmaq_process(qf, l3)
+overf.to_netcdf(f'{readername}_{date}_{GDNAM}_CMAQ.nc')
 ```
 
 ## What assumptions are being made?
