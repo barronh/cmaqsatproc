@@ -1,4 +1,7 @@
-__all__ = ['TropOMI', 'S5P_L2__NO2___', 'S5P_L2__CO____', 'S5P_L2__HCHO__', 'S5P_L2__CH4___']
+__all__ = [
+    'TropOMI', 'S5P_L2__NO2___', 'S5P_L2__CO____', 'S5P_L2__HCHO__',
+    'S5P_L2__CH4___'
+]
 from ..core import satellite
 import numpy as np
 
@@ -55,6 +58,26 @@ class TropOMI(satellite):
     def _open_hierarchical_dataset(
         cls, path, bbox=None, isvalid=0.5, **kwargs
     ):
+        """
+        Convenience function to promote PRODUCT GEOLOCATIONS, DETAILED_RESULTS,
+        and INPUT_DATA groups' variables to the main xarray.Dataset object.
+
+        Arguments
+        ---------
+        path : str
+            Path to a TropOMI he5-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        isvalid : float
+            Pixels are valid with the qa_value is greater than isvalid
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: TropOMI
+            Satellite processing instance
+        """
         import xarray as xr
         datakey = 'PRODUCT'
         geokey = 'PRODUCT/SUPPORT_DATA/GEOLOCATIONS'
@@ -123,6 +146,25 @@ class TropOMI(satellite):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, isvalid=0.5, path=None):
+        """
+        Defines pixels as valid when they are within bbox and interpolates
+        latitude and longitude from pixel centers to corners.
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        isvalid : float
+            When qa_value is greater than isvalid, the pixel is valid.
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         import xarray as xr
         import numpy as np
         if bbox is not None:
@@ -212,6 +254,20 @@ class TropOMI(satellite):
 
     @classmethod
     def shorten_name(cls, key):
+        """
+        Provide a short name for long keys. This is useful for renaming
+        variables to fit IOAPI 16 character restrictions.
+
+        Arguments
+        ---------
+        key : str
+            Original variable name.
+
+        Returns
+        -------
+        shortkey : str
+            Shortened key
+        """
         key = key.replace('SUPPORT_DATA_DETAILED_RESULTS', 'SUP')
         key = key.replace('SUPPORT_DATA_INPUT_DATA', 'IN')
         key = key.replace('SUPPORT_DATA_GEOLOCATIONS', 'GEO')
@@ -227,50 +283,97 @@ class TropOMI(satellite):
         return key
 
     @classmethod
-    def cmaq_sw(cls, overf, outputs, amfkey, tropopausekey=None):
+    def cmaq_sw(cls, overf, satl3f, amfkey, tropopausekey=None):
+        """
+        Calculate scattering weights as averaging kernel multiplied by the
+        total air mass factor. Then, interpolate to CMAQ vertical grid, based
+        on PRES (pressure in Pa). The scattering weights are set to 0 above
+        the tropopause.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key for the total air mass factor.
+        tropopauskey : str
+            Key for the tropopause when available. Otherwise, use None.
+
+        Returns
+        -------
+        q_sw_trop : xr.DataArray
+            Tropospheric scattering Weights on the CMAQ grid
+        """
         from ...utils import coord_interp
         import xarray as xr
 
-        if 'tm5_constant_b' in outputs:
-            tm5_b = outputs['tm5_constant_b']
+        if 'tm5_constant_b' in satl3f:
+            tm5_b = satl3f['tm5_constant_b']
             if 'vertices' in tm5_b.dims:
                 tm5_b = tm5_b.mean('vertices')
         else:
             tm5_b = xr.DataArray(
                 tm5_constant_b.mean(1), dims=('layer',),
-                coords=[('layer', outputs['layer'])]
+                coords=[('layer', satl3f['layer'])]
             )
-        if 'tm5_constant_a' in outputs:
-            tm5_a = outputs['tm5_constant_a']
+        if 'tm5_constant_a' in satl3f:
+            tm5_a = satl3f['tm5_constant_a']
             if 'vertices' in tm5_a.dims:
                 tm5_a = tm5_a.mean('vertices')
         else:
             tm5_a = xr.DataArray(
                 tm5_constant_a.mean(1), dims=('layer',),
-                coords=[('layer', outputs['layer'])]
+                coords=[('layer', satl3f['layer'])]
             )
 
-        pres = tm5_b * outputs['surface_pressure'] + tm5_a
-        ak = outputs['averaging_kernel']
+        pres = tm5_b * satl3f['surface_pressure'] + tm5_a
+        ak = satl3f['averaging_kernel']
         if tropopausekey is not None:
-            ak = ak.where(outputs[tropopausekey] >= outputs['layer'])
+            ak = ak.where(satl3f[tropopausekey] >= satl3f['layer'])
 
-        sw_trop = ak * outputs[amfkey]
+        sw_trop = ak * satl3f[amfkey]
 
         q_sw_trop = coord_interp(
             overf['PRES'], pres, sw_trop,
             indim='layer', outdim='LAY', ascending=False
         )
-        q_sw_trop.attrs.update(outputs['averaging_kernel'].attrs)
+        q_sw_trop.attrs.update(satl3f['averaging_kernel'].attrs)
         q_sw_trop.attrs['var_desc'] = 'AK * AMF'.ljust(80)
         return q_sw_trop
 
     @classmethod
-    def cmaq_amf(cls, overf, outputs, amfkey, key):
+    def cmaq_amf(cls, overf, satl3f, amfkey, key):
         """
-        Calculates the Tropospheric Averaging Kernel
+        Calculate an alternative Air Mass Factor (AMF) using satellite
+        scattering weights and the CMAQ vertical profile as a partial column
+        density.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key of the total air mass factor
+        key : str
+            Key of the partial column density variable from CMAQ, which must
+            have a LAY dimension that describes teh vertical coordinate.
+
+        Returns
+        -------
+        cmaqamf : xr.DataArray
+            Air Mass Factor on the CMAQ grid
         """
-        q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
+        q_sw_trop = cls.cmaq_sw(overf, satl3f, amfkey=amfkey)
         denom = overf[key].sum('LAY')
         q_amf = (q_sw_trop * overf[key]).sum('LAY') / denom
         q_amf = q_amf.where((denom != 0) & ~q_sw_trop.isnull().all('LAY'))
@@ -290,10 +393,49 @@ class S5P_L2__CO____(TropOMI):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "S5P_L2__CO____".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'S5P_L2__CO____')
         return TropOMI.cmr_links(method=method, **kwargs)
+
+    @classmethod
+    def cmaq_process(cls, qf, l3):
+        """
+        Process CMAQ as though it were observed by TropOMI, which is simply
+        based on the overpass time.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., CO)
+        l3 : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ.
+        """
+        skey = 'carbonmonoxide_total_column'
+        overf = qf.csp.mean_overpass(satellite='aura').where(
+            ~l3[skey].isnull()
+        )
+        return overf
 
 
 class S5P_L2__NO2___(TropOMI):
@@ -310,6 +452,20 @@ class S5P_L2__NO2___(TropOMI):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "S5P_L2__NO2___".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'S5P_L2__NO2___')
@@ -317,32 +473,119 @@ class S5P_L2__NO2___(TropOMI):
 
     @classmethod
     def cmaq_sw(
-        cls, overf, outputs, amfkey='air_mass_factor_total',
+        cls, overf, satl3f, amfkey='air_mass_factor_total',
         tropopausekey='tm5_tropopause_layer_index'
     ):
+        """
+        Calculate scattering weights as averaging kernel multiplied by the
+        total air mass factor. Then, interpolate to CMAQ vertical grid, based
+        on PRES (pressure in Pa). The scattering weights are set to 0 above
+        the tropopause.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key for the total air mass factor.
+        tropopausekey : str
+            Key for the tropopause index.
+
+        Returns
+        -------
+        q_sw_trop : xr.DataArray
+            Tropospheric scattering Weights on the CMAQ grid
+        """
         return TropOMI.cmaq_sw(
-            overf, outputs, amfkey=amfkey, tropopausekey=tropopausekey
+            overf, satl3f, amfkey=amfkey, tropopausekey=tropopausekey
         )
 
     @classmethod
     def cmaq_amf(
-        cls, overf, outputs, amfkey='air_mass_factor_total', key='NO2_PER_M2'
+        cls, overf, satl3f, amfkey='air_mass_factor_total', key='NO2_PER_M2'
     ):
-        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey, key=key)
+        """
+        Calculate an alternative Air Mass Factor (AMF) using satellite
+        scattering weights and the CMAQ vertical profile as a partial column
+        density.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key of the total air mass factor
+        key : str
+            Key of the partial column density variable from CMAQ, which must
+            have a LAY dimension that describes teh vertical coordinate.
+
+        Returns
+        -------
+        cmaqamf : xr.DataArray
+            Air Mass Factor on the CMAQ grid
+        """
+        return TropOMI.cmaq_amf(overf, satl3f, amfkey=amfkey, key=key)
 
     @classmethod
-    def cmaq_ak(cls, overf, outputs, amfkey='air_mass_factor_total'):
+    def cmaq_ak(cls, overf, satl3f, amfkey='air_mass_factor_total'):
         """
-        Calculates the Tropospheric Averaging Kernel
+        Calculate an averaging kernel (AK) that would process CMAQ as though
+        it were observed by the satellite. In this case, the averaging kernel
+        is the scattering weights divided by the tropospheric air mass factor.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_ak : xr.DataArray
+            Averaging kernel on the CMAQ grid
         """
-        q_sw_trop = cls.cmaq_sw(overf, outputs, amfkey=amfkey)
-        q_ak = q_sw_trop / outputs['air_mass_factor_troposphere']
+        q_sw_trop = cls.cmaq_sw(overf, satl3f, amfkey=amfkey)
+        q_ak = q_sw_trop / satl3f['air_mass_factor_troposphere']
         q_ak.attrs.update(q_sw_trop.attrs)
         return q_ak
 
     @classmethod
     def cmaq_process(cls, qf, satl3f, key='NO2'):
         """
+        Process CMAQ as though it were observed by TropOMI and recalculate
+        TropOMI tropospheric columns with the CMAQ AMF. This process relies
+        on cmaq_ak and cmaq_amf.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., NO2), PRES, DENS, and ZF
+            variables with a LAY dimension describing the vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        key : str
+            Composition key
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ and CMAQ-like satellite.
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
@@ -391,10 +634,49 @@ class S5P_L2__CH4___(TropOMI):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "S5P_L2__CH4___".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'S5P_L2__CH4___')
         return TropOMI.cmr_links(method=method, **kwargs)
+
+    @classmethod
+    def cmaq_process(cls, qf, l3):
+        """
+        Process CMAQ as though it were observed by TropOMI, which is simply
+        based on the overpass time.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., ECH4)
+        l3 : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ.
+        """
+        skey = 'methane_mixing_ratio'
+        overf = qf.csp.mean_overpass(satellite='aura').where(
+            ~l3[skey].isnull()
+        )
+        return overf
 
 
 class S5P_L2__HCHO__(TropOMI):
@@ -412,6 +694,20 @@ class S5P_L2__HCHO__(TropOMI):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "S5P_L2__HCHO__".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'S5P_L2__HCHO__')
@@ -419,29 +715,114 @@ class S5P_L2__HCHO__(TropOMI):
 
     @classmethod
     def cmaq_sw(
-        cls, overf, outputs, amfkey='formaldehyde_tropospheric_air_mass_factor'
+        cls, overf, satl3f, amfkey='formaldehyde_tropospheric_air_mass_factor'
     ):
-        return TropOMI.cmaq_sw(overf, outputs, amfkey=amfkey)
+        """
+        Calculate scattering weights as averaging kernel multiplied by the
+        total air mass factor. Then, interpolate to CMAQ vertical grid, based
+        on PRES (pressure in Pa). The scattering weights are set to 0 above
+        the tropopause.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key for the total air mass factor.
+
+        Returns
+        -------
+        q_sw_trop : xr.DataArray
+            Tropospheric scattering Weights on the CMAQ grid
+        """
+        return TropOMI.cmaq_sw(overf, satl3f, amfkey=amfkey)
 
     @classmethod
     def cmaq_amf(
-        cls, overf, outputs,
+        cls, overf, satl3f,
         amfkey='formaldehyde_tropospheric_air_mass_factor', key='FORM_PER_M2'
     ):
-        return TropOMI.cmaq_amf(overf, outputs, amfkey=amfkey, key=key)
+        """
+        Calculate an alternative Air Mass Factor (AMF) using satellite
+        scattering weights and the CMAQ vertical profile as a partial column
+        density.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        amfkey : str
+            Key of the total air mass factor
+        key : str
+            Key of the partial column density variable from CMAQ, which must
+            have a LAY dimension that describes teh vertical coordinate.
+
+        Returns
+        -------
+        cmaqamf : xr.DataArray
+            Air Mass Factor on the CMAQ grid
+        """
+        return TropOMI.cmaq_amf(overf, satl3f, amfkey=amfkey, key=key)
 
     @classmethod
-    def cmaq_ak(cls, overf, outputs):
+    def cmaq_ak(cls, overf, satl3f):
         """
-        Calculates the Tropospheric Averaging Kernel
+        Calculate an averaging kernel (AK) that would process CMAQ as though
+        it were observed by the satellite. In this case, the averaging kernel
+        is the scattering weights divided by the tropospheric air mass factor.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_ak : xr.DataArray
+            Averaging kernel on the CMAQ grid
         """
-        q_sw_trop = cls.cmaq_sw(overf, outputs)
-        q_ak = q_sw_trop / outputs['formaldehyde_tropospheric_air_mass_factor']
+        q_sw_trop = cls.cmaq_sw(overf, satl3f)
+        q_ak = q_sw_trop / satl3f['formaldehyde_tropospheric_air_mass_factor']
         return q_ak
 
     @classmethod
     def cmaq_process(cls, qf, satl3f, key='FORM'):
         """
+        Process CMAQ as though it were observed by OMI and recalculate TropOMI
+        tropospheric columns with the CMAQ AMF. This process relies on cmaq_ak
+        and cmaq_amf.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., FORM), PRES, DENS, and ZF
+            variables with a LAY dimension describing the vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        key : str
+            Composition key
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ and CMAQ-like satellite.
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')

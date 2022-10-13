@@ -18,6 +18,21 @@ class IASI_NH3(satellite):
 
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Arguments
+        ---------
+        path : str
+            Path to a IASI_NH3 file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: IASI_NH3
+            Satellite processing instance
+        """
         import xarray as xr
         import numpy as np
 
@@ -85,3 +100,32 @@ class IASI_NH3(satellite):
             )
             df = gdf[['geometry']].join(df)
         return df
+
+    @classmethod
+    def cmaq_process(
+        cls, qf, l3, satellite='metop_am'
+    ):
+        """
+        Process CMAQ as though it were observed by IASI, which is simply based
+        on the overpass time.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., NH3)
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        satellite : str
+            Key for satellite overpass metop_am or metop_pm.
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ.
+        """
+        saodkey = 'nh3_total_column'
+        overf = qf.csp.mean_overpass(satellite=satellite).where(
+            ~l3[saodkey].isnull()
+        )
+        return overf

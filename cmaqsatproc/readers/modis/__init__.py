@@ -16,12 +16,44 @@ provides weights for destination polygon:
 
     @classmethod
     def shorten_name(cls, key):
+        """
+        Provide a short name for long keys. This is useful for renaming
+        variables to fit IOAPI 16 character restrictions.
+
+        Arguments
+        ---------
+        key : str
+            Original variable name.
+
+        Returns
+        -------
+        shortkey : str
+            Shortened key
+        """
         key = key.replace('Optical_Depth_Land_And_Ocean', 'LAND_OCEAN_AOD')
         key = key.replace('Land_Ocean_Quality_Flag', 'LAND_OCEAN_QA')
         return key
 
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Opens dataset and defines valid where the pixel is within bbox,
+        flags are appropriate, and inteprolates pixel centers to corners.
+
+        Arguments
+        ---------
+        path : str
+            Path to a MOD04 OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: MOD04
+            Satellite processing instance
+        """
         import xarray as xr
         import numpy as np
         ds = xr.open_dataset(path, **kwargs)
@@ -102,6 +134,20 @@ provides weights for destination polygon:
 class MOD04_L2(MOD04):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "MOD04_L2".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'MOD04_L2')
@@ -111,6 +157,20 @@ class MOD04_L2(MOD04):
 class MOD04_3K(MOD04):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "MOD04_3K".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'MOD04_3K')
@@ -118,7 +178,7 @@ class MOD04_3K(MOD04):
 
 
 class MODISL3(satellite):
-    __doc__ = """OMNO2 filters valid pixels and provides weights for
+    __doc__ = """MODISL3 filters valid pixels and provides weights for
 destination polygon:
 * valid = Land_Ocean_Quality_Flag > 1 and value == value
 * pixel_area = corners from centroids +- delta
@@ -163,9 +223,24 @@ destination polygon:
     @classmethod
     def open_dataset(cls, path, bbox=None, **kwargs):
         """
-        The ds property contains a dataset, which must contain sufficient
-        data for geodf to define a polygon. The ds may be superseded by
-        a df if set.
+        Opens dataset (remote or local). Defines valid as QualityLevel == 0.
+        Interpolates pixel centers to corners. And adjusts valid to only
+        include pixels in bbox.
+
+        Arguments
+        ---------
+        path : str
+            Path to a MOD04 OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+            of 0, 0
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: MODISL3
+            Satellite processing instance
         """
         import pyproj
         import xarray as xr

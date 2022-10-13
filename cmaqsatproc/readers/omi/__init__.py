@@ -12,6 +12,26 @@ class OMIL2(satellite):
 
     @classmethod
     def _open_hierarchical_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Convenience function to promote groups Data and Geolocation Fields from
+        groups into the main xarray.Dataset object. It also uses the
+        StructMetadata.0 property to rename dimensions.
+
+        Arguments
+        ---------
+        path : str
+            Path to a OMI he5-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: OMIL2
+            Satellite processing instance
+        """
+
         import netCDF4
         import xarray as xr
         import re
@@ -90,6 +110,22 @@ class OMIL2(satellite):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
+        """
+        Applies spatial subset based on Latitude and Longitude
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         if bbox is not None:
             swlon, swlat, nelon, nelat = bbox
             df = ds[['Latitude', 'Longitude']].to_dataframe()
@@ -116,7 +152,6 @@ class OMIL2(satellite):
             Path to a OMI OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
-            of 0, 0
         kwargs : mappable
             Passed to xarray.open_dataset
 
@@ -139,6 +174,20 @@ class OMIL2(satellite):
 
     @classmethod
     def shorten_name(cls, key):
+        """
+        Provide a short name for long keys. This is useful for renaming
+        variables to fit IOAPI 16 character restrictions.
+
+        Arguments
+        ---------
+        key : str
+            Original variable name.
+
+        Returns
+        -------
+        shortkey : str
+            Shortened key
+        """
         key = key.replace(
             'ReferenceSectorCorrectedVerticalColumn', 'RefSctCor_VCD'
         )
@@ -185,6 +234,21 @@ class OMNO2(OMIL2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMNO2".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'. 's3' is not supported for OMI at
+            this time.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         kwds.setdefault('short_name', 'OMNO2')
         return OMIL2.cmr_links(method=method, **kwds)
 
@@ -194,7 +258,7 @@ class OMNO2(OMIL2):
         Arguments
         ---------
         path : str
-            Path to a TropOMI OpenDAP-style file
+            Path to a OMI OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
@@ -242,6 +306,25 @@ class OMNO2(OMIL2):
 
     @classmethod
     def cmaq_sw(cls, overf, satl3f):
+        """
+        Interpolate satellite scattering weights to CMAQ vertical grid, based
+        on PRES (pressure in Pa).
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_sw : xr.DataArray
+            Scattering Weights on the CMAQ grid
+        """
         from ...utils import coord_interp
         qpres_hpa = overf['PRES'] / 100
         sat_press = satl3f['ScatteringWtPressure'].copy()
@@ -259,6 +342,29 @@ class OMNO2(OMIL2):
 
     @classmethod
     def cmaq_amf(cls, overf, satl3f, key='NO2_PER_CM2'):
+        """
+        Calculate an alternative Air Mass Factor (AMF) using satellite
+        scattering weights and the CMAQ vertical profile as a partial column
+        density.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        key : str
+            Key of the partial column density variable from CMAQ, which must
+            have a LAY dimension that describes teh vertical coordinate.
+
+        Returns
+        -------
+        cmaqamf : xr.DataArray
+            Air Mass Factor on the CMAQ grid
+        """
         q_sw = cls.cmaq_sw(overf, satl3f)
         q_var = overf[key].where(~q_sw.isnull())
         denom = q_var.sum('LAY')
@@ -267,6 +373,26 @@ class OMNO2(OMIL2):
 
     @classmethod
     def cmaq_ak(cls, overf, satl3f):
+        """
+        Calculate an averaging kernel (AK) that would process CMAQ as though
+        it were observed by the satellite. In this case, the averaging kernel
+        is the scattering weights divided by the tropospheric air mass factor.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_ak : xr.DataArray
+            Averaging kernel on the CMAQ grid
+        """
         q_sw = cls.cmaq_sw(overf, satl3f)
         q_ak = q_sw / satl3f['AmfTrop']
         return q_ak
@@ -274,6 +400,23 @@ class OMNO2(OMIL2):
     @classmethod
     def cmaq_process(cls, qf, satl3f, key='NO2'):
         """
+        Process CMAQ as though it were observed by OMI and recualculate OMI
+        tropospheric columns with the CMAQ AMF. This process relies
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., NO2), PRES, DENS, and ZF
+            variables with a LAY dimension describing the vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ and CMAQ-like satellite.
         """
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
@@ -319,6 +462,21 @@ class OMHCHO(OMIL2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMHCHO".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'. 's3' is not supported for OMI at
+            this time.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         kwds.setdefault('short_name', 'OMHCHO')
         return OMIL2.cmr_links(method=method, **kwds)
 
@@ -328,7 +486,7 @@ class OMHCHO(OMIL2):
         Arguments
         ---------
         path : str
-            Path to a TropOMI OpenDAP-style file
+            Path to a OMI OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
@@ -387,6 +545,25 @@ class OMHCHO(OMIL2):
 
     @classmethod
     def cmaq_sw(cls, overf, satl3f):
+        """
+        Interpolate satellite scattering weights to CMAQ vertical grid, based
+        on PRES (pressure in Pa).
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_sw : xr.DataArray
+            Scattering Weights on the CMAQ grid
+        """
         from ...utils import coord_interp
         qpres_hpa = overf['PRES'] / 100
         sat_press = satl3f['ClimatologyLevels'].copy()
@@ -401,6 +578,28 @@ class OMHCHO(OMIL2):
 
     @classmethod
     def cmaq_amf(cls, overf, satl3f, key='FORM_PER_CM2'):
+        """
+        Calculate an alternative Air Mass Factor (AMF) using satellite
+        scattering weights and the CMAQ vertical profile as a partial column
+        density.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        key : str
+            Key of the partial column density variable from CMAQ, which must
+            have a LAY dimension that describes teh vertical coordinate.
+
+        Returns
+        -------
+        cmaqamf : xr.DataArray
+            Air Mass Factor on the CMAQ grid
+        """
         q_sw = cls.cmaq_sw(overf, satl3f)
         q_var = overf[key].where(~q_sw.isnull())
         denom = q_var.sum('LAY')
@@ -409,6 +608,26 @@ class OMHCHO(OMIL2):
 
     @classmethod
     def cmaq_ak(cls, overf, satl3f):
+        """
+        Calculate an averaging kernel (AK) that would process CMAQ as though
+        it were observed by the satellite. In this case, the averaging kernel
+        is the scattering weights divided by the tropospheric air mass factor.
+
+        Arguments
+        ---------
+        overf : xarray.Dataset
+            Must have PRES variable with LAY dimension that describes the
+            vertical coordinate.
+
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        q_ak : xr.DataArray
+            Averaging kernel on the CMAQ grid
+        """
         q_sw = cls.cmaq_sw(overf, satl3f)
         q_ak = q_sw / satl3f['AirMassFactor']
         return q_ak
@@ -416,7 +635,26 @@ class OMHCHO(OMIL2):
     @classmethod
     def cmaq_process(cls, qf, satl3f, key='FORM'):
         """
+        Process CMAQ as though it were observed by OMI and recualculate OMI
+        tropospheric columns with the CMAQ AMF. This process relies
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., FORM), PRES, DENS, and ZF
+            variables with a LAY dimension describing the vertical coordinate.
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+        key : str
+            Key for composition data.
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ and CMAQ-like satellite.
         """
+
         # OMI is on the aura satellite, so we create an average overpass
         overf = qf.csp.mean_overpass(satellite='aura')
         n_per_m2 = overf.csp.mole_per_m2(add=True)
@@ -460,6 +698,21 @@ class OMO3PR(OMIL2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMO3PR".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'. 's3' is not supported for OMI at
+            this time.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         kwds.setdefault('short_name', 'OMO3PR')
         return OMIL2.cmr_links(method=method, **kwds)
 
@@ -469,7 +722,7 @@ class OMO3PR(OMIL2):
         Arguments
         ---------
         path : str
-            Path to a TropOMI OpenDAP-style file
+            Path to a OMI OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
@@ -571,7 +824,22 @@ class OMPROFOZ(OMIL2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
-        kwds.setdefault('short_name', 'OMHCHO')
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMO3PR".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'. 's3' is not supported for OMI at
+            this time.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
+        kwds.setdefault('short_name', 'OMPROFOZ')
         return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
@@ -580,7 +848,7 @@ class OMPROFOZ(OMIL2):
         Arguments
         ---------
         path : str
-            Path to a TropOMI OpenDAP-style file
+            Path to a OMI OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0

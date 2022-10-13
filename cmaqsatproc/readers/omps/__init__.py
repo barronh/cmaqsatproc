@@ -10,6 +10,25 @@ class OMPS_NPP_L2(satellite):
 
     @classmethod
     def _open_hierarchical_dataset(cls, path, bbox=None, **kwargs):
+        """
+        Convenience function to open h5 datasets with SienceData and
+        GeolocationData variables promoted to the main dataset.
+
+        Arguments
+        ---------
+        path : str
+            Path to a OMPS L2 OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+            of 0, 0
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: OMPS_NPP_L2
+            Satellite processing instance
+        """
         import xarray as xr
         datakey = 'ScienceData'
         geokey = 'GeolocationData'
@@ -79,6 +98,23 @@ class OMPS_NPP_L2(satellite):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
+        """
+        Defines valid based on Latitude/Longitude and bbox, and inteprolates
+        pixel centers to corners.
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         import xarray as xr
         import numpy as np
         if bbox is not None:
@@ -179,6 +215,20 @@ class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMPS_NPP_NMNO2_L2".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'OMPS_NPP_NMNO2_L2')
@@ -186,6 +236,24 @@ class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
+        """
+        Defines valid based on Latitude/Longitude and bbox, and inteprolates
+        pixel centers to corners. Then further subsets valid pixels where
+        GroundPixel and Pixel QualityFlags are 0.
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         OMPS_NPP_L2.prep_dataset(ds, bbox=bbox, path=path)
         ds['valid'] = (
             ds['valid']
@@ -210,6 +278,24 @@ class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, path=None):
+        """
+        Defines valid based on Latitude/Longitude and bbox, and inteprolates
+        pixel centers to corners. Then further subsets valid pixels where
+        GroundPixelQualityFlags and QualityFlags are 0.
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         ds = OMPS_NPP_L2.prep_dataset(ds, bbox=bbox, path=path)
         ds['valid'] = (
             ds['valid']
@@ -224,6 +310,20 @@ class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around satellite.cmr_links where short_name is set to
+        "OMPS_NPP_NMTO3_L2".
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'OMPS_NPP_NMTO3_L2')

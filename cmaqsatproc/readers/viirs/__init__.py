@@ -4,7 +4,8 @@ from .. import satellite
 
 
 class L2_VIIRS_SNPP(satellite):
-    __doc__ = """VIIRS SNPP
+    __doc__ = """
+    VIIRS SNPP
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
     """
@@ -12,6 +13,26 @@ class L2_VIIRS_SNPP(satellite):
 
     @classmethod
     def _open_hierarchical_dataset(cls, path, bbox=None, isvalid=2, **kwargs):
+        """
+        Convenience function to promote groups geophysical_data and
+        geolocation_data from groups into the main xarray.Dataset object.
+
+        Arguments
+        ---------
+        path : str
+            Path to a L2_VIIRS_SNPP OpenDAP-style file
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        isvalid : float
+            Minimum value of flag for valid date (flag>=isvalid)
+        kwargs : mappable
+            Passed to xarray.open_dataset
+
+        Returns
+        -------
+        sat: L2_VIIRS_SNPP
+            Satellite processing instance
+        """
         import xarray as xr
         datakey = 'geophysical_data'
         geokey = 'geolocation_data'
@@ -31,13 +52,16 @@ class L2_VIIRS_SNPP(satellite):
     @classmethod
     def open_dataset(cls, path, bbox=None, isvalid=2, **kwargs):
         """
+        Open a local or remote path as a VIIRS satellite processor.
+
         Arguments
         ---------
         path : str
             Path to a L2_VIIRS_SNPP OpenDAP-style file
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
-            of 0, 0
+        isvalid : float
+            Minimum value of flag for valid date (flag>=isvalid)
         kwargs : mappable
             Passed to xarray.open_dataset
 
@@ -63,8 +87,18 @@ class L2_VIIRS_SNPP(satellite):
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
+        Reimplemenation of satellite.cmr_links to account for html links in
+        VIIRS OpenDAP links in the CMR.
+
+        Arguments
+        ---------
         method : str
-            Options are opendap, download, or s3
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP or s3
         """
         from copy import copy
         from ...utils import getcmrlinks
@@ -107,13 +141,28 @@ class L2_VIIRS_SNPP(satellite):
 
 
 class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
-    __doc__ = """AERDT_L2_VIIRS_SNPP
+    __doc__ = """
+    AERDT_L2_VIIRS_SNPP
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
     """
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around L2_VIIRS_SNPP.cmr_links with short_name set to
+        AERDT_L2_VIIRS_SNPP.
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP or s3
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'AERDT_L2_VIIRS_SNPP')
@@ -121,6 +170,27 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, isvalid=2, path=None):
+        """
+        Applies spatial subset based on Latitude and Longitude, also
+        interpolates pixel centers to corners and applies valid flags:
+            * Land_Ocean_Quality_Flag >= isvalid
+            * ~Optical_Depth_Land_And_Ocean.isnull()
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        isvalid : float
+            Value greater than or equal to 2 are valid.
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         import xarray as xr
         import numpy as np
 
@@ -181,9 +251,24 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         return ds
 
     @classmethod
-    def cmaq_process(
-        cls, qf, l3
-    ):
+    def cmaq_process(cls, qf, l3):
+        """
+        Process CMAQ as though it were observed by VIIRS, which is simply based
+        on the overpass time.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., NH3)
+        l3 : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ.
+        """
         saodkey = 'Optical_Depth_Land_And_Ocean'
         overf = qf.csp.mean_overpass(satellite='aura').where(
             ~l3[saodkey].isnull()
@@ -192,7 +277,8 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
 
 
 class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
-    __doc__ = """AERDB_L2_VIIRS_SNPP
+    __doc__ = """
+    AERDB_L2_VIIRS_SNPP
     * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate not None
     * pixel corners are based on interpolated lat/lon
     """
@@ -207,6 +293,20 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
 
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
+        """
+        Thin wrapper around L2_VIIRS_SNPP.cmr_links with short_name set to
+        AERDT_L2_VIIRS_SNPP.
+
+        Arguments
+        ---------
+        method : str
+            'opendap', 'download', or 's3'.
+
+        Returns
+        -------
+        links : list
+            List of links for download or OpenDAP or s3
+        """
         from copy import copy
         kwargs = copy(kwargs)
         kwargs.setdefault('short_name', 'AERDB_L2_VIIRS_SNPP')
@@ -214,6 +314,29 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
 
     @classmethod
     def prep_dataset(cls, ds, bbox=None, isvalid=2, path=None):
+        """
+        Applies spatial subset based on Latitude and Longitude, also
+        interpolates pixel centers to corners and applies valid flags:
+            * AOT_QA_Flag_Land >= isvalid, or
+            * AOT_QA_Flag_Ocean >= isvalid
+            * and ~AOT_550_Land_Ocean_Best_Estimate.isnull()
+            * where AOT = Aerosol_Optical_Thickness
+
+        Arguments
+        ---------
+        ds : xarray.Dataset
+            Satellite dataset
+        bbox : iterable
+            swlon, swlat, nelon, nelat in decimal degrees East and North
+        isvalid : float
+            Value greater than or equal to 2 are valid.
+        path : str
+            Unused.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
         import xarray as xr
         import numpy as np
 
@@ -281,11 +404,26 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         return ds
 
     @classmethod
-    def cmaq_process(
-        cls, qf, l3
-    ):
+    def cmaq_process(cls, qf, satl3f):
+        """
+        Process CMAQ as though it were observed by VIIRS, which is simply based
+        on the overpass time.
+
+        Arguments
+        ---------
+        qf : xarray.Dataset
+            CMAQ file that has composition (e.g., NH3)
+        satl3f : xarray.Dataset
+            Output from to_level3, paths_to_level3, or cmr_to_level3 with
+            as_dataset=True (the default).
+
+        Returns
+        -------
+        overf : xr.DataArray
+            An overpass file with satellite-like CMAQ.
+        """
         saodkey = 'Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate'
         overf = qf.csp.mean_overpass(satellite='aura').where(
-            ~l3[saodkey].isnull()
+            ~satl3f[saodkey].isnull()
         )
         return overf
