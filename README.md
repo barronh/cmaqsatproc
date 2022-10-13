@@ -2,6 +2,8 @@
 
 Satellite Processors designed for simple CMAQ comparisons.
 
+*Note*: Updating to a version 2 that will look very different, but make working with TropOMI and geostationary data easier. Work is currently in the cmaqsatproc2 branch.
+
 ## What can you do?
 
 * convert L2 satellite products to L3 on CMAQ grids
