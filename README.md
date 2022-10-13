@@ -4,109 +4,198 @@ Satellite Processors designed for simple CMAQ comparisons.
 
 ## What can you do?
 
-* convert L2 satellite products to L3 on CMAQ grids
-* convert CMAQ concentrations to L3
+* convert L2 or L3 satellite products to L3 on CMAQ grids
+  * 2-d species like total or tropospheric columns
+  * n-d vairables like averaging kernels and scattering weights.
+* convert CMAQ concentrations to L3-like products
+  * Apply satellite averaging kernels to CMAQ concentrations to make satellite-like CMAQ
+  * Apply CMAQ to create alternative air mass factors to make CMAQ-like satellite products.
 
 ## What makes it simple?
 
-* Converting L2 satellite products takes:
-  * raw L2 inputs in HDF-EOS5 (.he5), or
-  * opendap urls (requires user opendap configuration), or
-  * Common Metadata Repository short_name and daterange
-* Converting CMAQ uses raw inputs and outputs.
-  * Output: 3D CONC file
-  * Inputs:
-    * METCRO2D (only CFRAC, PRSFC)
-    * METCRO3D (only PV)
-* It makes some simplifying assumptions.
+`cmaqsatproc` has an easy full suite approach
+
+1. Operates on local files or dynamically finds remote files
+  1. User can specify input files from their disk.
+  2. Queries NASA's Common Metadata Repository (CMR) or NOAA AWS
+2. Allows for spatial subsetting based on a simple box.
+  1. User can specify the box based on lat/lon
+  2. The CMAQ grid can be used to automatically define the box.
+3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
+
+## Short Example
+
+### OMI NO2 Satellite -- OpenDAP to CMAQ-Grid
+
+This example requires OpenDAP access configured on the machine, but does not
+require any local files (satellite or CMAQ).
+
+```
+import cmaqsatproc as csp
+
+GDNAM = '12US1'
+date='2019-07-24'
+readername = 'TropOMINO2' # or TropOMIHCHO, VIIRS_AERDB, ...
+outpath = f'{readername}_{date}_{GDNAM}.nc'
+
+cg = csp.open_griddesc(GDNAM)
+satreader = csp.reader_dict[readername]
+
+l3 = satreader.cmr_to_level3(
+    temporal=f'{date}T00:00:00Z/{date}T23:59:59Z',
+    bbox=cg.csp.bbox(), grid=cg.csp.geodf, verbose=9
+)
+l3.to_netcdf(outpath)
+```
+
+### SNPP VIIRS Deep Blue -- Downloaded files to CMAQ-Grid
+
+This example assumes you have downloaded satellite files. The code is largely
+the same as the previous. Instead of `cmr_to_level3`, it the method uses `glob`
+to make a list of files that it passes to `paths_to_level3`.
+
+```
+from glob import glob
+import cmaqsatproc as csp
+
+GDNAM = '12US1'
+date='2019-07-24'
+readername = 'VIIRS_AERDB' # or TropOMIHCHO, VIIRS_AERDB, ...
+outpath = f'{readername}_{date}_{GDNAM}.nc'
+
+cg = csp.open_griddesc(GDNAM)
+satreader = csp.reader_dict[readername]
+
+paths = sorted(glob('AERDB_L2_VIIRS_SNPP*.nc'))
+l3 = satreader.paths_to_level3(
+    paths, bbox=cg.csp.bbox(), grid=cg.csp.geodf, verbose=9
+)
+l3.to_netcdf(outpath)
+```
+
+### CMAQ NO2 to OMI
+
+This example requires an output from one of the previous exmaples. The data
+from the level3 satellite output is combined with CMAQ to make a comparison.
+
+```
+import cmaqsatproc as csp
+import xarray as xr
+
+GDNAM = '12US1'
+date='2019-07-24'
+readername = 'TropOMINO2'
+
+satreader = csp.reader_dict[readername]
+l3 = xr.open_dataset(f'{readername}_{date}_{GDNAM}.nc')
+
+qf = csp.open_ioapi(f'CCTM_CONC_{date}_{GDNAM}.nc')[['NO2']]
+mf = csp.open_ioapi(f'METCRO3D_{date}_{GDNAM}.nc')
+qf['DENS'] = mf['DENS']
+qf['ZF'] = mf['ZF']
+qf['PRES'] = mf['PRES']
+# Create satellite according to CMAQ, and CMAQ according to satellite
+overf = satreader.cmaq_process(qf, l3)
+overf.to_netcdf(f'{readername}_{date}_{GDNAM}_CMAQ.nc')
+```
 
 ## What assumptions are being made?
 
 * Spatial matching is pretty good
-  * Satellite pixel centers are matched to CMAQ projected grids.
-  * No attempt to apply area-fractions is made.
+  * For satellite products with pixel corners, fractional area weighting is used by default. Other options are avilable.
 * Satellite AveragingKernels are averaged
-  * within a single day
-  * within grid cells
-* CMAQ stratosphere is removed according to potential vorticity.
-
-## How to?
-
-Edit the scripts below and run them
-
-* ./convertsat.sh
-* ./convertcmaq.sh
+  * within a single day or overpass depending on configuration.
+  * within grid cells.
+* CMAQ stratosphere is using one of several methods
+  * Removed according to the satellite averaging kernel.
 
 ## Prerequisites
 
-* PseudoNetCDF (http://github.com/barronh/PseudoNetCDF) and associated prereqs
+* numpy
+* xarray
+* netcdf4
+* pyproj
+* pandas
+* geopandas
+* h5netcdf is required for s3 support
 
-## Annotated Configuration Options
+## OpenDAP Support
 
-The configuration files are Python files with a dictionary definition.
-This is functionally like a json file but, unlike json, can be annotated with
-comments. Below is an example config.py file with extensive annotation
+OpenDAP is supported through standard NetCDF-C support. If authentication is
+required, configure `.netrc` and `.dodsrc`. The configuration is described
+several places. Although urls tend to update, the links below are currently useful:
 
+* https://disc.gsfc.nasa.gov/data-access
+* https://docs.unidata.ucar.edu/netcdf-c/current/auth.html
+* https://docs.opendap.org/index.php/DAP_Clients_-_Authentication
+
+To summarize those resources, make a user-access-only `.netrc` file. Then, make
+a `.dodsrc` file that points to the `.netrc` file and a `.urs_cookies` file.
+The commands below achieve this goal, but will overwrite anything you already
+have there:
+
+```bash
+touch ~/.netrc
+touch ~/.urs_cookies
+chmod 0600 ~/.netrc
+cat << EOF > ~/.dodsrc
+HTTP.NETRC=${HOME}/.netrc
+HTTP.COOKIEJAR=${HOME}/.urs_cookies
+EOF
+# where <uid> and <password> are your Earthdata credentials
+cat << EOF >> ~/.netrc
+machine urs.earthdata.nasa.gov
+  login <uid>
+  password <password>
+EOF
 ```
-{
-    # HDF-EOS5 has variables in groups, so we define a data group
-    # and a geographic group, which each has keeys to process.
-    "datagrp": "HDFEOS/SWATHS/OMI Vertical Ozone Profile/Data Fields",
-    "datakeys": [
-        "O3TroposphericColumn", "O3AveragingKernel", "TropopauseIndex",
-        "ProfileLevelPressure", "RMS", "ExitStatus", "AverageResiduals",
-        "EffectiveCloudFraction"
-    ],
-    "geogrp": "HDFEOS/SWATHS/OMI Vertical Ozone Profile/Geolocation Fields",
-    "geokeys": ["Time", "SolarZenithAngle", "Latitude", "Longitude"],
 
-    # HDF-EOS5 has a structured meta-data, but netCDF4 does not process it
-    # instead, all the dimensions have names like "phony_dim_1". To make
-    # processing easier, the configuration file has renaming. The dimensions
-    # must include nTimes, nXtrack, nLevels. nLevelEdges is optional
-    # Dimensions are separately named for data and geo groups
-    "datadims": {
-        "phony_dim_0": "nTimes",
-        "phony_dim_1": "nXtrack",
-        "phony_dim_4": "nLevels",
-        "phony_dim_8": "nLevelEdges"
-    },
-    "geodims": {
-        "phony_dim_9": "nTimes",
-        "phony_dim_10": "nXtrack"
-    },
-    # Optional, when pressure is available, it should be specified. This allows
-    # the vertical coordinate in IOAPI to be calculated
-    "pressurekey": "ProfileLevelPressure",
+Notes:
+1. I have only been able to make this work if the files are in the user home directory.
+2. netcdf4-python version 1.6 has trouble with opendap.
 
-    # Optional, some files (e.g., OMPROFOZ) have the surface level at the top
-    # of the file (e.g., (0 hPa, 10 hPa, ..., 1013 hPa). IOAPI expects the order
-    # to be reversed, so flipdims identifies files that need to be reordered.
-    "flipdims": ["nLevels", "nLevelEdges"],
 
-    # Data filtering is needs to be designed on a source-basis, and is
-    # generally composed of a ground-level (i.e., 2D) and a data (sometimes
-    # 3D) component. Here, I am showing OMPROFOZ filters
-    "grndfilterexpr": "(SolarZenithAngle >= 70)",
-    "datafilterexpr": (
-        "(ExitStatus[:] <= 0) | (ExitStatus[:] >= 10) | " +
-        "(RMS[:].max(-1) > 3) | (AverageResiduals[:].max(-1) >= 3) | "
-        "(EffectiveCloudFraction >= 0.3)"
-    ),
+## Diagram
 
-    # IOAPI can only have names that are 16 characters or less.
-    # Less is better. To be safe, we use 15 as an upper limit.
-    # Each variable also has a count variabel (i.e., N<name>)
-    # so base names should be 14 in length.
-    "renamevars": {
-        "O3TroposphericColumn": "VCD_O3_Trop",
-        "O3APrioriProfile": "O3APriori",
-        "O3RetrievedProfile": "O3Retrieved",
-        "O3AveragingKernel": "AvgKernel",
-        "TropopauseIndex": "TropopauseIdx",
-        "ProfileLevelPressure": "ProfilePress",
-        "AverageResiduals": "AvgResiduals",
-        "EffectiveCloudFraction": "EffectCldFrac"
-    }
-}
+```mermaid
+flowchart TB;
+    subgraph userinputs [User Options];
+    direction TB;
+    query_opts(query options);
+    localpaths[(local paths\nor urls)];
+    grid(CMAQ grid);
+    end
+    subgraph cmaqsatproc [ ];
+    direction TB;
+    csplabel[cmaqsatproc];
+    cmr_links[[cmr_links]];
+    xarray -->to_dataframe[[to_dataframe]]
+    xarray[[open_dataset]] -->to_level3[[to_level3]]
+    end
+    subgraph outputs
+    direction LR;
+    l3;
+    csv;
+    end
+    subgraph CMR [. Common Metadata Repository .];
+    direction TB;
+    CMR_API[[CMR API]];
+    NASA_DB[(NASA Database)];
+    NASA_DB <--> CMR_API;
+    end
+    grid -->to_level3
+    query_opts -->cmr_links;
+    cmr_links <-->CMR_API;
+    localpaths --> xarray;
+    cmr_links -- OpenDAP links--> xarray;
+    to_level3 --> l3[\Level3 NetCDF or CSV/];
+    to_dataframe --> csv[\Level2 CSV/];
+    style query_opts fill:#ff0,stroke:#333,stroke-width:4px
+    style userinputs fill:#fff,stroke:#000,stroke-width:1px
+    style outputs fill:#fff,stroke:#000,stroke-width:1px
+    style grid fill:#ff0,stroke:#333,stroke-width:4px
+    style localpaths fill:#ff0,stroke:#333,stroke-width:4px
+    style CMR fill:#ccc,stroke:#333,stroke-width:4px
+    style cmaqsatproc fill:#cefad0,stroke:#cefad0,stroke-width:4px
+    style csplabel fill:#cefad0,stroke:#cefad0,stroke-width:4px
 ```
