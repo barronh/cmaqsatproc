@@ -56,7 +56,7 @@ class TropOMI(satellite):
 
     @classmethod
     def _open_hierarchical_dataset(
-        cls, path, bbox=None, isvalid=0.5, **kwargs
+        cls, path, bbox=None, isvalid=0.75, **kwargs
     ):
         """
         Convenience function to promote PRODUCT GEOLOCATIONS, DETAILED_RESULTS,
@@ -99,7 +99,7 @@ class TropOMI(satellite):
         return sat
 
     @classmethod
-    def open_dataset(cls, path, bbox=None, isvalid=0.5, **kwargs):
+    def open_dataset(cls, path, bbox=None, isvalid=0.75, **kwargs):
         """
         Arguments
         ---------
@@ -145,7 +145,7 @@ class TropOMI(satellite):
         return sat
 
     @classmethod
-    def prep_dataset(cls, ds, bbox=None, isvalid=0.5, path=None):
+    def prep_dataset(cls, ds, bbox=None, isvalid=0.75, path=None):
         """
         Defines pixels as valid when they are within bbox and interpolates
         latitude and longitude from pixel centers to corners.
@@ -388,7 +388,7 @@ class S5P_L2__CO____(TropOMI):
     __doc__ = """
     TropOMICO satellite processor.
     * bbox subsets the scanline dimensions
-    * valid = qa_value >= threshold (default 0.5)
+    * valid = qa_value >= threshold (default 0.75)
     """
 
     @classmethod
@@ -447,7 +447,7 @@ class S5P_L2__NO2___(TropOMI):
     __doc__ = """
     TropOMINO2 satellite processor.
     * bbox subsets the scanline dimensions
-    * valid = qa_value >= threshold (default 0.5)
+    * valid = qa_value >= threshold (default 0.75)
     """
 
     @classmethod
@@ -629,7 +629,7 @@ class S5P_L2__CH4___(TropOMI):
     __doc__ = """
     TropOMICH4 satellite processor.
     * bbox subsets the scanline dimensions
-    * valid = qa_value >= threshold (default 0.5)
+    * valid = qa_value >= threshold (default 0.75)
     """
 
     @classmethod
@@ -683,7 +683,7 @@ class S5P_L2__HCHO__(TropOMI):
     __doc__ = """
     TropOMIHCHO satellite processor.
     * bbox subsets the scanline dimensions
-    * valid = qa_value >= threshold (default 0.5)
+    * valid = qa_value >= threshold (default 0.75)
     """
     _defaultkeys = (
         'formaldehyde_profile_apriori', 'averaging_kernel',

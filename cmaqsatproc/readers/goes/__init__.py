@@ -5,6 +5,19 @@ from ...utils import EasyDataFramePolygon
 
 
 class goes_aod(satellite):
+    __doc__ = """
+    goes_aod processor
+    * valid if DQF < dqflt (default = 1)
+    * pixel corners are interpolated in projected space.
+
+    Note 1: Qualities are 0: high; 1: medium; 2: low; 3 not retrieved.
+    Note 2: The default requires the highest quality only. This is based
+            on experience. Because we are gridding, high and medium would get
+            spatially mixed. This makes it hard to see if a monthly average is
+            a bunch of isolated medium quality pixels with no repeat
+            measurements or many of the same pixel. Thus, the higher quality
+            requirement.
+    """
     _defaultkeys = ('AOD', 'DQF')
 
     @classmethod
@@ -75,10 +88,12 @@ class goes_aod(satellite):
         elif resolution == 'Y':
             pattern = f's3://noaa-{satkey}/{product}/{date:%Y}/'
         elif resolution == 'm':
-            # Use MS to get the start of the month and M to get the end of the
-            # month. Then, create a daily range for all days of the month
-            sdate, = pd.date_range(date, periods=1, freq='MS')
-            edate, = pd.date_range(date, periods=1, freq='M')
+            # Use replace the day with 1 to get the start of the month. Then,
+            # add the MonthEnd offset to get the end of the month. Next,
+            # create a daily range for all days of the month. Finally, query
+            # the s3 bucket for each day.
+            sdate = date.replace(day=1)
+            edate = sdate + pd.offsets.MonthEnd()
             dates = pd.date_range(sdate, edate, freq='d')
             paths = []
             for date in dates:
@@ -108,7 +123,7 @@ class goes_aod(satellite):
         return lambda df: EasyDataFramePolygon(df, wrap=False)
 
     @classmethod
-    def open_datasets(cls, paths, bbox, dqflt=2):
+    def open_datasets(cls, paths, bbox, dqflt=1):
         """
         Similar to open_dataset, but assumes that all data is on a single grid.
         Therefore, it can mask pixels and average them before creating a "net"
@@ -152,7 +167,7 @@ class goes_aod(satellite):
         return sat
 
     @classmethod
-    def open_dataset(cls, path, bbox=None, dqflt=2, **kwargs):
+    def open_dataset(cls, path, bbox=None, dqflt=1, **kwargs):
         """
         Open a GOES AOD dataset for satellite processing.
 
@@ -194,7 +209,7 @@ class goes_aod(satellite):
         return sat
 
     @classmethod
-    def prep_dataset(cls, ds, bbox=None, dqflt=2):
+    def prep_dataset(cls, ds, bbox=None, dqflt=1):
         """
         Prepare the dataset by adding a projection, applying valid spatial
         checks and requiring that the DQF variable have a value less than
