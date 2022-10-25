@@ -413,7 +413,7 @@ class S5P_L2__CO____(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
-    def cmaq_process(cls, qf, l3):
+    def cmaq_process(cls, qf, l3, key='CO'):
         """
         Process CMAQ as though it were observed by TropOMI, which is simply
         based on the overpass time.
@@ -431,10 +431,70 @@ class S5P_L2__CO____(TropOMI):
         overf : xr.DataArray
             An overpass file with satellite-like CMAQ.
         """
+        import xarray as xr
+
         skey = 'carbonmonoxide_total_column'
         overf = qf.csp.mean_overpass(satellite='aura').where(
             ~l3[skey].isnull()
         )
+        n_per_m2 = overf.csp.mole_per_m2(add=True)
+        tgtvar = overf[key]
+        if tgtvar.units.strip().startswith('ppm'):
+            vmr = tgtvar / 1e6
+        elif tgtvar.units.strip().startswith('ppb'):
+            vmr = tgtvar / 1e9
+        elif tgtvar.units.strip().startswith('ppt'):
+            vmr = tgtvar / 1e12
+        overf['CO_PER_M2'] = n_per_m2 * vmr
+        overf['CO_PER_M2'].attrs.update(overf[key].attrs)
+        overf['CO_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
+        overf['VCDCO_CMAQ'] = overf['CO_PER_M2'].sum('LAY')
+
+        # For CO, the model should be integrated to meter-based vertical levels
+        # https://sentinels.copernicus.eu/documents/247904/3541451/Sentinel-5P-
+        # Carbon-Monoxide-Level-2-Product-Readme-File.pdf/f8942626-ffb6-4951-90
+        # fc-a16b6589e39e?t=1658386616101
+        dz = np.diff(l3['layer']).mean() / 2.
+        tops = np.append(0, l3['layer'] + dz)
+        akvar = l3['column_averaging_kernel']
+        if akvar.attrs['units'].strip() == 'm':
+            # Older than v2.0.4 uses needs to be divided by 1000m
+            # which is the depth of each layer.
+            ak = akvar[:] / 1000
+        else:
+            ak = akvar[:]
+
+        nl = l3.dims['layer']
+        CO_MOL_PER_M2_Z = xr.DataArray(
+            np.zeros((nl, overf.dims['ROW'], overf.dims['COL']), dtype='f'),
+            dims=('layer', 'ROW', 'COL'), name='CO_MOL_PER_M2_Z'
+        )
+        overf['VCDCO_CMAQ_TOMI'] = xr.DataArray(
+            np.zeros((overf.dims['ROW'], overf.dims['COL']), dtype='f'),
+            dims=('ROW', 'COL'), name='VCDCO_CMAQ_TOMI'
+        )
+        skip = ak.isnull().all('layer')
+        # Currently looping over rows, which is inefficient.
+        for ri, r in enumerate(overf['ROW']):
+            # print('.', end='', flush=True)
+            if skip[ri].all():
+                continue
+            for ci, c in enumerate(overf['COL']):
+                if skip[ri, ci]:
+                    continue
+                cdfp = np.append(
+                    0, np.cumsum(overf['CO_MOL_PER_M2'][:, ri, ci])
+                )
+                zfp = np.append(0, overf['ZF'][:, ri, ci])
+                cdf = np.interp(tops, zfp, cdfp)
+                pmf = np.diff(cdf)
+                CO_MOL_PER_M2_Z[:, ri, ci] = pmf
+                overf['VCDCO_CMAQ_TOMI'][ri, ci] = (
+                    CO_MOL_PER_M2_Z[:, ri, ci] * ak[ri, ci]
+                ).sum()
+
+        overf['CO_MOL_PER_M2_Z'] = overf['CO_MOL_PER_M2_Z'].where(~skip)
+        overf['VCDCO_CMAQ_TOMI'] = overf['VCDCO_CMAQ_TOMI'].where(~skip)
         return overf
 
 
@@ -598,7 +658,7 @@ class S5P_L2__NO2___(TropOMI):
         elif tgtvar.units.strip().startswith('ppt'):
             vmr = tgtvar / 1e12
         overf['NO2_PER_M2'] = n_per_m2 * vmr
-        overf['NO2_PER_M2'].attrs.update(overf['NO2'].attrs)
+        overf['NO2_PER_M2'].attrs.update(overf[key].attrs)
         overf['NO2_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
 
         ak = overf['NO2_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
@@ -654,7 +714,7 @@ class S5P_L2__CH4___(TropOMI):
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
-    def cmaq_process(cls, qf, l3):
+    def cmaq_process(cls, qf, l3, key='CH4'):
         """
         Process CMAQ as though it were observed by TropOMI, which is simply
         based on the overpass time.

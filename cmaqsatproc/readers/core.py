@@ -1,6 +1,7 @@
 __all__ = ['satellite']
 
 from ..utils import EasyDataFramePolygon, grouped_weighted_avg, rootremover
+from ..utils import csp_version
 
 
 class satellite:
@@ -456,6 +457,7 @@ class satellite:
             outds.attrs['updated'] = datetime.now().strftime('%FT%H:%M:%S%z')
             outds.attrs['history'] = ''
             outds.attrs['crs'] = grid.crs.srs
+            outds.attrs['cmaqsatproc_version'] = csp_version()
             comp = dict(zlib=True, complevel=1)
             for key, var in outds.data_vars.items():
                 var.encoding.update(comp)
@@ -582,6 +584,7 @@ class satellite:
             outds.attrs['history'] = str(nodata)
             outds.attrs['updated'] = datetime.now().strftime('%FT%H:%M:%S%z')
             outds.attrs['crs'] = grid.crs.srs
+            outds.attrs['cmaqsatproc_version'] = csp_version()
             return outds
 
         return outputs, nodata

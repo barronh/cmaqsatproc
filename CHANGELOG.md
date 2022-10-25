@@ -1,3 +1,8 @@
+2022-10-25:
+* Updated TropOMI CO to use meter-based averaging kernel.
+* Updated to_level3 and wrappers to add cmaqsatproc_version to outputs
+* Updated version to 0.2.1
+
 2022-10-14:
 * Updated qa minimum values for GOES and TropOMI
 * Added GOES AOD, OMPS, and IASI

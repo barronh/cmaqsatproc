@@ -1,12 +1,18 @@
 __all__ = [
     'getcmrlinks', 'getcmrgranules', 'rootremover', 'grouped_weighted_avg',
-    'walk_groups', 'EasyDataFramePoint', 'EasyDataFramePolygon', 'cdconvert'
+    'walk_groups', 'EasyDataFramePoint', 'EasyDataFramePolygon', 'cdconvert',
+    'csp_version'
 ]
 
 
 _ckeys = ['ll', 'lu', 'uu', 'ul']
 _xcrnrkeys = [f'{ckey}_x' for ckey in _ckeys]
 _ycrnrkeys = [f'{ckey}_y' for ckey in _ckeys]
+
+
+def csp_version():
+    from . import __version__ as _csp_version
+    return _csp_version
 
 
 def walk_groups(f, gkey, outputs=None):
