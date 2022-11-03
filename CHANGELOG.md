@@ -1,3 +1,6 @@
+2022-11-03:
+* Updated TropOMI CO, NO2, HCHO, and CH4 to automatically use _HiR products for dates on or after 2019-08-06. Before, you had to manually set the short_name. This is an ease of use update that I am treating as a bug, so the version incremented to 0.2.2.
+
 2022-10-25:
 * Updated TropOMI CO to use meter-based averaging kernel.
 * Updated to_level3 and wrappers to add cmaqsatproc_version to outputs

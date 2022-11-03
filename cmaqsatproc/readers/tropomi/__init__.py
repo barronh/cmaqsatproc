@@ -395,7 +395,9 @@ class S5P_L2__CO____(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__CO____".
+        "S5P_L2__CO____" or "S5P_L2__CO_____HiR".
+
+        The HiR product started 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -409,7 +411,13 @@ class S5P_L2__CO____(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'S5P_L2__CO____')
+        hirstartdate = '2019-08-06'
+        querydate = kwargs.get('temporal', hirstartdate)[:10]
+        if querydate >= hirstartdate:
+            defshortname = 'S5P_L2__CO_____HiR'
+        else:
+            defshortname = 'S5P_L2__CO____'
+        kwargs.setdefault('short_name', defshortname)
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -445,10 +453,10 @@ class S5P_L2__CO____(TropOMI):
             vmr = tgtvar / 1e9
         elif tgtvar.units.strip().startswith('ppt'):
             vmr = tgtvar / 1e12
-        overf['CO_PER_M2'] = n_per_m2 * vmr
-        overf['CO_PER_M2'].attrs.update(overf[key].attrs)
-        overf['CO_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
-        overf['VCDCO_CMAQ'] = overf['CO_PER_M2'].sum('LAY')
+        overf['CO_MOL_PER_M2'] = n_per_m2 * vmr
+        overf['CO_MOL_PER_M2'].attrs.update(overf[key].attrs)
+        overf['CO_MOL_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
+        overf['VCDCO_CMAQ'] = overf['CO_MOL_PER_M2'].sum('LAY')
 
         # For CO, the model should be integrated to meter-based vertical levels
         # https://sentinels.copernicus.eu/documents/247904/3541451/Sentinel-5P-
@@ -493,7 +501,7 @@ class S5P_L2__CO____(TropOMI):
                     CO_MOL_PER_M2_Z[:, ri, ci] * ak[ri, ci]
                 ).sum()
 
-        overf['CO_MOL_PER_M2_Z'] = overf['CO_MOL_PER_M2_Z'].where(~skip)
+        # overf['CO_MOL_PER_M2_Z'] = CO_MOL_PER_M2_Z.where(~skip)
         overf['VCDCO_CMAQ_TOMI'] = overf['VCDCO_CMAQ_TOMI'].where(~skip)
         return overf
 
@@ -514,7 +522,9 @@ class S5P_L2__NO2___(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__NO2___".
+        "S5P_L2__NO2___" or "S5P_L2__NO2____HiR".
+
+        "S5P_L2__NO2____HiR" starts 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -528,7 +538,13 @@ class S5P_L2__NO2___(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'S5P_L2__NO2___')
+        hirstartdate = '2019-08-06'
+        querydate = kwargs.get('temporal', hirstartdate)[:10]
+        if querydate >= hirstartdate:
+            defshortname = 'S5P_L2__NO2____HiR'
+        else:
+            defshortname = 'S5P_L2__NO2___'
+        kwargs.setdefault('short_name', defshortname)
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -696,7 +712,9 @@ class S5P_L2__CH4___(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__CH4___".
+        "S5P_L2__CH4___" or "S5P_L2__CH4____HiR".
+
+        The HiR product started 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -710,7 +728,13 @@ class S5P_L2__CH4___(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'S5P_L2__CH4___')
+        hirstartdate = '2019-08-06'
+        querydate = kwargs.get('temporal', hirstartdate)[:10]
+        if querydate >= hirstartdate:
+            defshortname = 'S5P_L2__CH4____HiR'
+        else:
+            defshortname = 'S5P_L2__CH4___'
+        kwargs.setdefault('short_name', defshortname)
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -756,7 +780,9 @@ class S5P_L2__HCHO__(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__HCHO__".
+        "S5P_L2__HCHO__" or "S5P_L2__HCHO___HiR".
+
+        "S5P_L2_HCHO___HiR" starts 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -770,7 +796,13 @@ class S5P_L2__HCHO__(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'S5P_L2__HCHO__')
+        hirstartdate = '2019-08-06'
+        querydate = kwargs.get('temporal', hirstartdate)[:10]
+        if querydate >= hirstartdate:
+            defshortname = 'S5P_L2__HCHO___HiR'
+        else:
+            defshortname = 'S5P_L2__HCHO__'
+        kwargs.setdefault('short_name', defshortname)
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
