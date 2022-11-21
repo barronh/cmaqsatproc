@@ -319,7 +319,7 @@ class TropOMI(satellite):
         else:
             tm5_b = xr.DataArray(
                 tm5_constant_b.mean(1), dims=('layer',),
-                coords=[('layer', satl3f['layer'])]
+                coords=dict(layer=satl3f['layer'])
             )
         if 'tm5_constant_a' in satl3f:
             tm5_a = satl3f['tm5_constant_a']
@@ -328,7 +328,7 @@ class TropOMI(satellite):
         else:
             tm5_a = xr.DataArray(
                 tm5_constant_a.mean(1), dims=('layer',),
-                coords=[('layer', satl3f['layer'])]
+                coords=dict(layer=satl3f['layer'])
             )
 
         pres = tm5_b * satl3f['surface_pressure'] + tm5_a
