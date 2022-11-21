@@ -277,17 +277,17 @@ class MODISL3(satellite):
             ds[f'{corner}_x'] = xr.DataArray(
                 xbounds.isel(x_bounds=xslice, y_bounds=yslice),
                 dims=('x', 'y'),
-                coords=(
-                    ('x', ds.coords['x']),
-                    ('y', ds.coords['y']),
+                coords=dict(
+                    x=ds.coords['x'],
+                    y=ds.coords['y'],
                 )
             )
             ds[f'{corner}_y'] = xr.DataArray(
                 ybounds.isel(x_bounds=xslice, y_bounds=yslice),
                 dims=('x', 'y'),
-                coords=(
-                    ('x', ds.coords['x']),
-                    ('y', ds.coords['y']),
+                coords=dict(
+                    x=ds.coords['x'],
+                    y=ds.coords['y'],
                 )
             )
         if bbox is not None:
