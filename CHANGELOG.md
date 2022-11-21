@@ -1,3 +1,6 @@
+2022-11-21:
+* Updated TropOMI reader for compatibility with newer versions of xarray.
+
 2022-11-03:
 * Updated TropOMI CO, NO2, HCHO, and CH4 to automatically use _HiR products for dates on or after 2019-08-06. Before, you had to manually set the short_name. This is an ease of use update that I am treating as a bug, so the version incremented to 0.2.2.
 
