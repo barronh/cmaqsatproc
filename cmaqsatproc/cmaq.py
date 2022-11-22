@@ -110,6 +110,31 @@ def griddesc(griddesc_txt):
 
 
 def griddesc_from_attrs(attrs):
+    """
+    Create an xarray Dataset that defines a CMAQ grid using attributes
+    supplied by the user. A minimum number of attributes is required:
+    GDTYP, P_ALP, P_BET, P_GAM, XCENT, YCENT
+    GDNAM, NCOLS, NROWS, XCELL, YCELL, XORIG, YORIG, NTHIK
+
+    For attribute definitions, see https://www.cmascenter.org/ioapi/
+    documentation/all_versions/html/GRIDS.html.
+
+    Arguments
+    ---------
+    attrs : dict
+        IOAPI attritbutes (e.g, attrs=dict(NCOLS=3, NROWS=2, ...))
+    GDNAM: str
+        Name of grid as defined in GRIDDESC file
+    gdpath : str
+        Path to GRIDDESC file. If None (default), use contents of
+        default_griddesc_txt instead. default_griddesc_txt can be modified
+        directly, although that is discouraged.
+
+    Returns
+    ---------
+    gf : xarray.Dataset
+        File with coordinates based on GDNAM in gdpath
+    """
     import numpy as np
     attrs['crs'] = get_proj4string(attrs)
     outf = xr.Dataset(
@@ -123,6 +148,23 @@ def griddesc_from_attrs(attrs):
 
 
 def open_griddesc(GDNAM, gdpath=None):
+    """
+    Create an xarray Dataset that defines a CMAQ grid using GRIDDESC
+
+    Arguments
+    ---------
+    GDNAM: str
+        Name of grid as defined in GRIDDESC file
+    gdpath : str
+        Path to GRIDDESC file. If None (default), use contents of
+        default_griddesc_txt instead. default_griddesc_txt can be modified
+        directly, although that is discouraged.
+
+    Returns
+    ---------
+    gf : xarray.Dataset
+        File with coordinates based on GDNAM in gdpath
+    """
     import os
     if gdpath is None:
         griddesc_txt = default_griddesc_txt.decode()
@@ -139,6 +181,16 @@ def open_griddesc(GDNAM, gdpath=None):
 
 
 def get_proj4string(attrs):
+    """
+    Return a proj4 string from IOAPI attributes supplied by the user.
+
+    Typical attributes required include:
+    GDTYP, P_ALP, P_BET, P_GAM, XCENT, YCENT
+    GDNAM, NCOLS, NROWS, XCELL, YCELL, XORIG, YORIG, NTHIK
+
+    For attribute definitions, see https://www.cmascenter.org/ioapi/
+    documentation/all_versions/html/GRIDS.html.
+    """
     import copy
     popts = copy.copy(attrs)
     popts['R'] = 6370000.
@@ -170,13 +222,30 @@ def get_proj4string(attrs):
 
 
 def open_ioapi(path, **kwargs):
+    """
+    Open an IOAPI file in NetCDF format using xarray and construct coordinate
+    variables. (time based on TFLAG or properties, ROW/COL in projected space,
+    and LAY based on VGTYP, VGLVLS, and VGTOP)
+
+    Arguments
+    ---------
+    path : str
+        Path to the IOAPI file in NetCDF format
+    kwargs : mappable
+        Passed to xr.open_dataset(path, **kwargs)
+
+    Returns
+    ---------
+    qf : xarray.Dataset
+        File with data and coordinates based on path
+    """
     import xarray as xr
     import pandas as pd
     import numpy as np
     from datetime import datetime
     import warnings
 
-    qf = xr.open_dataset(path)
+    qf = xr.open_dataset(path, **kwargs)
     if 'TFLAG' in qf.data_vars:
         times = pd.to_datetime([
             datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
@@ -319,6 +388,19 @@ class CmaqSatProcAccessor:
         return (swlon, swlat, nelon, nelat)
 
     def get_tz(self, method='longitude'):
+        """
+        Return the timezone.
+
+        Arguments
+        ---------
+        method : str
+            Currently only supports 'longitude', but more to come.
+
+        Returns
+        -------
+        tz : xr.DataArray
+            time zone as decimal hours since 0Z
+        """
         import numpy as np
         import xarray as xr
         if method != 'longitude':
@@ -331,6 +413,22 @@ class CmaqSatProcAccessor:
         return tz
 
     def get_lst(self, times=None, method='longitude'):
+        """
+        Calculate LST from times in UTC using method.
+
+        Arguments
+        ---------
+        times : array-like
+            Times in UTC, otherwise, times will be read from TSTEP coordinate
+            variable.
+        method : str
+            Method supported by get_tz
+
+        Returns
+        -------
+        lst_hour : xr.DataArray
+            Times in hours using LST offset from UTC.
+        """
         import numpy as np
         import xarray as xr
         if times is None:
@@ -354,6 +452,26 @@ class CmaqSatProcAccessor:
         return lst_hour
 
     def is_overpass(self, times=None, method='longitude', satellite=None):
+        """
+        Identify if times UTC are consistent with an overpass of satellite.
+
+        Arguments
+        ---------
+        times : array-like
+            Times in UTC, otherwise, times will be read from TSTEP coordinate
+            variable.
+        method : str
+            Method supported by get_tz
+        satellite : None or str or dict
+            If None, then all satellites in known_overpasstimes are processed.
+            If str, the one satellite in known_overpasstimes is processed.
+            If dict, then keys are satellites and values are overpass times.
+
+        Returns
+        -------
+        lst_hour : xr.DataArray
+            Times in hours using LST offset from UTC.
+        """
         import xarray as xr
         LST = self.get_lst(times=times, method=method)
         if satellite is None:
@@ -371,6 +489,22 @@ class CmaqSatProcAccessor:
         return xr.Dataset(isoverpass)
 
     def mean_overpass(self, satellite, method='longitude', times=None):
+        """
+        Arguments
+        ---------
+        satellite: str
+            Satellite to use as overpass
+        method: str
+            Method for converting UTC times to LST
+        times: None or array-like
+            Times in UTC
+
+        Returns
+        -------
+        ovpf : xr.Dataset
+            Average of all data at times within 1 hour plus or minus of the
+            overpass time.
+        """
         import xarray as xr
         inputf = self._obj
         isoverpass = self.is_overpass(
@@ -398,6 +532,18 @@ class CmaqSatProcAccessor:
         return output
 
     def mole_per_m2(self, metf=None, add=True):
+        """
+        Arguments
+        ---------
+        metf : xr.Dataset
+            File with ZF and DENS, or ZF, PRES, and TEMP variables.
+        add : bool
+            If True, add MOL_PER_M2 as a variable to self.
+
+        Returns
+        -------
+        MOL_PER_M2 : xr.DataArray
+        """
         import warnings
         # copied from
         # https://github.com/USEPA/CMAQ/blob/main/CCTM/src/ICL/fixed/const/
@@ -449,6 +595,21 @@ class CmaqSatProcAccessor:
         return MOL_PER_M2
 
     def apply_ak(self, key, ak):
+        """
+        Apply averaging kernel to variable identified by key.
+
+        Arguments
+        ---------
+        key : str
+            Variable key to apply averaging kernel to.
+        ak : xr.DataArray
+            Averaging kernel.
+
+        Returns
+        -------
+        out : xr.DataArray
+            Output of KEY * AK).sum(LAY)
+        """
         pcd = self._obj[key]
         validak = ~ak.isnull()
         validcell = validak.any('LAY')
