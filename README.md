@@ -22,7 +22,7 @@ Satellite Processors designed for simple CMAQ comparisons.
   1. User can specify the box based on lat/lon
   2. The CMAQ grid can be used to automatically define the box.
 3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
-4. You can run on [Google Colab](COLABINSTALL.md)
+4. [Simple instructions](COLABINSTALL.md) are provided to configure Google Colab.
 
 ## Short Example
 
