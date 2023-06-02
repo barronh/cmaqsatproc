@@ -203,4 +203,4 @@ flowchart TB;
 
 ## References
 
-Henderson, B. H. (2022, October 17). cmaqsatproc v2: Satellite data processing for CMAQ [Poster]. 21st Annual Community Modeling and Analysis System Conference, Chapel Hill, NC. https://www.cmascenter.org/conference/2022/agenda.cfm; direct link: https://www.cmascenter.org/conference/2022/slides/Henderson\_satellite-data-CMAS2022.pdf
+Henderson, B. H. (2022, October 17). cmaqsatproc v2: Satellite data processing for CMAQ [Poster]. 21st Annual Community Modeling and Analysis System Conference, Chapel Hill, NC. https://www.cmascenter.org/conference/2022/agenda.cfm; [direct link](https://www.cmascenter.org/conference/2022/slides/Henderson_satellite-data-CMAS2022.pdf)
