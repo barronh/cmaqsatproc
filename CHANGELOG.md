@@ -1,3 +1,9 @@
+2023-02-07:
+* Only updates to open_griddesc and ioapi functionality
+* Updated 1US1, 4US2, 1US2 to use correct cell sizes in open_griddesc
+* Added robustness for IOAPI dates. SDATE -365 is converted to 1970001
+* Added a to_ioapi cleanup for output.
+
 2022-11-21:
 * Updated TropOMI reader for compatibility with newer versions of xarray.
 

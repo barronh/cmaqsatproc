@@ -22,6 +22,7 @@ Satellite Processors designed for simple CMAQ comparisons.
   1. User can specify the box based on lat/lon
   2. The CMAQ grid can be used to automatically define the box.
 3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
+4. You can run on [Google Colab](COLABINSTALL.md)
 
 ## Short Example
 
@@ -199,3 +200,7 @@ flowchart TB;
     style cmaqsatproc fill:#cefad0,stroke:#cefad0,stroke-width:4px
     style csplabel fill:#cefad0,stroke:#cefad0,stroke-width:4px
 ```
+
+## References
+
+Henderson, B. H. (2022, October 17). cmaqsatproc v2: Satellite data processing for CMAQ [Poster]. 21st Annual Community Modeling and Analysis System Conference, Chapel Hill, NC. https://www.cmascenter.org/conference/2022/agenda.cfm; direct link: https://www.cmascenter.org/conference/2022/slides/Henderson\_satellite-data-CMAS2022.pdf

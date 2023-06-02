@@ -17,6 +17,8 @@ default_griddesc_txt = b"""' '
   6         1.000        45.000       -98.000       -98.000        90.000
 'LamCon_40N_97W'
   2        33.000        45.000       -97.000       -97.000        40.000
+'LamCon_25N_95W'
+  2        25.000        25.000       -95.000       -95.000        25.000
 ' '
 'US_1deg'
 'LATLON'              -140.00        20.0      1.0      1.0   90   40 1
@@ -49,17 +51,25 @@ default_griddesc_txt = b"""' '
 '4US1'
 'LamCon_40N_97W'   -2556000.0  -1728000.0   4000.0   4000.0 1377  897 1
 '1US1'
-'LamCon_40N_97W'   -2556000.0  -1728000.0   4000.0   4000.0 5508 3588 1
+'LamCon_40N_97W'   -2556000.0  -1728000.0   1000.0   1000.0 5508 3588 1
 '12US2'
 'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0  396  246 1
 '4US2'
-'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0 1188  738 1
+'LamCon_40N_97W'   -2412000.0  -1620000.0   4000.0   4000.0 1188  738 1
 '1US2'
-'LamCon_40N_97W'   -2412000.0  -1620000.0  12000.0  12000.0 4752 2952 1
+'LamCon_40N_97W'   -2412000.0  -1620000.0   1000.0   1000.0 4752 2952 1
 '36US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0  36000.0  36000.0  172  148 1
+'12US3'
+'LamCon_40N_97W'   -2952000.0  -2772000.0  12000.0  12000.0  516  444 1
+'4US3'
+'LamCon_40N_97W'   -2952000.0  -2772000.0   4000.0   4000.0 1548 1332 1
+'1US3'
+'LamCon_40N_97W'   -2952000.0  -2772000.0   1000.0   1000.0 4644 3996 1
 '108US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
+'NAQFC_CONUS'
+'LamCon_25N_95W'   -4226153.11044303 -834746.472325356 5079.0 5079.0   1473 1025 1
 ' '"""
 
 
@@ -188,12 +198,18 @@ def get_proj4string(attrs):
     GDTYP, P_ALP, P_BET, P_GAM, XCENT, YCENT
     GDNAM, NCOLS, NROWS, XCELL, YCELL, XORIG, YORIG, NTHIK
 
+    The file can have earth_radius to explicitly set the radius of the
+    earth.
+
     For attribute definitions, see https://www.cmascenter.org/ioapi/
     documentation/all_versions/html/GRIDS.html.
     """
     import copy
+    import os
+
     popts = copy.copy(attrs)
-    popts['R'] = 6370000.
+    ENV_IOAPI_ISPH = os.environ.get('IOAPI_ISPH', '6370000.')
+    popts['R'] = popts.get('earth_radius', int(ENV_IOAPI_ISPH))
     popts['x_0'] = -attrs['XORIG']
     popts['y_0'] = -attrs['YORIG']
 
@@ -240,52 +256,9 @@ def open_ioapi(path, **kwargs):
         File with data and coordinates based on path
     """
     import xarray as xr
-    import pandas as pd
-    import numpy as np
-    from datetime import datetime
-    import warnings
 
     qf = xr.open_dataset(path, **kwargs)
-    if 'TFLAG' in qf.data_vars:
-        times = pd.to_datetime([
-            datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
-            for JDATE, TIME in qf.data_vars['TFLAG'][:, 0].values
-        ])
-    elif 'TSTEP' in qf.coords:
-        tstep = qf.coords['TSTEP']
-        if tstep.size == 1:
-            tstep = [tstep]
-        times = [
-            datetime(
-                t.dt.year, t.dt.month, t.dt.day, t.dt.hour, t.dt.minute,
-                t.dt.second
-            ) for t in tstep
-        ]
-    else:
-        date = datetime.strptime(f'{qf.SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
-        nt = qf.dims['TSTEP']
-        dm = (qf.attrs['TSTEP'] % 10000) // 100
-        ds = (qf.attrs['TSTEP'] % 100)
-        dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
-        times = pd.date_range(date, periods=nt, freq=f'{dh}H')
-
-    qf.coords['TSTEP'] = times
-    qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
-    crs = get_proj4string(qf.attrs)
-    if crs is None:
-        warnings.warn((
-            'Unknown project ({GDTYP}); currently support lonlat (1), lcc (2),'
-            + ' polar stereograpic (6), equatorial mercator (7)'
-        ).format(GDTYP=qf.attrs['GDTYP']))
-    else:
-        qf.attrs['crs'] = crs
-        row = np.arange(qf.dims['ROW']) + 0.5
-        col = np.arange(qf.dims['COL']) + 0.5
-        if qf.GDTYP == 1:
-            row = row * qf.attrs['YCELL'] + qf.attrs['YORIG']
-            col = col * qf.attrs['XCELL'] + qf.attrs['XORIG']
-        qf.coords['ROW'] = row
-        qf.coords['COL'] = col
+    qf.csp.add_coords(inplace=True)
 
     return qf
 
@@ -294,6 +267,152 @@ def open_ioapi(path, **kwargs):
 class CmaqSatProcAccessor:
     def __init__(self, xarray_obj):
         self._obj = xarray_obj
+
+    def add_coords(self, inplace=True):
+        """
+        Add TSTEP, LAY, ROW, and COL coordinates based file.
+        """
+        import pandas as pd
+        import warnings
+        import numpy as np
+        from datetime import datetime
+
+        if inplace:
+            qf = self._obj
+        else:
+            qf = self._obj.copy()
+
+        if 'TFLAG' in qf.data_vars:
+            tflag = qf.data_vars['TFLAG'][:, 0].values.copy()
+            if (tflag[:, 0] < 1).all():
+                tflag[:, 0] = 1970001
+            times = pd.to_datetime([
+                datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
+                for JDATE, TIME in tflag
+            ])
+        elif 'TSTEP' in qf.coords:
+            tstep = qf.coords['TSTEP']
+            if tstep.size == 1:
+                tstep = [tstep]
+            times = [
+                datetime(
+                    t.dt.year, t.dt.month, t.dt.day, t.dt.hour, t.dt.minute,
+                    t.dt.second
+                ) for t in tstep
+            ]
+        else:
+            SDATE = qf.SDATE
+            if SDATE < 1:
+                SDATE = 1970001
+            date = datetime.strptime(f'{SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
+            nt = qf.dims['TSTEP']
+            dm = (qf.attrs['TSTEP'] % 10000) // 100
+            ds = (qf.attrs['TSTEP'] % 100)
+            dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
+            if nt == 1 and dh == 0:
+                dh = 1
+            times = pd.date_range(date, periods=nt, freq=f'{dh}H')
+
+        qf.coords['TSTEP'] = times
+        if 'VGLVLS' in qf.attrs:
+            qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
+
+        crs = get_proj4string(qf.attrs)
+        if crs is None:
+            warnings.warn((
+                'Unknown project ({GDTYP}); currently support lonlat (1),'
+                + ' lcc (2), polar stereograpic (6), equatorial mercator (7)'
+            ).format(GDTYP=qf.attrs['GDTYP']))
+        else:
+            qf.attrs['crs'] = crs
+            row = np.arange(qf.dims['ROW']) + 0.5
+            col = np.arange(qf.dims['COL']) + 0.5
+            if qf.GDTYP == 1:
+                row = row * qf.attrs['YCELL'] + qf.attrs['YORIG']
+                col = col * qf.attrs['XCELL'] + qf.attrs['XORIG']
+            qf.coords['ROW'] = row
+            qf.coords['COL'] = col
+
+        return qf
+
+    def to_ioapi(self, reset_index=True, drop=True):
+        """
+        Infer standard IOAPI properties (including TFLAG) as possible.
+        """
+        import numpy as np
+        import pandas as pd
+        import xarray as xr
+
+        now = pd.to_datetime('now')
+        jnow = np.int32(now.strftime('%Y%j'))
+        tnow = np.int32(now.strftime('%H%M%S'))
+        outf = self._obj.copy()
+
+        for k in outf.data_vars:
+            if k == 'TFLAG':
+                continue
+            outvar = self._obj[k]
+            dims = outvar.dims
+            if 'LAY' not in dims:
+                outvar = outvar.expand_dims(LAY=1)
+            if 'TSTEP' not in dims:
+                outvar = outvar.expand_dims(TSTEP=1)
+            outf[k] = outvar.transpose('TSTEP', 'LAY', 'ROW', 'COL')
+            defattrs = dict(
+                units='unknown', long_name=k.ljust(16), var_desc=k.ljust(80)
+            )
+            defattrs.update(outf[k].attrs)
+            outf[k].attrs.update(defattrs)
+
+        outkeys = [k for k in outf.data_vars if k != 'TFLAG']
+        nv = np.int32(len(outkeys))
+
+        nl = np.int32(outf.dims.get('LAY', 1))
+        vglvls = np.linspace(0, 1, nl + 1, dtype='f')[::-1]
+        vgtyp = np.int32(-9999)
+        vgtop = np.float32(5000)
+        sdate = np.int32(-635)
+
+        defattrs = {
+            'EXEC_ID': 'NA'.ljust(80), 'IOAPI_VERSION': 'NA'.ljust(80),
+            'UPNAM': 'NA'.ljust(16), 'FTYPE': np.int32(1), 'NLAYS': nl,
+            'VGTOP': vgtop, 'VGLVLS': vglvls, 'VGTYP': vgtyp,
+            'WDATE': jnow, 'CDATE': jnow, 'WTIME': tnow, 'CTIME': tnow,
+            'SDATE': sdate, 'STIME': np.int32(0), 'TSTEP': np.int32(0),
+            'NVARS': nv, 'VAR-LIST': ''.join([k.ljust(16) for k in outkeys]),
+            'FILEDESC': 'Unknown'.ljust(80),
+            'HISTORY': f'Created {now:%Y-%m-%dT%H:%M:%S}'.ljust(80),
+        }
+
+        # Overwrite any pre-existing values
+        defattrs.update(self._obj.attrs)
+        outf.attrs.update(defattrs)
+        outf.csp.add_coords(inplace=True)
+
+        if 'TFLAG' in self._obj.data_vars:
+            tflag = self._obj['TFLAG']
+        else:
+            jday = (
+                outf.coords['TSTEP'].dt.year
+                + outf.coords['TSTEP'].dt.dayofyear
+            )
+            time = outf.coords['TSTEP'].dt.strftime('%H%M%S').astype('i')
+            tflag = np.array([jday, time]).T[:, None, :].repeat(nv, 1)
+            tflag = xr.DataArray(
+                tflag, dims=('TSTEP', 'VAR', 'DATE-TIME',),
+                attrs=dict(
+                    units='<YYYYJJJ,HHMMSS>', long_name='TFLAG'.ljust(16),
+                    var_desc='TFLAG'.ljust(80),
+                )
+            )
+
+        outf['TFLAG'] = tflag
+        outf = outf[['TFLAG'] + outkeys]
+        if reset_index:
+            outf = outf.reset_index(
+                ['TSTEP', 'LAY', 'ROW', 'COL'], drop=drop
+            )
+        return outf
 
     @property
     def proj4string(self):
