@@ -209,7 +209,7 @@ def get_proj4string(attrs):
 
     popts = copy.copy(attrs)
     ENV_IOAPI_ISPH = os.environ.get('IOAPI_ISPH', '6370000.')
-    popts['R'] = popts.get('earth_radius', int(ENV_IOAPI_ISPH))
+    popts['R'] = popts.get('earth_radius', float(ENV_IOAPI_ISPH))
     popts['x_0'] = -attrs['XORIG']
     popts['y_0'] = -attrs['YORIG']
 
