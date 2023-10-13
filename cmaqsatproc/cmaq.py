@@ -69,7 +69,7 @@ default_griddesc_txt = b"""' '
 '108US3'
 'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
 'NAQFC_CONUS'
-'LamCon_25N_95W'   -4226153.11044303 -834746.472325356 5079.0 5079.0   1473 1025 1
+'LamCon_25N_95W' -4226153.11044303 -834746.472325356 5079.0 5079.0  1473 1025 1
 ' '"""
 
 
@@ -375,7 +375,7 @@ class CmaqSatProcAccessor:
 
         defattrs = {
             'EXEC_ID': 'NA'.ljust(80), 'IOAPI_VERSION': 'NA'.ljust(80),
-            'UPNAM': 'NA'.ljust(16), 'FTYPE': np.int32(1), 'NLAYS': nl,
+            'UPNAM': 'cmaqsatproc'.ljust(16), 'FTYPE': np.int32(1), 'NLAYS': nl,
             'VGTOP': vgtop, 'VGLVLS': vglvls, 'VGTYP': vgtyp,
             'WDATE': jnow, 'CDATE': jnow, 'WTIME': tnow, 'CTIME': tnow,
             'SDATE': sdate, 'STIME': np.int32(0), 'TSTEP': np.int32(0),
@@ -391,9 +391,10 @@ class CmaqSatProcAccessor:
 
         if 'TFLAG' in self._obj.data_vars:
             tflag = self._obj['TFLAG']
+            tstep = self._obj.attrs.get('TSTEP', 0)
         else:
             jday = (
-                outf.coords['TSTEP'].dt.year
+                outf.coords['TSTEP'].dt.year * 1000
                 + outf.coords['TSTEP'].dt.dayofyear
             )
             time = outf.coords['TSTEP'].dt.strftime('%H%M%S').astype('i')
@@ -405,8 +406,18 @@ class CmaqSatProcAccessor:
                     var_desc='TFLAG'.ljust(80),
                 )
             )
+            dt = np.diff(outf.coords['TSTEP']).mean().astype('l') / 1e9
+            dth = dt // 3600
+            dtm = (dt % 3600) // 60
+            dts = dt % 60
+            tstep = f'{dth:.0f}{dtm:02.0f}{dts:02.0f}'
 
         outf['TFLAG'] = tflag
+        outf.attrs['SDATE'] = np.int32(outf['TFLAG'][0, 0, 0])
+        outf.attrs['STIME'] = np.int32(outf['TFLAG'][0, 0, 1])
+        outf.attrs['TSTEP'] = np.int32(tstep)
+        outf.attrs['WDATE'] = defattrs['WDATE']
+        outf.attrs['WTIME'] = defattrs['WTIME']
         outf = outf[['TFLAG'] + outkeys]
         if reset_index:
             outf = outf.reset_index(
