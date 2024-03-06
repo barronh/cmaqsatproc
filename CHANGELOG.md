@@ -1,5 +1,16 @@
+2024-01-25 v0.3.0:
+* Added methane_mixing_ratio_bias_corrected to the default key for S5P_L2__CH4___
+* Changed all cmr_links commands to use concept_id instead of short_name.
+* Altered grouped_weighted_avg to output weight_mean and weight_sum instead of weighted weight.
+* Updated open_griddesc to read GRIDDESC with commas, double precision (D or d), and comments
+* Updated documentation
+
 2023-10-12 v0.2.5:
 * Minor updates to cmaq.py for date robustness
+* Updated OMI readers to correctly handle CloudFraction with scaling metadata in local he5 files
+  * OpenDAP and NetCDF files correctly scale cloud fractions to (0, 1)
+  * he5 has ScaleFactor and Offset metadata, but is not being scaled correctly.
+  * cloudleq has been updated to check
 
 2023-02-07 v0.2.4:
 * Only updates to open_griddesc and ioapi functionality

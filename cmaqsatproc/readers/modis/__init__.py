@@ -134,7 +134,7 @@ class MOD04(satellite):
 
 class MOD04_L2(MOD04):
     __doc__ = """
-    MOD04_L3 filters valid pixels and provides weights for destination polygon:
+    MOD04_L2 filters valid pixels and provides weights for destination polygon:
     * valid = Land_Ocean_Quality_Flag > 1 and value == value
     * pixel_area = corners from centroids +- delta
     * weight = intx_fracarea
@@ -143,8 +143,8 @@ class MOD04_L2(MOD04):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "MOD04_L2".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1443533440-LAADS".
 
         Arguments
         ---------
@@ -158,7 +158,7 @@ class MOD04_L2(MOD04):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'MOD04_L2')
+        kwargs.setdefault('concept_id', 'C1443533440-LAADS')
         return MOD04.cmr_links(method=method, **kwargs)
 
 
@@ -173,8 +173,8 @@ class MOD04_3K(MOD04):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "MOD04_3K".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1443420430-LAADS".
 
         Arguments
         ---------
@@ -188,7 +188,7 @@ class MOD04_3K(MOD04):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'MOD04_3K')
+        kwargs.setdefault('concept_id', 'C1443420430-LAADS')
         return MOD04.cmr_links(method=method, **kwargs)
 
 

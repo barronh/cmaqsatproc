@@ -28,14 +28,19 @@ def grouped_weighted_avg(values, weights, by):
     numerator = values.multiply(
         weights, axis=0
     ).groupby(by).sum()
-    denominator = weights.groupby(by).sum()
+    wgb = weights.groupby(by)
+    denominator = wgb.sum()
+    simplemean = wgb.mean()
+    count = wgb.count()
     outdf = numerator.divide(denominator, axis=0)
     outdf['weight_sum'] = denominator
+    outdf['weight_mean'] = simplemean
+    outdf['count'] = count
     return outdf
 
 
 def getcmrgranules(
-    short_name, temporal, bbox=None, poly=None, verbose=0, **kwds
+    temporal, bbox=None, poly=None, verbose=0, **kwds
 ):
     """
     Return all links from the Common Metadata Repository for the product
@@ -43,8 +48,6 @@ def getcmrgranules(
 
     Arguments
     ---------
-    short_name : str
-        NASA short_name that is recognized by NASA Common Metadata Repository
     temporal : str
         NASA temporal that is recognized by NASA Common Metadata Repository
         i.e, YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SSZ/YYYY-MM-DDTHH:MM:SSZ
@@ -56,7 +59,15 @@ def getcmrgranules(
     filterfunc : function
         Takes a link dictionary from CMR and returns True if it should be
         retained
-
+    concept_id : str
+        Optional, NASA concept_id that is the unique identifier for a
+        collection in NASA's Common Metadata Repository
+    short_name : str
+        Optional, short_name identifier for a collection that is often, but
+        not always unique in the NASA Common Metadata Repository. If you have
+        the short_name and want the concept_id put the url below in your
+        browser where you replace OMNO2 (the example) with your short_name
+        https://cmr.earthdata.nasa.gov/search/collections?short_name=OMNO2
     Returns
     -------
     jr : dictionary
@@ -64,12 +75,27 @@ def getcmrgranules(
     """
     from copy import deepcopy
     import requests
+    import warnings
 
     opts = deepcopy(kwds)
     opts.setdefault('page_size', '1000')
     opts.setdefault('pretty', 'false')
-    opts['short_name'] = short_name
     opts['temporal'] = temporal
+    if 'concept_id' not in opts:
+        if 'short_name' in opts:
+            short_name = opts['short_name']
+            msg = (
+                'short_name not guaranteed unique. Try the concept_id keyword'
+                + ' instead of short_name. Potential values for concept_id can'
+                + '  be found at: https://cmr.earthdata.nasa.gov/search/'
+                + f'collections?short_name={short_name}'
+            )
+        else:
+            msg = (
+                'Queries are best with at least short_name and preferrably'
+                + ' concept_id'
+            )
+        warnings.warn(msg)
 
     if bbox is not None:
         opts['bounding_box'] = '{:f},{:f},{:f},{:f}'.format(*bbox)

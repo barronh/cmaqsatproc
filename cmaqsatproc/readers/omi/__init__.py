@@ -4,6 +4,25 @@ from ..core import satellite
 from ...utils import walk_groups
 
 
+def cloudleq(cldf, thresh):
+    """
+    Check if cloud is less than or equal to thresh.
+
+    This is a convenience function to deal with he5 files having a different
+    metadata than their OpenDAP counterparts.
+    """
+    cldval = cldf.load()
+    scale = cldf.attrs.get('ScaleFactor', 1)
+    offset = cldf.attrs.get('Offset', 0)
+    if scale != 1 or offset != 0:
+        cldval = cldval * scale + offset
+    elif cldval.mean() > 100 and thresh < 1:
+        import warnings
+        warnings.warn('Cloud scaled by 0.001 because avg > 100 and limit < 1')
+        cldval = cldval * 0.001
+    return cldval <= thresh
+
+
 class OMIL2(satellite):
     __doc__ = """
     Default OMI satellite processor.
@@ -235,8 +254,8 @@ class OMNO2(OMIL2):
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMNO2".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1239966842-GES_DISC".
 
         Arguments
         ---------
@@ -249,7 +268,7 @@ class OMNO2(OMIL2):
         links : list
             List of links for download or OpenDAP
         """
-        kwds.setdefault('short_name', 'OMNO2')
+        kwds.setdefault('concept_id', 'C1239966842-GES_DISC')
         return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
@@ -284,7 +303,7 @@ class OMNO2(OMIL2):
         ds['valid'] = (
             ((ds['VcdQualityFlags'].astype('i') & 1) == 0)
             & (ds['XTrackQualityFlags'] == 0)
-            & (ds['CloudFraction'] <= 0.3)
+            & cloudleq(ds['CloudFraction'], 0.3)
         )
         if bbox is not None:
             swlon, swlat, nelon, nelat = bbox
@@ -463,8 +482,8 @@ class OMHCHO(OMIL2):
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMHCHO".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1239966779-GES_DISC".
 
         Arguments
         ---------
@@ -477,7 +496,7 @@ class OMHCHO(OMIL2):
         links : list
             List of links for download or OpenDAP
         """
-        kwds.setdefault('short_name', 'OMHCHO')
+        kwds.setdefault('concept_id', 'C1239966779-GES_DISC')
         return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
@@ -504,7 +523,7 @@ class OMHCHO(OMIL2):
         ds['valid'] = (
             (ds['MainDataQualityFlag'] == 0)
             & ((ds['XtrackQualityFlagsExpanded'].astype('i') & 1) == 0)
-            & (ds['AMFCloudFraction'] <= 0.3)
+            & cloudleq(ds['AMFCloudFraction'], 0.3)
         )
         ds['cn_x'] = ds['Longitude']
         ds['cn_y'] = ds['Latitude']
@@ -699,8 +718,8 @@ class OMO3PR(OMIL2):
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMO3PR".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1239966827-GES_DISC".
 
         Arguments
         ---------
@@ -713,7 +732,7 @@ class OMO3PR(OMIL2):
         links : list
             List of links for download or OpenDAP
         """
-        kwds.setdefault('short_name', 'OMO3PR')
+        kwds.setdefault('concept_id', 'C1239966827-GES_DISC')
         return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
@@ -826,7 +845,7 @@ class OMPROFOZ(OMIL2):
     def cmr_links(cls, method='opendap', **kwds):
         """
         Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMO3PR".
+        "OMPROFOZ".
 
         Arguments
         ---------
@@ -839,6 +858,7 @@ class OMPROFOZ(OMIL2):
         links : list
             List of links for download or OpenDAP
         """
+        # BHH : not sure this product exists in the CMR
         kwds.setdefault('short_name', 'OMPROFOZ')
         return OMIL2.cmr_links(method=method, **kwds)
 
@@ -867,7 +887,7 @@ class OMPROFOZ(OMIL2):
             (ds['ExitStatus'] <= 0) | (ds['ExitStatus'] >= 10)
             | (ds['RMS'].max('nChannel') > 3)
             | (ds['AverageResiduals'].max('nChannel') >= 3)
-            | (ds['EffectiveCloudFraction'] >= 0.3)
+            | ~cloudleq(ds['EffectiveCloudFraction'], 0.3)
         )
         ds['cn_x'] = ds['Longitude']
         ds['cn_y'] = ds['Latitude']

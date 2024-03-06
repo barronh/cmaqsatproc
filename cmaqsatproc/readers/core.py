@@ -376,6 +376,7 @@ class satellite:
                     if verbose > 1:
                         print(f'   - Unstacking {notgeodims}', flush=True)
                     mjustweight = justweight.copy()
+                    ckey = ('count',) + ('',) * len(notgeodims)
                     wkey = ('weight',) + ('',) * len(notgeodims)
                     wskey = ('weight_sum',) + ('',) * len(notgeodims)
                     mjustweight.columns = pd.MultiIndex.from_tuples(
@@ -410,6 +411,7 @@ class satellite:
                     ngdf = gdf.drop([wkey, wskey], axis=1).stack(notgeodims)
                     ngdf['weight'] = gdf[wkey]
                     ngdf['weight_sum'] = gdf[wskey]
+                    ngdf['count'] = gdf[ckey]
                     gdf = ngdf
             else:
                 gdf = self.to_dataframe(*keys, geo=False, valid=False)

@@ -75,11 +75,23 @@ default_griddesc_txt = b"""' '
 
 def griddesc(griddesc_txt):
     from collections import OrderedDict
+    import re
     gddefns = OrderedDict()
     prjdefns = OrderedDict()
-    # lines with ' ' are separators
+    # Clean up GRIDDESC
+    # Replace commas with spaces
+    griddesc_txt = griddesc_txt.replace(',', ' ')
+    # Remove comments prefixed by !
+    griddesc_txt = '\n'.join([
+        gdl.split('!')[0].strip()
+        for gdl in griddesc_txt.split('\n')
+    ])
+    dble = re.compile('([\d.])[Dd]([\d])')
+    griddesc_txt = dble.sub(r'\1e\2', griddesc_txt)
+    # lines with ' ' are separators and blank shouldn't happen
     reallines = [
-        l for l in griddesc_txt.split('\n') if l.strip() not in ("''", "' '")
+        l for l in griddesc_txt.split('\n')
+        if l.strip() not in ("''", "' '", "")
     ]
     # All definitions come in pairs of lines. The first is the name and the
     # second is either all numeric for projections or, for grids, a string

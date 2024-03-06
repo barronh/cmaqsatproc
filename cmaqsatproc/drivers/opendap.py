@@ -37,7 +37,8 @@ def opendap_l3(reader, gdnam, gdpath, SDATE, EDATE, outpath, overwrite):
     EDATE : str
         Any date-like starting date for CMR query
     outpath : str
-        path to write out result; If None, default {reader}_{gdnam}.csv
+        path to write out result; If None, the default path is
+        {reader}_{SDATE}_{EDATE}_{gdnam}.nc
     overwrite : bool
         Overwrite existing files?
 
@@ -97,7 +98,8 @@ def opendap_csv(
     geo : bool
         Write geometry as a WKT polygon
     outpath : str
-        path to write out result; If None, default {reader}_{gdnam}.csv
+        path to write out result; If None, default path is
+        {reader}_{SDATE}_{EDATE}_{gdnam}.csv
     overwrite : bool
         Overwrite existing files?
 

@@ -394,10 +394,8 @@ class S5P_L2__CO____(TropOMI):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__CO____" or "S5P_L2__CO_____HiR".
-
-        The HiR product started 2019-08-06T02:41:41.000Z
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C2087132178-GES_DISC", which is the HiR product v2
 
         Arguments
         ---------
@@ -411,13 +409,7 @@ class S5P_L2__CO____(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        hirstartdate = '2019-08-06'
-        querydate = kwargs.get('temporal', hirstartdate)[:10]
-        if querydate >= hirstartdate:
-            defshortname = 'S5P_L2__CO_____HiR'
-        else:
-            defshortname = 'S5P_L2__CO____'
-        kwargs.setdefault('short_name', defshortname)
+        kwargs.setdefault('concept_id', 'C2087132178-GES_DISC')
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -521,10 +513,8 @@ class S5P_L2__NO2___(TropOMI):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__NO2___" or "S5P_L2__NO2____HiR".
-
-        "S5P_L2__NO2____HiR" starts 2019-08-06T02:41:41.000Z
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C2089270961-GES_DISC". HiR v2 starts 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -538,13 +528,7 @@ class S5P_L2__NO2___(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        hirstartdate = '2019-08-06'
-        querydate = kwargs.get('temporal', hirstartdate)[:10]
-        if querydate >= hirstartdate:
-            defshortname = 'S5P_L2__NO2____HiR'
-        else:
-            defshortname = 'S5P_L2__NO2___'
-        kwargs.setdefault('short_name', defshortname)
+        kwargs.setdefault('concept_id', 'C2089270961-GES_DISC')
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -701,7 +685,10 @@ class S5P_L2__NO2___(TropOMI):
 
 
 class S5P_L2__CH4___(TropOMI):
-    _defaultkeys = ('methane_mixing_ratio', 'averaging_kernel')
+    _defaultkeys = (
+        'methane_mixing_ratio', 'methane_mixing_ratio_bias_corrected',
+        'averaging_kernel'
+    )
     __doc__ = """
     TropOMICH4 satellite processor.
     * bbox subsets the scanline dimensions
@@ -711,10 +698,8 @@ class S5P_L2__CH4___(TropOMI):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__CH4___" or "S5P_L2__CH4____HiR".
-
-        The HiR product started 2019-08-06T02:41:41.000Z
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C2087216530-GES_DISC". HiR product started 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -728,13 +713,7 @@ class S5P_L2__CH4___(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        hirstartdate = '2019-08-06'
-        querydate = kwargs.get('temporal', hirstartdate)[:10]
-        if querydate >= hirstartdate:
-            defshortname = 'S5P_L2__CH4____HiR'
-        else:
-            defshortname = 'S5P_L2__CH4___'
-        kwargs.setdefault('short_name', defshortname)
+        kwargs.setdefault('concept_id', 'C2087216530-GES_DISC')
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -779,10 +758,8 @@ class S5P_L2__HCHO__(TropOMI):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "S5P_L2__HCHO__" or "S5P_L2__HCHO___HiR".
-
-        "S5P_L2_HCHO___HiR" starts 2019-08-06T02:41:41.000Z
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1918210023-GES_DISC". HiR v2 starts 2019-08-06T02:41:41.000Z
 
         Arguments
         ---------
@@ -796,13 +773,7 @@ class S5P_L2__HCHO__(TropOMI):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        hirstartdate = '2019-08-06'
-        querydate = kwargs.get('temporal', hirstartdate)[:10]
-        if querydate >= hirstartdate:
-            defshortname = 'S5P_L2__HCHO___HiR'
-        else:
-            defshortname = 'S5P_L2__HCHO__'
-        kwargs.setdefault('short_name', defshortname)
+        kwargs.setdefault('concept_id', 'C1918210023-GES_DISC')
         return TropOMI.cmr_links(method=method, **kwargs)
 
     @classmethod

@@ -216,8 +216,8 @@ class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMPS_NPP_NMNO2_L2".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1386443916-GES_DISC".
 
         Arguments
         ---------
@@ -231,7 +231,7 @@ class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'OMPS_NPP_NMNO2_L2')
+        kwargs.setdefault('concept_id', 'C1386443916-GES_DISC')
         return OMPS_NPP_L2.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -311,8 +311,8 @@ class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around satellite.cmr_links where short_name is set to
-        "OMPS_NPP_NMTO3_L2".
+        Thin wrapper around satellite.cmr_links where concept_id is set to
+        "C1386443916-GES_DISC".
 
         Arguments
         ---------
@@ -326,5 +326,5 @@ class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'OMPS_NPP_NMTO3_L2')
+        kwargs.setdefault('concept_id', 'C1386443916-GES_DISC')
         return OMPS_NPP_L2.cmr_links(method=method, **kwargs)

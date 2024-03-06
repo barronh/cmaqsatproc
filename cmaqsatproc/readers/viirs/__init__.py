@@ -150,8 +150,8 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around L2_VIIRS_SNPP.cmr_links with short_name set to
-        AERDT_L2_VIIRS_SNPP.
+        Thin wrapper around L2_VIIRS_SNPP.cmr_links with concept_id set to
+        C1688453112-LAADS.
 
         Arguments
         ---------
@@ -165,7 +165,7 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'AERDT_L2_VIIRS_SNPP')
+        kwargs.setdefault('concept_id', 'C1688453112-LAADS')
         return L2_VIIRS_SNPP.cmr_links(method=method, **kwargs)
 
     @classmethod
@@ -294,8 +294,8 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     @classmethod
     def cmr_links(cls, method='opendap', **kwargs):
         """
-        Thin wrapper around L2_VIIRS_SNPP.cmr_links with short_name set to
-        AERDT_L2_VIIRS_SNPP.
+        Thin wrapper around L2_VIIRS_SNPP.cmr_links with concept_id set to
+        C2600303218-LAADS.
 
         Arguments
         ---------
@@ -309,7 +309,7 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         """
         from copy import copy
         kwargs = copy(kwargs)
-        kwargs.setdefault('short_name', 'AERDB_L2_VIIRS_SNPP')
+        kwargs.setdefault('concept_id', 'C2600303218-LAADS')
         return L2_VIIRS_SNPP.cmr_links(method=method, **kwargs)
 
     @classmethod
