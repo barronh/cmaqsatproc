@@ -395,7 +395,8 @@ class S5P_L2__CO____(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where concept_id is set to
-        "C2087132178-GES_DISC", which is the HiR product v2
+        "C2087132178-GES_DISC", which is the HiR product v2. The HiR v2
+        product starts 2018-04-30.
 
         Arguments
         ---------
@@ -514,7 +515,8 @@ class S5P_L2__NO2___(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where concept_id is set to
-        "C2089270961-GES_DISC". HiR v2 starts 2019-08-06T02:41:41.000Z
+        "C2089270961-GES_DISC", which is the HiR v2 product. The HiR v2
+        product starts 2018-05-01.
 
         Arguments
         ---------
@@ -699,7 +701,8 @@ class S5P_L2__CH4___(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where concept_id is set to
-        "C2087216530-GES_DISC". HiR product started 2019-08-06T02:41:41.000Z
+        "C2087216530-GES_DISC", which is the HiR v2 product. The HiR product
+        started 2018-04-30.
 
         Arguments
         ---------
@@ -759,7 +762,8 @@ class S5P_L2__HCHO__(TropOMI):
     def cmr_links(cls, method='opendap', **kwargs):
         """
         Thin wrapper around satellite.cmr_links where concept_id is set to
-        "C1918210023-GES_DISC". HiR v2 starts 2019-08-06T02:41:41.000Z
+        "C1918210023-GES_DISC", which is the HiR v2 product. The HiR v2 product
+        starts in 2018-05-07.
 
         Arguments
         ---------

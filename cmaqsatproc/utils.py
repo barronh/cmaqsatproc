@@ -81,7 +81,7 @@ def getcmrgranules(
     opts.setdefault('page_size', '1000')
     opts.setdefault('pretty', 'false')
     opts['temporal'] = temporal
-    if 'concept_id' not in opts:
+    if opts.get('concept_id', None) is None:
         if 'short_name' in opts:
             short_name = opts['short_name']
             msg = (
