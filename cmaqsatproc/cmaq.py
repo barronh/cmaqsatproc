@@ -297,7 +297,10 @@ class CmaqSatProcAccessor:
         if 'TFLAG' in qf.data_vars:
             tflag = qf.data_vars['TFLAG'][:, 0].values.copy()
             if (tflag[:, 0] < 1).all():
-                tflag[:, 0] = 1970001
+                sdate = qf.attrs.get('SDATE', 0)
+                if sdate < 1:
+                    sdate = 1970001
+                tflag[:, 0] = sdate
             times = pd.to_datetime([
                 datetime.strptime(f'{JDATE}T{TIME:06d}', '%Y%jT%H%M%S')
                 for JDATE, TIME in tflag
@@ -317,13 +320,13 @@ class CmaqSatProcAccessor:
             if SDATE < 1:
                 SDATE = 1970001
             date = datetime.strptime(f'{SDATE}T{qf.STIME:06d}', '%Y%jT%H%M%S')
-            nt = qf.dims['TSTEP']
+            nt = qf.sizes['TSTEP']
             dm = (qf.attrs['TSTEP'] % 10000) // 100
             ds = (qf.attrs['TSTEP'] % 100)
             dh = qf.attrs['TSTEP'] // 10000 + dm / 60 + ds / 3600.
             if nt == 1 and dh == 0:
                 dh = 1
-            times = pd.date_range(date, periods=nt, freq=f'{dh}H')
+            times = pd.date_range(date, periods=nt, freq=f'{dh}h')
 
         qf.coords['TSTEP'] = times
         if 'VGLVLS' in qf.attrs:
@@ -337,8 +340,8 @@ class CmaqSatProcAccessor:
             ).format(GDTYP=qf.attrs['GDTYP']))
         else:
             qf.attrs['crs'] = crs
-            row = np.arange(qf.dims['ROW']) + 0.5
-            col = np.arange(qf.dims['COL']) + 0.5
+            row = np.arange(qf.sizes['ROW']) + 0.5
+            col = np.arange(qf.sizes['COL']) + 0.5
             if qf.GDTYP == 1:
                 row = row * qf.attrs['YCELL'] + qf.attrs['YORIG']
                 col = col * qf.attrs['XCELL'] + qf.attrs['XORIG']
@@ -379,7 +382,7 @@ class CmaqSatProcAccessor:
         outkeys = [k for k in outf.data_vars if k != 'TFLAG']
         nv = np.int32(len(outkeys))
 
-        nl = np.int32(outf.dims.get('LAY', 1))
+        nl = np.int32(outf.sizes.get('LAY', 1))
         vglvls = np.linspace(0, 1, nl + 1, dtype='f')[::-1]
         vgtyp = np.int32(-9999)
         vgtop = np.float32(5000)
