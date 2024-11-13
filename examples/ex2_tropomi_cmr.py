@@ -1,6 +1,6 @@
 """
-Create Custom L3 from TropOMI
-=============================
+TropOMI L3
+==========
 
 This script is designed to create a custom L3 file from TropOMI NO2, but can
 be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2, OMHCHO, ...

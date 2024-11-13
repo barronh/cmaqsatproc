@@ -1,6 +1,6 @@
 """
-Configure .netrc for OpenDAP
-============================
+OpenDAP .netrc
+==============
 
 This script is designed to create create a .netrc and .dodsrc if those files
 do not yet exists.

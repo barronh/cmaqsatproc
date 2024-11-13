@@ -1,6 +1,6 @@
 """
-Create Custom L3 from VIIRS
-===========================
+VIIRS L3
+========
 
 This script is designed to make custom L3 files from SNPP VIIRS Deep Blue
 using files that have already been downloaded. It can be edited to work with
