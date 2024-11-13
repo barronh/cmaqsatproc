@@ -2,6 +2,9 @@
 
 Satellite Processors designed for simple CMAQ comparisons.
 
+[![Docs](https://github.com/barronh/cmaqsatproc/actions/workflows/documentation.yaml/badge.svg)](https://barronh.github.io/cmaqsatproc/)
+
+
 ## What can you do?
 
 * convert L2 or L3 satellite products to L3 on CMAQ grids
@@ -24,7 +27,7 @@ Satellite Processors designed for simple CMAQ comparisons.
 3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
 4. [Simple instructions](COLABINSTALL.md) are provided to configure Google Colab.
 
-## Short Example
+## Short Examples
 
 ### TropOMI NO2 Satellite -- OpenDAP to CMAQ-Grid
 
