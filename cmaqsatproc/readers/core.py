@@ -379,6 +379,7 @@ class satellite:
                     ckey = ('count',) + ('',) * len(notgeodims)
                     wkey = ('weight',) + ('',) * len(notgeodims)
                     wskey = ('weight_sum',) + ('',) * len(notgeodims)
+                    wmkey = ('weight_mean',) + ('',) * len(notgeodims)
                     mjustweight.columns = pd.MultiIndex.from_tuples(
                         [wkey], names=[None] + notgeodims
                     )
@@ -408,9 +409,11 @@ class satellite:
                     df, df[wkey], outdims
                 )
                 if len(notgeodims) > 0:
-                    ngdf = gdf.drop([wkey, wskey], axis=1).stack(notgeodims)
+                    dropkeys = [wkey, wskey, wmkey, ckey]
+                    ngdf = gdf.drop(dropkeys, axis=1).stack(notgeodims)
                     ngdf['weight'] = gdf[wkey]
                     ngdf['weight_sum'] = gdf[wskey]
+                    ngdf['weight_mean'] = gdf[wmkey]
                     ngdf['count'] = gdf[ckey]
                     gdf = ngdf
             else:
