@@ -20,4 +20,4 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 api:
-	sphinx-apidoc -f --maxdepth=1 -o ./source ../pyrsig
+	sphinx-apidoc -f --maxdepth=1 -o ./source ../cmaqsatproc
