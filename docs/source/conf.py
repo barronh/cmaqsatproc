@@ -12,6 +12,7 @@
 #
 import os
 import sys
+from sphinx_gallery.sorting import FileNameSortKey
 sys.path.insert(0, os.path.abspath('..'))
 
 
@@ -56,7 +57,7 @@ extensions = [
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',
     'gallery_dirs': 'auto_examples',
-    'within_subsection_order': 'FileNameSortKey',
+    'within_subsection_order': FileNameSortKey,
 }
 
 # Generate the API documentation when building
