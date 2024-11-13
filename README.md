@@ -26,7 +26,7 @@ Satellite Processors designed for simple CMAQ comparisons.
 
 ## Short Example
 
-### OMI NO2 Satellite -- OpenDAP to CMAQ-Grid
+### TropOMI NO2 Satellite -- OpenDAP to CMAQ-Grid
 
 This example requires OpenDAP access configured on the machine, but does not
 require any local files (satellite or CMAQ).
@@ -74,7 +74,7 @@ l3 = satreader.paths_to_level3(
 l3.to_netcdf(outpath)
 ```
 
-### CMAQ NO2 to OMI
+### CMAQ NO2 to TropOMI
 
 This example requires an output from one of the previous exmaples. The data
 from the level3 satellite output is combined with CMAQ to make a comparison.
