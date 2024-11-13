@@ -30,7 +30,7 @@ What makes it simple?
   1. User can specify the box based on lat/lon
   2. The CMAQ grid can be used to automatically define the box.
 3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
-4. [Simple instructions](https://github.com/barronh/cmaqsatproc/COLABINSTALL.md) are provided to configure Google Colab.
+4. `Simple instructions <https://github.com/barronh/cmaqsatproc/blob/main/COLABINSTALL.md>`_ are provided to configure Google Colab.
 
 
 Getting Started
