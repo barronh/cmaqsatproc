@@ -1,6 +1,6 @@
 """
 Create Custom L3 from TropOMI
-===================
+=============================
 
 This script is designed to create a CMAQ L3 file including alternative TropOMI
 NO2 using the CMAQ AMF.
