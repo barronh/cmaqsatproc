@@ -72,6 +72,15 @@ default_griddesc_txt = b"""' '
 'LamCon_25N_95W' -4226153.11044303 -834746.472325356 5079.0 5079.0  1473 1025 1
 ' '"""
 
+# All GRIDDESC definitions come in pairs of lines. The first is the name and
+# the second is either all numeric for projections or, for grids, a string
+#  projection name followed by numeric grid definitions
+_prjattrkeys = ['GDTYP', 'P_ALP', 'P_BET', 'P_GAM', 'XCENT', 'YCENT']
+_gdattrkeys = [
+    'PRJNAME', 'XORIG', 'YORIG', 'XCELL', 'YCELL', 'NCOLS',
+    'NROWS', 'NTHIK'
+]
+
 
 def griddesc(griddesc_txt):
     from collections import OrderedDict
@@ -93,19 +102,11 @@ def griddesc(griddesc_txt):
         _l for _l in griddesc_txt.split('\n')
         if _l.strip() not in ("''", "' '", "")
     ]
-    # All definitions come in pairs of lines. The first is the name and the
-    # second is either all numeric for projections or, for grids, a string
-    #  projection name followed by numeric grid definitions
-    prjattrkeys = ['GDTYP', 'P_ALP', 'P_BET', 'P_GAM', 'XCENT', 'YCENT']
-    gdattrkeys = [
-        'PRJNAME', 'XORIG', 'YORIG', 'XCELL', 'YCELL', 'NCOLS',
-        'NROWS', 'NTHIK'
-    ]
     for name, defn in zip(reallines[0:-1:2], reallines[1::2]):
         name = eval(name)
         values = defn.split()
         if "'" in defn:
-            gddefn = dict(zip(gdattrkeys, values))
+            gddefn = dict(zip(_gdattrkeys, values))
             gddefn['PRJNAME'] = eval(gddefn['PRJNAME'])
             gddefn['GDNAM'] = name
             gddefn['XORIG'] = float(gddefn['XORIG'])
@@ -117,7 +118,7 @@ def griddesc(griddesc_txt):
             gddefn['NTHIK'] = int(gddefn['NTHIK'])
             gddefns[name] = gddefn
         else:
-            prjdefn = dict(zip(prjattrkeys, values))
+            prjdefn = dict(zip(_prjattrkeys, values))
             prjdefn['PRJNAME'] = name
             prjdefn['GDTYP'] = int(prjdefn['GDTYP'])
             prjdefn['P_ALP'] = float(prjdefn['P_ALP'])
@@ -598,12 +599,74 @@ class CmaqSatProcAccessor:
         )
         return lon, lat
 
+    def as_grid(self, other):
+        """
+        Convert self ROW/COL coordinates from self to ROW/COL coordinates
+        from other. This requires that they be a consistent GDTYP with the
+        same P_ALP, P_BET, P_GAM, XCENT, YCENT parameters. Very useful for
+        plotting on the same grid. Note that XCELL and YCELL will be updated
+        to the target grid.
+
+        Arguments
+        ---------
+        other : xarray.Dataset
+            Must be a CMAQ-like object.
+
+        Returns
+        -------
+        out : xarray.Dataset
+            Dataset with CMAQ grid properties from other and data values from
+            self object.
+        """
+        for key in _prjattrkeys:
+            assert self._obj.attrs[key] == other.attrs[key]
+
+        me = self._obj
+        out = self._obj.copy()
+        out.coords['COL'] = (
+            me.coords['COL'] * me.XCELL + me.XORIG - other.XORIG
+        ) / other.XCELL
+        out.coords['ROW'] = (
+            me.coords['ROW'] * me.YCELL + me.YORIG - other.YORIG
+        ) / other.YCELL
+        for key in _gdattrkeys:
+            if key in other.attrs:
+                out.attrs[key] = other.attrs[key]
+        if 'crs' in other.attrs:
+            out.attrs['crs'] = other.attrs['crs']
+
+        return out
+
     def sample_at(self, other, method='nearest'):
-        olon, olat = other.get_lonlat()
+        """
+        Create an object like other with contents of this object.
+
+        Arguments
+        ---------
+        other : xarray.Dataset
+            Must be a CMAQ-like object.
+        method : str
+            Passed to sel method of self object.
+
+        Returns
+        -------
+        out : xarray.Dataset
+            Dataset with CMAQ grid properties from other and data values from
+            self object.
+        """
+        olon, olat = other.csp.get_lonlat()
         oX, oY = self.proj(olon, olat)
         cidx = xr.DataArray(oX, dims=('ROW', 'COL'))
         ridx = xr.DataArray(oY, dims=('ROW', 'COL'))
-        return self.sel(ROW=ridx, COL=cidx, method=method)
+        out = self._obj.sel(ROW=ridx, COL=cidx, method=method)
+        out.coords['ROW'] = other['ROW']
+        out.coords['COL'] = other['COL']
+        for key in _gdattrkeys + _prjattrkeys:
+            if key in other.attrs:
+                out.attrs[key] = other.attrs[key]
+        if 'crs' in other.attrs:
+            out.attrs['crs'] = other.attrs['crs']
+        return out
 
     def get_lst(self, times=None, method='longitude'):
         """
