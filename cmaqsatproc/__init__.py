@@ -70,7 +70,7 @@ from . import readers
 from . import cmaq
 from . import drivers
 
-__version__ = '0.3.1'
+__version__ = '0.4.0'
 
 reader_dict = readers.reader_dict
 open_ioapi = cmaq.open_ioapi
