@@ -56,9 +56,17 @@ extensions = [
     'sphinx.ext.napoleon',
 ]
 
+ex_list = [
+    '../../examples/cmaq_tropomi.py',
+    '../../examples/config_netrc.py',
+    '../../examples/tropomi_cmr.py',
+    '../../examples/viirs_local.py',
+    '*'
+]
 sphinx_gallery_conf = {
     'examples_dirs': '../../examples',
     'gallery_dirs': 'auto_examples',
+    'within_subsection_order': ExplicitOrder(ex_list),
 }
 
 # Generate the API documentation when building
