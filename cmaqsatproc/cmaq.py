@@ -86,12 +86,12 @@ def griddesc(griddesc_txt):
         gdl.split('!')[0].strip()
         for gdl in griddesc_txt.split('\n')
     ])
-    dble = re.compile('([\d.])[Dd]([\d])')
+    dble = re.compile(r'([\d.])[Dd]([\d])')
     griddesc_txt = dble.sub(r'\1e\2', griddesc_txt)
     # lines with ' ' are separators and blank shouldn't happen
     reallines = [
-        l for l in griddesc_txt.split('\n')
-        if l.strip() not in ("''", "' '", "")
+        _l for _l in griddesc_txt.split('\n')
+        if _l.strip() not in ("''", "' '", "")
     ]
     # All definitions come in pairs of lines. The first is the name and the
     # second is either all numeric for projections or, for grids, a string
@@ -390,7 +390,7 @@ class CmaqSatProcAccessor:
 
         defattrs = {
             'EXEC_ID': 'NA'.ljust(80), 'IOAPI_VERSION': 'NA'.ljust(80),
-            'UPNAM': 'cmaqsatproc'.ljust(16), 'FTYPE': np.int32(1), 'NLAYS': nl,
+            'UPNAM': 'cmaqsatproc     ', 'FTYPE': np.int32(1), 'NLAYS': nl,
             'VGTOP': vgtop, 'VGLVLS': vglvls, 'VGTYP': vgtyp,
             'WDATE': jnow, 'CDATE': jnow, 'WTIME': tnow, 'CTIME': tnow,
             'SDATE': sdate, 'STIME': np.int32(0), 'TSTEP': np.int32(0),
@@ -546,16 +546,64 @@ class CmaqSatProcAccessor:
         tz : xr.DataArray
             time zone as decimal hours since 0Z
         """
-        import numpy as np
-        import xarray as xr
         if method != 'longitude':
             raise ValueError('only longitude is supported at this time')
+        lon, lat = self.get_lonlat()
+        tz = lon / 15
+        tz.name = 'utcoffset'
+        return tz
+
+    def get_lonlat(self, how='centroid'):
+        """
+        Return the xarray.DataArrays for longitude and latitude.
+
+        Arguments
+        ---------
+        how : str
+            Currently supports centroid, upper_left, upper_right, lower_left,
+            and lower_right
+
+        Returns
+        -------
+        lon, lat : xr.DataArray
+            time zone as decimal hours since 0Z
+        """
+        import numpy as np
+        import xarray as xr
+        _opts = [
+            'centroid',
+            'upper_left', 'upper_right', 'lower_left', 'lower_right'
+        ]
+        if how not in _opts:
+            raise ValueError(f'only {_opts} are supported at this time')
         x = self._obj['COL'].values
         y = self._obj['ROW'].values
+        if how.startswith('upper'):
+            y = y + 0.5
+        elif how.startswith('lower'):
+            y = y - 0.5
+        if how.endswith('right'):
+            y = y + 0.5
+        elif how.endswith('left'):
+            y = y - 0.5
         X, Y = np.meshgrid(x, y)
         lon, lat = self.proj(X, Y, inverse=True)
-        tz = xr.DataArray((lon / 15), dims=('ROW', 'COL'))
-        return tz
+        lon = xr.DataArray(lon, name='lon', dims=('ROW', 'COL'))
+        lon.attrs.update(
+            long_name='longitude', units='degrees_east', description=how
+        )
+        lat = xr.DataArray(lat, name='lat', dims=('ROW', 'COL'))
+        lat.attrs.update(
+            long_name='latitude', units='degrees_north', description=how
+        )
+        return lon, lat
+
+    def sample_at(self, other, method='nearest'):
+        olon, olat = other.get_lonlat()
+        oX, oY = self.proj(olon, olat)
+        cidx = xr.DataArray(oX, dims=('ROW', 'COL'))
+        ridx = xr.DataArray(oY, dims=('ROW', 'COL'))
+        return self.sel(ROW=ridx, COL=cidx, method=method)
 
     def get_lst(self, times=None, method='longitude'):
         """
