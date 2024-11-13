@@ -7,6 +7,8 @@ products and using different data acquisition methods.
 Satellite Products
 ==================
 
+* Configure
+  * config_netrc.py : setup to use OpenDAP connection.
 * TropOMI:
   * tropomi_cmr.py: create custom L3 file from TropOMI via OpenDAP server.
   * cmaq_tropomi.py: create custom L3 file from CMAQ and TropOMI with CMAQ AMF
