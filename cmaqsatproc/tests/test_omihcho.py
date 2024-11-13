@@ -68,7 +68,7 @@ def omi_example_ds():
         ], dim='nCorners').transpose('nTimes', 'nXtrack', 'nCorners')
     )
     ds['PixelCornerLatitudes'] = lat_edges = xr.DataArray(
-        np.zeros((ds.dims['nTimes'] + 1, ds.dims['nXtrack'] + 1)),
+        np.zeros((ds.sizes['nTimes'] + 1, ds.sizes['nXtrack'] + 1)),
         dims=('nTimes_1', 'nXtrack_1')
     )
     lat_edges[:-1, :-1] = ds['ll_y'].values
@@ -76,7 +76,7 @@ def omi_example_ds():
     lat_edges[-1, :-1] = ds['ul_y'][-1].values
     lat_edges[-1, -1] = ds['uu_y'][-1, -1].values
     ds['PixelCornerLongitudes'] = lon_edges = xr.DataArray(
-        np.zeros((ds.dims['nTimes'] + 1, ds.dims['nXtrack'] + 1)),
+        np.zeros((ds.sizes['nTimes'] + 1, ds.sizes['nXtrack'] + 1)),
         dims=('nTimes_1', 'nXtrack_1')
     )
     lon_edges[:-1, :-1] = ds['ll_x'].values
