@@ -1,5 +1,5 @@
-cmaqsatproc Example Gallery
-===========================
+Example Gallery
+===============
 
 This gallery houses examples on how to use cmaqsatproc with various satellite
 products and using different data acquisition methods.
