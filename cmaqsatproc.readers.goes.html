@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cmaqsatproc.readers.goes package &#8212; cmaqsatproc &#39;0.4.0&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css" />
+    <link rel="stylesheet" type="text/css" href="_static/alabaster.css" />
+    <link rel="stylesheet" type="text/css" href="_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="_static/copybutton.css" />
+    <link rel="stylesheet" type="text/css" href="_static/mystnb.4510f1fc1dee50b3e5859aac5469c37c29e427902b24a333a5f9fcb2f0b3ac41.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-binder.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-dataframe.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sg_gallery-rendered-html.css" />
+    <link rel="stylesheet" type="text/css" href="_static/sphinx-design.4cbf315f70debaebd550c87a6162cf0f.min.css" />
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js"></script>
+    <script src="_static/doctools.js"></script>
+    <script src="_static/sphinx_highlight.js"></script>
+    <script src="_static/clipboard.min.js"></script>
+    <script src="_static/copybutton.js"></script>
+    <script src="_static/design-tabs.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="cmaqsatproc.readers.iasi package" href="cmaqsatproc.readers.iasi.html" />
+    <link rel="prev" title="cmaqsatproc.readers package" href="cmaqsatproc.readers.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="cmaqsatproc-readers-goes-package">
+<h1>cmaqsatproc.readers.goes package<a class="headerlink" href="#cmaqsatproc-readers-goes-package" title="Permalink to this heading">¶</a></h1>
+<section id="module-cmaqsatproc.readers.goes">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cmaqsatproc.readers.goes" title="Permalink to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.goes.</span></span><span class="sig-name descname"><span class="pre">goes_aod</span></span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod" title="Permalink to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite" title="cmaqsatproc.readers.core.satellite"><code class="xref py py-class docutils literal notranslate"><span class="pre">satellite</span></code></a></p>
+<p>goes_aod processor
+* valid if DQF &lt; dqflt (default = 1)
+* pixel corners are interpolated in projected space.</p>
+<p>Note 1: Qualities are 0: high; 1: medium; 2: low; 3 not retrieved.
+Note 2: The default requires the highest quality only. This is based</p>
+<blockquote>
+<div><p>on experience. Because we are gridding, high and medium would get
+spatially mixed. This makes it hard to see if a monthly average is
+a bunch of isolated medium quality pixels with no repeat
+measurements or many of the same pixel. Thus, the higher quality
+requirement.</p>
+</div></blockquote>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.cmr_links">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">args</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.cmr_links" title="Permalink to this definition">¶</a></dt>
+<dd><p>Use utils.getcmrlinks to get links from the NASA Common Metadata Repo</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>method</strong> (<em>str</em>) – Options are opendap, download, or s3</p></li>
+<li><p><strong>kwds</strong> (<em>mappable</em>) – Passed through to utils.getcmrlinks. See getcmrlinks for valid
+keywords</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links to OpenDAP, http downloadable, or s3 links</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.open_dataset">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dqflt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.open_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Open a GOES AOD dataset for satellite processing.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to dataset</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North</p></li>
+<li><p><strong>dqflt</strong> (<em>float</em>) – Only AOD with data quality flags less than dqflt are considered
+valid</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing object.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite" title="cmaqsatproc.readers.core.satellite">satellite</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.open_datasets">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">open_datasets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">paths</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dqflt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.open_datasets"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.open_datasets" title="Permalink to this definition">¶</a></dt>
+<dd><p>Similar to open_dataset, but assumes that all data is on a single grid.
+Therefore, it can mask pixels and average them before creating a “net”
+dataset.</p>
+<p>Basically,
+ds = xr.concat([open_dataset(path, bbox) for path in paths], ‘scan’)
+ds = ds.where(ds[‘valid’]).mean(‘scan’)</p>
+<p>Only variables valid, AOD, DQF, and goes_imager_projection are kept.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>paths</strong> (<em>list</em>) – List of paths</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite" title="cmaqsatproc.readers.core.satellite">satellite</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.prep_dataset">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">prep_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dqflt</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">1</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.prep_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.prep_dataset" title="Permalink to this definition">¶</a></dt>
+<dd><p>Prepare the dataset by adding a projection, applying valid spatial
+checks and requiring that the DQF variable have a value less than
+dqflt.</p>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.s3_links">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">s3_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satkey</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">product</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'ABI-L2-AODC'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">resolution</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'H'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.s3_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.s3_links" title="Permalink to this definition">¶</a></dt>
+<dd><p>Return s3 links for date</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>date</strong> (<em>str</em><em> or </em><em>date-like</em>) – pandas.to_datetime will convert this into a date object.</p></li>
+<li><p><strong>satkey</strong> (<em>str</em>) – goes16, goes17, or goes18… any goes satellite that has product</p></li>
+<li><p><strong>product</strong> (<em>str</em>) – Usually ABI-L2-AODC, but could be ABI-L2-AODF</p></li>
+<li><p><strong>resolution</strong> (<em>str</em>) – Choose, H, d, m or Y.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – All links within the folder based on resolution:
+- ‘H’: s3://noaa-{satkey}/ABI-L2-AODC/{date:%Y/%j/%H}/
+- ‘d’: s3://noaa-{satkey}/ABI-L2-AODC/{date:%Y/%j}/
+- ‘Y’: s3://noaa-{satkey}/ABI-L2-AODC/{date:%Y}/
+- ‘m’: iterates on all julian days in month</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.goes.goes_aod.s3_to_level3">
+<em class="property"><span class="pre">classmethod</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">s3_to_level3</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">date</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satkey</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">grid</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">griddims</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">weighting</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'area'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">verbose</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">varkeys</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">as_dataset</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">link_kwargs</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="_modules/cmaqsatproc/readers/goes.html#goes_aod.s3_to_level3"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.goes.goes_aod.s3_to_level3" title="Permalink to this definition">¶</a></dt>
+<dd><p>Thin wrapper around s3_links, open_datasets, and to_level3.</p>
+<p>For keyword documentation, see those functions.</p>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cmaqsatproc.html">cmaqsatproc package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="cmaqsatproc.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.cmaq">cmaqsatproc.cmaq module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.utils">cmaqsatproc.utils module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="cmaqsatproc.html">cmaqsatproc package</a><ul>
+  <li><a href="cmaqsatproc.readers.html">cmaqsatproc.readers package</a><ul>
+      <li>Previous: <a href="cmaqsatproc.readers.html" title="previous chapter">cmaqsatproc.readers package</a></li>
+      <li>Next: <a href="cmaqsatproc.readers.iasi.html" title="next chapter">cmaqsatproc.readers.iasi package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script>document.getElementById('searchbox').style.display = "block"</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 7.0.1</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 0.7.16</a>
+      
+      |
+      <a href="_sources/cmaqsatproc.readers.goes.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
