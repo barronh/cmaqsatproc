@@ -1,0 +1,21 @@
+cmaqsatproc.readers.modis package
+=================================
+
+Submodules
+----------
+
+cmaqsatproc.readers.modis.modis\_readers module
+-----------------------------------------------
+
+.. automodule:: cmaqsatproc.readers.modis.modis_readers
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.modis
+   :members:
+   :undoc-members:
+   :show-inheritance:

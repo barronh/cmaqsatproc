@@ -1,0 +1,7 @@
+cmaqsatproc
+===========
+
+.. toctree::
+   :maxdepth: 1
+
+   cmaqsatproc
