@@ -422,11 +422,14 @@ class CmaqSatProcAccessor:
                     var_desc='TFLAG'.ljust(80),
                 )
             )
-            dt = np.diff(outf.coords['TSTEP']).mean().astype('l') / 1e9
-            dth = dt // 3600
-            dtm = (dt % 3600) // 60
-            dts = dt % 60
-            tstep = f'{dth:.0f}{dtm:02.0f}{dts:02.0f}'
+            if outf.sizes['TSTEP'] > 1:
+                dt = np.diff(outf.coords['TSTEP']).mean().astype('l') / 1e9
+                dth = dt // 3600
+                dtm = (dt % 3600) // 60
+                dts = dt % 60
+                tstep = f'{dth:.0f}{dtm:02.0f}{dts:02.0f}'
+            else:
+                tstep = outf.attrs.get('TSTEP', 0)
 
         outf['TFLAG'] = tflag
         outf.attrs['SDATE'] = np.int32(outf['TFLAG'][0, 0, 0])

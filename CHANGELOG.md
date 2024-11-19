@@ -1,3 +1,13 @@
+2024-11-19 v0.4.1:
+* Dramatically improved documentation.
+* Fixed CMAQ date issue when just one time is available.
+
+2024-11-10 v0.4.0:
+* Use xarray.Dataset.sizes instead of dims to avoid warning.
+* Remove pygeos dependency since geopandas is moving to shapely 2.0
+* Add CMAQ SDATE as date for time independent files.
+* TropOMI extending warning and date ranges (issue #9)
+
 2024-01-25 v0.3.0:
 * Added methane_mixing_ratio_bias_corrected to the default key for S5P_L2__CH4___
 * Changed all cmr_links commands to use concept_id instead of short_name.
