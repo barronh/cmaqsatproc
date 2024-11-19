@@ -16,10 +16,10 @@ RSIG data is served one variable at a time, so you will have four files: (1) 3D
 CONC file and (3) METCRO3D files -- DENS, ZF, and PRES. The links below are each
 approximately 1 GB in size and must be saved using the names suggested.
 
-* Download `CMAQ CONC3D NO2 <NO2_3D>`_ and save as `CCTM_CONC_2019-07-24_12US1.nc`
-* Download `METCRO3D PRES <PRES_3D>`_ and save as `METCRO3D_PRES_2019-07-24_12US1.nc`
-* Download `METCRO3D DENS <DENS_3D>`_ and save as `METCRO3D_DENS_2019-07-24_12US1.nc`
-* Download `METCRO3D ZF <ZF_3D>`_ and save as `METCRO3D_ZF_2019-07-24_12US1.nc`
+* Download `CMAQ CONC3D NO2 <NO2_3D>_`__ and save as `CCTM_CONC_2019-07-24_12US1.nc`
+* Download `METCRO3D PRES <PRES_3D>_`__ and save as `METCRO3D_PRES_2019-07-24_12US1.nc`
+* Download `METCRO3D DENS <DENS_3D>_`__ and save as `METCRO3D_DENS_2019-07-24_12US1.nc`
+* Download `METCRO3D ZF <ZF_3D>_`__ and save as `METCRO3D_ZF_2019-07-24_12US1.nc`
 
 .. _EQUATES: https://www.epa.gov/cmaq/equates
 .. _NO2_3D: https://ofmpub.epa.gov/rsig/rsigserver?SERVICE=wcs&VERSION=1.0.0&REQUEST=GetCoverage&FORMAT=netcdf-ioapi&TIME=2019-07-24T00:00:00Z/2019-07-24T23:59:59Z&BBOX=-135.000000,15.000000,-55.000000,70.000000&COVERAGE=cmaq.equates.conus.conc.NO2&COMPRESS=0&NOLONLATS=1
