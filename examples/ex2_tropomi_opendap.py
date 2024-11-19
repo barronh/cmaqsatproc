@@ -1,9 +1,13 @@
 """
-TropOMI L3
-==========
+TropOMI L3 OpenDAP
+==================
 
-This script is designed to create a custom L3 file from TropOMI NO2, but can
-be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2, OMHCHO, ...
+This script is designed to create a custom L3 file from TropOMI NO2 files
+streamed remotely from an OpenDAP server. Because it uses OpenDAP, you must
+have first configured your `.netrc`, `.urs_cookies`, and `.dodsrc`. 
+
+This example can be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2,
+OMHCHO, ..., etc.
 """
 # %%
 # Import Library and Configure

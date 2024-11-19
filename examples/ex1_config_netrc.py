@@ -1,9 +1,12 @@
 """
-OpenDAP .netrc
-==============
+Configure OpenDAP
+=================
 
-This script is designed to create create a .netrc and .dodsrc if those files
-do not yet exists.
+This script is designed to create create a .netrc, .dodsrc, and .urs_cookies
+if those files do not yet exist. All files will be created in the user's home
+directory. The .netrc file must contain a valid EarthData login and password.
+The file will be created as read/write for user only to avoid revealing your
+password to others.
 """
 
 # %%

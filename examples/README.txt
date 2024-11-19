@@ -6,17 +6,17 @@ products and using different data acquisition methods.
 
 * Configure
 
-  * config_netrc.py : setup to use OpenDAP connection.
+  * Configure OpenDAP : setup to use OpenDAP connection (required by OpenDAP examples)
 
 * TropOMI:
 
-  * tropomi_cmr.py: create custom L3 file from TropOMI via OpenDAP server.
+  * TropOMI L3 OpenDAP: create custom L3 file from TropOMI via OpenDAP server.
 
-  * cmaq_tropomi.py: create custom L3 file from CMAQ and TropOMI with CMAQ AMF
+  * TropOMI/CMAQ L3: create custom L3 file from CMAQ and TropOMI with CMAQ AMF
 
 * VIIRS
 
-  * viirs_local.py: create custom L3 file from VIIRS via local files.
+  * VIIRS L3 Local Disk: create custom L3 file from VIIRS via files on disk.
 
 
 All examples require `cmaqsatproc` which can be installed via `shell` or in a

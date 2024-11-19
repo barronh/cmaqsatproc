@@ -1,10 +1,10 @@
 """
-VIIRS L3
-========
+VIIRS L3 Local Disk
+===================
 
 This script is designed to make custom L3 files from SNPP VIIRS Deep Blue
-using files that have already been downloaded. It can be edited to work with
-TropOMI HCHO, VIIRS_AERDB, OMNO2, OMHCHO, ...
+using files that have already been downloaded to local disk. This example
+can be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2, OMHCHO, ...
 
 This example assumes you have downloaded satellite files. The code is largely
 the same as the previous. Instead of `cmr_to_level3`, it the method uses `glob`
