@@ -29,8 +29,8 @@ setuptools.setup(
     ],
     python_requires='>=3.6',
     install_requires=[
-        "numpy", "matplotlib", "pandas", "geopandas", "xarray", "pyproj",
-        "shapely", "pycno"
+        "numpy", "matplotlib", "pandas", "requests", "netcdf4", "xarray",
+        "pycno", "pyproj", "geopandas>=0.14.0", "shapely>=0.2.0",
     ],
     extras_require={
         "gdal":  ["gdal"],

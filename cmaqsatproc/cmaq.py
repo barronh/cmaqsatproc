@@ -19,6 +19,8 @@ default_griddesc_txt = b"""' '
   2        33.000        45.000       -97.000       -97.000        40.000
 'LamCon_25N_95W'
   2        25.000        25.000       -95.000       -95.000        25.000
+'LamCon_HRRR'
+  2        38.500        38.500       -97.500       -97.500        38.500
 ' '
 'US_1deg'
 'LATLON'              -140.00        20.0      1.0      1.0   90   40 1
@@ -70,7 +72,11 @@ default_griddesc_txt = b"""' '
 'LamCon_40N_97W'   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1
 'NAQFC_CONUS'
 'LamCon_25N_95W' -4226153.11044303 -834746.472325356 5079.0 5079.0  1473 1025 1
+'HRRR3K'
+'LamCon_HRRR' -2699020.14252193 -1588806.15255666 3000.0 3000.0 1799 1059 1
 ' '"""
+# HRRR/NAQFC earth_radius=6371229. must use
+
 
 # All GRIDDESC definitions come in pairs of lines. The first is the name and
 # the second is either all numeric for projections or, for grids, a string
@@ -129,6 +135,11 @@ def griddesc(griddesc_txt):
             prjdefns[name] = prjdefn
     for name, defn in gddefns.items():
         defn.update(prjdefns[defn['PRJNAME']])
+        if name.strip().upper() in ('NAQFC_CONUS', 'HRRR3K'):
+            # HRRR/NAQFC earth_radius=6371229. must use
+            defn.setdefault('earth_radius', 6371229.0)
+        else:
+            defn.setdefault('earth_radius', 6370000.0)
     return gddefns
 
 
@@ -218,11 +229,15 @@ def get_proj4string(attrs):
     documentation/all_versions/html/GRIDS.html.
     """
     import copy
+    import warnings
     import os
 
     popts = copy.copy(attrs)
     ENV_IOAPI_ISPH = os.environ.get('IOAPI_ISPH', '6370000.')
-    popts['R'] = popts.get('earth_radius', float(ENV_IOAPI_ISPH))
+    er = popts['R'] = popts.get('earth_radius', float(ENV_IOAPI_ISPH))
+    if popts.get('GDNAM', '').strip().upper() in ('NAQFC_CONUS', 'HRRR3K'):
+        if er != 6371229.0:
+            warnings.warn(f'Grid expects earth_radius=6371229.0, got {er}')
     popts['x_0'] = -attrs['XORIG']
     popts['y_0'] = -attrs['YORIG']
 
@@ -467,19 +482,38 @@ class CmaqSatProcAccessor:
     @property
     def geodf(self):
         if not hasattr(self, '_geodf'):
+            import numpy as np
             import pandas as pd
             import geopandas as gpd
             from shapely.geometry import box
+            from shapely import polygons
+            attrs = self._obj.attrs
             rows = self._obj['ROW'].values
             cols = self._obj['COL'].values
+            if attrs['GDTYP'] == 1:
+                ys = attrs['YORIG'] + rows * attrs['YCELL']
+                xs = attrs['XORIG'] + cols * attrs['XCELL']
+                dx = attrs['XCELL'] / 2
+                dy = attrs['YCELL'] / 2
+            else:
+                ys = rows
+                xs = cols
+                dy = dx = 0.5
             midx = pd.MultiIndex.from_product([rows, cols])
             midx.names = 'ROW', 'COL'
-            geoms = []
-            for r in rows:
-                for c in cols:
-                    geoms.append(
-                        box(c - 0.5, r - 0.5, c + 0.5, r + 0.5)
-                    )
+            geomarray = True
+            if geomarray:
+                XS, YS = np.meshgrid(xs, ys)
+                XS = XS.ravel()[:, None] + np.array([-dx, dx, dx, -dx, -dx])
+                YS = YS.ravel()[:, None] + np.array([-dy, -dy, dy, dy, -dx])
+                geoms = polygons(np.stack([XS, YS], axis=2))
+            else:
+                geoms = []
+                for r in ys:
+                    for c in xs:
+                        geoms.append(
+                            box(c - dx, r - dy, c + dx, r + dy)
+                        )
             self._geodf = gpd.GeoDataFrame(
                 geometry=geoms, index=midx, crs=self.proj4string
             )

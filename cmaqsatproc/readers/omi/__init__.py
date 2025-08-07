@@ -246,7 +246,7 @@ class OMNO2(OMIL2):
       * CloudFraction <= 0.3
     """
     _defaultkeys = (
-        'ColumnAmountNO2Trop', 'AmfTrop', 'ColumnAmountNO2Trop', 'AmfTrop',
+        'ColumnAmountNO2Trop', 'AmfTrop', 'ColumnAmountNO2Strat', 'AmfStrat',
         'ScatteringWeight', 'ScatteringWtPressure', 'TropopausePressure',
         'TerrainPressure',
     )
@@ -757,6 +757,10 @@ class OMO3PR(OMIL2):
         import numpy as np
 
         omtmp = OMIL2.open_dataset(path, bbox=bbox, **kwargs)
+        if 'AveragingKernel' in omtmp.ds.data_vars:
+            omtmp.ds.variables['AveragingKernel'].dims = (
+                'nTimes', 'nXtrack', 'nLayers', 'nLayers_s'
+            )
         ds = omtmp.ds
         ds['valid'] = ~(ds['O3'].isnull().all('nLayers'))
         ds['cn_x'] = ds['Longitude']
@@ -832,9 +836,13 @@ class OMPROFOZ(OMIL2):
     OMPROFOZ satellite processor.
     * bbox subsets the nTimes and nTimes_1 dimensions
     * valid based three conditions
-      * MainDataQualityFlag == 0
-      * (XtrackQualityFlagsExpanded & 1) == 0
-      * AMFCloudFraction <= 0.3
+      * 0 < ExitStatus < 10
+      * RMS (max of channels) < maxrms (default 3)
+      * AverageResiduals (max of channels) <= 3
+      * EffectiveCloudFraction <= 0.3
+      * SolarZenithAngle < 75
+
+    https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/
     """
     _defaultkeys = (
         'O3TotalColumn', 'O3TroposphericColumn', 'O3Retrieved500hPa'
@@ -863,7 +871,7 @@ class OMPROFOZ(OMIL2):
         return OMIL2.cmr_links(method=method, **kwds)
 
     @classmethod
-    def open_dataset(cls, path, bbox=None, **kwargs):
+    def open_dataset(cls, path, bbox=None, maxrms=3., **kwargs):
         """
         Arguments
         ---------
@@ -872,6 +880,8 @@ class OMPROFOZ(OMIL2):
         bbox : iterable
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
+        maxrms : float
+            
         kwargs : mappable
             Passed to xarray.open_dataset
 
@@ -882,12 +892,20 @@ class OMPROFOZ(OMIL2):
         """
         import xarray as xr
         omtmp = OMIL2.open_dataset(path, bbox=bbox, **kwargs)
+        if 'O3AveragingKernel' in omtmp.ds.data_vars:
+            omtmp.ds.variables['O3AveragingKernel'].dims = (
+                'nTimes', 'nXtrack', 'nLayer', 'nLayer_ak'
+            )
+
         ds = omtmp.ds
+        # https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/
+        # OMPROFOZ/OMPROFOZ_readme-v3.pdf
         ds['valid'] = ~(
-            (ds['ExitStatus'] <= 0) | (ds['ExitStatus'] >= 10)
-            | (ds['RMS'].max('nChannel') > 3)
-            | (ds['AverageResiduals'].max('nChannel') >= 3)
-            | ~cloudleq(ds['EffectiveCloudFraction'], 0.3)
+            (ds['ExitStatus'] <= 0) | (ds['ExitStatus'] >= 10)     # 0 < ES < 10 (pg 8)
+            | (ds['RMS'].max('nChannel').fillna(maxrms) > maxrms)  # RMS < 2 (modified; pg 8)
+            | (ds['AverageResiduals'].max('nChannel') >= 3)        # Res < 2 (modified; pg 8)
+            | ~cloudleq(ds['EffectiveCloudFraction'], 0.3)         # effcloud < 0.3 (pg 5)
+            | (ds['SolarZenithAngle'] > 75)                        # pg 8
         )
         ds['cn_x'] = ds['Longitude']
         ds['cn_y'] = ds['Latitude']

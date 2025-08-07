@@ -41,7 +41,9 @@ class IASI_NH3(satellite):
             (ds['nh3_total_column'] > -999)
             & (ds['AMPM'] == 0)
         )
-        ds.coords['time'] = np.arange(ds.dims['time'])
+        if 'postfilter' in ds:
+            ds['valid'] = ds['valid'] & (ds['postfilter'] == 1)
+        ds.coords['time'] = np.arange(ds.sizes['time'])
         if bbox is not None:
             swlon, swlat, nelon, nelat = bbox
             df = ds[['latitude', 'longitude']].to_dataframe()
@@ -89,12 +91,13 @@ class IASI_NH3(satellite):
         )
         if not (geo is False):
             import geopandas as gpd
+            import functools
             if geo is True:
-                geo = EasyDataFramePoint
+                geo = functools.partial(
+                    EasyDataFramePoint, xkey='longitude', ykey='latitude'
+                )
 
             gdf = self.to_dataframe(*self._geokeys, valid=valid)
-            gdf['x'] = gdf['longitude']
-            gdf['y'] = gdf['latitude']
             gdf = gpd.GeoDataFrame(
                 gdf, geometry=geo(gdf).buffer(0.1), crs=4326
             )
