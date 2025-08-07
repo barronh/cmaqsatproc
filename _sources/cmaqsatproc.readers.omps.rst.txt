@@ -1,0 +1,10 @@
+cmaqsatproc.readers.omps package
+================================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.omps
+   :members:
+   :undoc-members:
+   :show-inheritance:
