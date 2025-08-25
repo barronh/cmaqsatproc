@@ -1,3 +1,6 @@
+2025-04-28 v0.4.2:
+* Fixed TFLAG attrs to be consistent with IOAPI output.
+
 2024-11-19 v0.4.1:
 * Dramatically improved documentation.
 * Fixed CMAQ date issue when just one time is available.

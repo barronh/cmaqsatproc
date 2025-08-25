@@ -433,8 +433,8 @@ class CmaqSatProcAccessor:
             tflag = xr.DataArray(
                 tflag, dims=('TSTEP', 'VAR', 'DATE-TIME',),
                 attrs=dict(
-                    units='<YYYYJJJ,HHMMSS>', long_name='TFLAG'.ljust(16),
-                    var_desc='TFLAG'.ljust(80),
+                    units='<YYYYDDD,HHMMSS>', long_name='TFLAG'.ljust(16),
+                    var_desc='Timestep-valid flags:  (1) YYYYDDD or (2) HHMMSS'.ljust(80),
                 )
             )
             if outf.sizes['TSTEP'] > 1:
