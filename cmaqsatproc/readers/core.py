@@ -531,7 +531,7 @@ class satellite:
                 temporal=temporal, bbox=bbox, **link_kwargs
             )
         elif link_kwargs['method'] == 'download':
-            paths = self.cmr_download(
+            paths = cls.cmr_download(
                 temporal=temporal, bbox=bbox, **link_kwargs
             )
         if verbose > 1:

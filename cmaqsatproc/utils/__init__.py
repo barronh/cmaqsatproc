@@ -137,14 +137,14 @@ def _isdownload(x):
 
 def _iss3(x):
     return (
-       'opendap' not in x['href']
-       and (
-           x['href'].endswith('he5')
-           or x['href'].endswith('nc')
-           or x['href'].endswith('h5')
-           or x['href'].endswith('hdf')
-       )
-       and x['href'].startswith('s3')
+        'opendap' not in x['href']
+        and (
+            x['href'].endswith('he5')
+            or x['href'].endswith('nc')
+            or x['href'].endswith('h5')
+            or x['href'].endswith('hdf')
+        )
+        and x['href'].startswith('s3')
     )
 
 
