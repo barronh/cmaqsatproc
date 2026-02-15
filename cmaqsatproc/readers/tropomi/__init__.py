@@ -332,7 +332,8 @@ class TropOMI(satellite):
             )
 
         pres = tm5_b * satl3f['surface_pressure'] + tm5_a
-        ak = satl3f['averaging_kernel']
+        akkey = 'averaging_kernel'
+        ak = satl3f[akkey]
         if tropopausekey is not None:
             ak = ak.where(satl3f[tropopausekey] >= satl3f['layer'])
 
@@ -342,8 +343,11 @@ class TropOMI(satellite):
             overf['PRES'], pres, sw_trop,
             indim='layer', outdim='LAY', ascending=False
         )
-        q_sw_trop.attrs.update(satl3f['averaging_kernel'].attrs)
-        q_sw_trop.attrs['var_desc'] = 'AK * AMF'.ljust(80)
+        q_sw_trop.attrs.update(satl3f[akkey].attrs)
+        q_sw_trop.attrs.update(
+            long_name='SW'.ljust(16),
+            var_desc=f'{akkey} * {amfkey}'.ljust(80)[:80]
+        )
         return q_sw_trop
 
     @classmethod
@@ -378,6 +382,11 @@ class TropOMI(satellite):
         q_amf = (q_sw_trop * overf[key]).sum('LAY') / denom
         q_amf = q_amf.where((denom != 0) & ~q_sw_trop.isnull().all('LAY'))
         q_amf.attrs.update(q_sw_trop.attrs)
+        vdesc = f'(SW * {key}).sum() / {key}.sum()'
+        q_amf.attrs.update(
+            long_name='AMF'.ljust(16), units='1'.ljust(16),
+            var_desc=vdesc.ljust(80)[:80]
+        )
         return q_amf
 
 
@@ -599,7 +608,10 @@ class S5P_L2__NO2___(TropOMI):
         return TropOMI.cmaq_amf(overf, satl3f, amfkey=amfkey, key=key)
 
     @classmethod
-    def cmaq_ak(cls, overf, satl3f, amfkey='air_mass_factor_total'):
+    def cmaq_ak(
+        cls, overf, satl3f, amfkey='air_mass_factor_total',
+        amftropkey='air_mass_factor_troposphere'
+    ):
         """
         Calculate an averaging kernel (AK) that would process CMAQ as though
         it were observed by the satellite. In this case, the averaging kernel
@@ -614,6 +626,10 @@ class S5P_L2__NO2___(TropOMI):
         satl3f : xarray.Dataset
             Output from to_level3, paths_to_level3, or cmr_to_level3 with
             as_dataset=True (the default).
+        amfkey : str
+            amfkey should points to the total column amf, which is used to
+            convert the averaging kernel to scattering weights. The scattering
+            weights
 
         Returns
         -------
@@ -621,8 +637,11 @@ class S5P_L2__NO2___(TropOMI):
             Averaging kernel on the CMAQ grid
         """
         q_sw_trop = cls.cmaq_sw(overf, satl3f, amfkey=amfkey)
-        q_ak = q_sw_trop / satl3f['air_mass_factor_troposphere']
+        q_ak = q_sw_trop / satl3f[amftropkey]
         q_ak.attrs.update(q_sw_trop.attrs)
+        vdesc = q_sw_trop.attrs.get('var_desc', f'AK * {amfkey}').strip()
+        vdesc += f' / {amftropkey}'
+        q_ak.attrs.update(var_desc=vdesc.ljust(80)[:80])
         return q_ak
 
     @classmethod
@@ -661,27 +680,38 @@ class S5P_L2__NO2___(TropOMI):
             vmr = tgtvar / 1e12
         overf['NO2_PER_M2'] = n_per_m2 * vmr
         overf['NO2_PER_M2'].attrs.update(overf[key].attrs)
-        overf['NO2_PER_M2'].attrs['units'] = 'mole/m**2'.ljust(16)
+        overf['NO2_PER_M2'].attrs.update(
+            units='mole/m**2'.ljust(16), var_desc='NO2 areal density'.ljust(80)
+        )
 
         ak = overf['NO2_AK_CMAQ'] = cls.cmaq_ak(overf, satl3f)
+        ak.attrs.update(
+            var_desc=''
+        )
         overf['NO2_SW_CMAQ'] = cls.cmaq_sw(overf, satl3f)
-        # uses AK for tropopause
+        # Calculate CMAQ vertical column density twice:
+        # 1. uses AK for identifying tropopause; other wise sum
         overf['VCDNO2_CMAQ'] = overf.csp.apply_ak('NO2_PER_M2', ak / ak)
-        # uses AK for vertical weighting
-        overf['VCDNO2_CMAQ_TOMI'] = overf.csp.apply_ak('NO2_PER_M2', ak)
-        # Recalculate satellite
-        amf = overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f, key='NO2_PER_M2')
+        vdesc = 'NO2_PER_M2 simple sum within troposphere'
+        overf['VCDNO2_CMAQ'].attrs.update(var_desc=vdesc.ljust(80)[:80])
 
-        overf['VCDNO2_TOMI_CMAQ'] = (
-            satl3f['nitrogendioxide_tropospheric_column']
-            * satl3f['air_mass_factor_troposphere'] / amf
-        )
-        overf['VCDNO2_TOMI_CMAQ'].attrs.update(
-            satl3f['nitrogendioxide_tropospheric_column'].attrs
-        )
-        overf['VCDNO2_TOMI_CMAQ'].attrs['var_desc'] = (
-            'TropOMI_NO2 x TropOMI_AMF / CMAQ_AMF'
-        ).ljust(80)
+        # 2. use AK for vertical weighting
+        overf['VCDNO2_CMAQ_TOMI'] = overf.csp.apply_ak('NO2_PER_M2', ak)
+        vdesc = 'NO2_PER_M2 integrated with TropOMI averaging kernel'
+        overf['VCDNO2_CMAQ_TOMI'].attrs.update(var_desc=vdesc.ljust(80)[:80])
+
+        # Calculate AMF using CMAQ prior and satellite scattering weights
+        overf['AMF_CMAQ'] = cls.cmaq_amf(overf, satl3f, key='NO2_PER_M2')
+        vdesc = 'tropospheric air mass factor using CMAQ prior'
+        overf['AMF_CMAQ'].attrs.update(var_desc=vdesc.ljust(80)[:80])
+
+        # Recalculate satellite VCD using CMAQ's AMF
+        vcdtomi = satl3f['nitrogendioxide_tropospheric_column']
+        amftomi = satl3f['air_mass_factor_troposphere']
+        vcdtomiq = vcdtomi * amftomi / overf['AMF_CMAQ']
+        attrs = {k: v for k, v in vcdtomi.attrs.items()}
+        attrs['var_desc'] = 'TropOMI_NO2 x TropOMI_AMF / CMAQ_AMF'.ljust(80)
+        overf['VCDNO2_TOMI_CMAQ'] = vcdtomiq.dims, vcdtomiq.data, attrs
 
         return overf
 

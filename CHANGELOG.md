@@ -1,3 +1,9 @@
+2026-02-15 v0.5.0:
+* Added cmr_download method to retrieve files based on cmr keywords.
+* Added TEMPO support for NO2 and HCHO
+* Added CAMx support.
+* Added filterfunc named keyword support
+
 2024-11-19 v0.4.1:
 * Dramatically improved documentation.
 * Fixed CMAQ date issue when just one time is available.

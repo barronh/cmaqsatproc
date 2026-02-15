@@ -1,6 +1,6 @@
 __all__ = [
-    'satellite', 'goes', 'iasi', 'modis', 'omi', 'omps', 'tropomi', 'viirs',
-    'reader_dict'
+    'satellite', 'goes', 'iasi', 'modis', 'omi', 'omps', 'tempo', 'tropomi',
+    'viirs', 'reader_dict'
 ]
 
 
@@ -10,6 +10,7 @@ from . import iasi
 from . import modis
 from . import omi
 from . import omps
+from . import tempo
 from . import tropomi
 from . import viirs
 import inspect

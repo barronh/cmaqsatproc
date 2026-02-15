@@ -43,15 +43,17 @@ def getcmrgranules(
     temporal, bbox=None, poly=None, verbose=0, **kwds
 ):
     """
-    Return all links from the Common Metadata Repository for the product
+    Return all links from the Common Metadata Repository (CMR) for the product
     granules with short_name, date_range, and optionally a bounding box.
 
     Arguments
     ---------
     temporal : str
-        NASA temporal that is recognized by NASA Common Metadata Repository
-        i.e, YYYY-MM-DDTHH:MM:SSZ or YYYY-MM-DDTHH:MM:SSZ/YYYY-MM-DDTHH:MM:SSZ
-        or YYYY-MM-DDTHH:MM:SSZ/P01D (or P01M or P01Y) etc.
+        NASA temporal that is recognized by NASA CMR
+        For example:
+        - YYYY-MM-DDTHH:MM:SSZ or
+        - YYYY-MM-DDTHH:MM:SSZ/YYYY-MM-DDTHH:MM:SSZ or
+        - YYYY-MM-DDTHH:MM:SSZ/P01D (or P01M or P01Y, etc)
     bbox : list
         Longitude/latitude bounding edges as floats (wlon,slat,elon,nlat)
     poly : shapely.geometry.Polygon
@@ -64,10 +66,11 @@ def getcmrgranules(
         collection in NASA's Common Metadata Repository
     short_name : str
         Optional, short_name identifier for a collection that is often, but
-        not always unique in the NASA Common Metadata Repository. If you have
-        the short_name and want the concept_id put the url below in your
-        browser where you replace OMNO2 (the example) with your short_name
+        not always unique in the NASA CMR. If you have the short_name and
+        want the concept_id put the url below in your browser where you replace
+        OMNO2 (the example) with your short_name
         https://cmr.earthdata.nasa.gov/search/collections?short_name=OMNO2
+
     Returns
     -------
     jr : dictionary
@@ -119,6 +122,45 @@ def getcmrgranules(
     return jr
 
 
+def _isdownload(x):
+    return (
+        'opendap' not in x['href']
+        and (
+            x['href'].endswith('he5')
+            or x['href'].endswith('nc')
+            or x['href'].endswith('h5')
+            or x['href'].endswith('hdf')
+        )
+        and x['href'].startswith('http')
+    )
+
+
+def _iss3(x):
+    return (
+       'opendap' not in x['href']
+       and (
+           x['href'].endswith('he5')
+           or x['href'].endswith('nc')
+           or x['href'].endswith('h5')
+           or x['href'].endswith('hdf')
+       )
+       and x['href'].startswith('s3')
+    )
+
+
+def _isopendap(x):
+    return (
+        'opendap' in x['href']
+        and (
+            not x['href'].endswith('html')
+            or x['href'].endswith('.nc.html')
+            or x['href'].endswith('.he5.html')
+            or x['href'].endswith('.h5.html')
+            or x['href'].endswith('.hdf.html')
+        )
+    )
+
+
 def getcmrlinks(*args, filterfunc=None, **kwds):
     """
     Return all links from the Common Metadata Repository for the product
@@ -127,7 +169,7 @@ def getcmrlinks(*args, filterfunc=None, **kwds):
     Arguments
     ---------
     *args, **kwds :
-        See getcmrgranuels.
+        See getcmrgranules.
     filterfunc : function
         Takes a link dictionary from CMR and returns True if it should be
         retained
@@ -138,6 +180,12 @@ def getcmrlinks(*args, filterfunc=None, **kwds):
         List of all links where filterfunc is None or just links for which
         filterfunc returns True.
     """
+    if isinstance(filterfunc, str):
+        filterfunc = {
+            'download': _isdownload,
+            'opendap': _isopendap,
+            's3': _iss3
+        }.get(filterfunc, filterfunc)
     jr = getcmrgranules(*args, **kwds)
     entries = jr['feed']['entry']
     links = []
@@ -246,7 +294,7 @@ def rootremover(strlist, insert=False):
     import os
 
     stem = os.path.dirname(strlist[0])
-    while not all([stem in l for l in strlist]) or False:
+    while not all([stem in _l for _l in strlist]) or False:
         oldstem = stem
         stem = os.path.dirname(stem)
         if oldstem == stem:
@@ -254,8 +302,8 @@ def rootremover(strlist, insert=False):
             break
     else:
         short_strlist = [
-            l.replace(stem, '{root}')
-            for l in strlist
+            _l.replace(stem, '{root}')
+            for _l in strlist
         ]
         if insert:
             short_strlist.insert(0, f'root: {stem}')
@@ -355,3 +403,63 @@ def cdconvert(inval, inunit, outunit):
             f'unknown inunit ({inunit}); use du, mole m**-2, or'
             + ' molecules cm**-2'
         )
+
+
+def _download(url, dest=None, check='exists', verbose=0):
+    """
+    Arguments
+    ---------
+    url : str
+        url to download
+    dest : str or None
+        Destination for downloaded file.
+        If None, defaults to url's server and path
+    check : str
+        Do not download if:
+        - 'exists' : the destination exists
+        - 'size' : the destination file matches the response's
+                   Content-Length
+
+    Returns
+    -------
+    dest : str
+        Local path
+    """
+    import requests
+    import shutil
+    import os
+    from urllib.parse import urlparse
+    assert check in ('exists', 'size')
+
+    if verbose > 0:
+        print('INFO:: downloading', url)
+    parsed = urlparse(url)
+    dest = parsed.netloc + parsed.path
+    if check == 'exists' and os.path.exists(dest):
+        return dest
+
+    resp = requests.get(url, stream=True)
+    # get content size
+    if check == 'size' and os.path.exists(dest):
+        nbytes = int(resp.headers.get('Content-Length', '-1'))
+        if nbytes < 0:
+            print(f'WARN:: {url} content length unknown; redownloading')
+        elif os.stat(dest).st_size == nbytes:
+            if verbose > 0:
+                print('WARN:: cached', dest)
+            return dest
+
+    os.makedirs(os.path.dirname(dest), exist_ok=True)
+    if resp.status_code == 200:
+        with open(dest, 'wb') as f:
+            shutil.copyfileobj(resp.raw, f)
+    elif resp.status_code == 401:
+        msg = 'ERROR:: status code 401!'
+        msg += ' Missing valid authentication credentials'
+        msg += ' Ensure your ~/.netrc file has valid user and password'
+        msg += f' for {parsed.netloc} or urs.earthdata.nasa.gov'
+        raise requests.exceptions.HTTPError(msg)
+    else:
+        print(f"ERROR:: Failed to download. Status code: {resp.status_code}")
+
+    return dest

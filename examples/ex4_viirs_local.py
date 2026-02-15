@@ -18,7 +18,7 @@ import cmaqsatproc as csp
 
 GDNAM = '12US1'
 date='2019-07-24'
-readername = 'VIIRS_AERDB' # or TropOMIHCHO, VIIRS_AERDB, ...
+readername = 'AERDB_L2_VIIRS_SNPP' # or TropOMIHCHO, TropOMINO2, ...
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 
 cg = csp.open_griddesc(GDNAM)

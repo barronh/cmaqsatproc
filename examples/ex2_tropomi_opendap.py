@@ -3,12 +3,16 @@ TropOMI L3 OpenDAP
 ==================
 
 This script is designed to create a custom L3 file from TropOMI NO2 files
-streamed remotely from an OpenDAP server. Because it uses OpenDAP, you must
-have first configured your `.netrc`, `.urs_cookies`, and `.dodsrc`. 
+streamed remotely from an OpenDAP server. OpenDAP access to TropOMI data
+requires that you:
 
-This example can be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2,
-OMHCHO, ..., etc.
-"""
+- Configure `.netrc`, `.urs_cookies`, and `.dodsrc` (see example)
+- accept the "NASA GESDISC DATA ARCHIVE" and "Sentinel" End User License
+  Agreements (EULAs) on urs.earthdata.nasa.gov using the username and password.
+
+This example can be edited to work with TropOMI HCHO, VIIRS_AERDB, OMI OMNO2,
+OMI OMHCHO, ..., etc. The non-TropOMI products do not require the Sentinal
+EULA."""
 # %%
 # Import Library and Configure
 # ----------------------------
@@ -19,7 +23,7 @@ GDNAM = '12US1'
 # Doing just one day
 date='2019-07-24'
 # Using TropOMINO2 reader
-readername = 'TropOMINO2' # or TropOMIHCHO, VIIRS_AERDB, ...
+readername = 'TropOMINO2' # or TropOMIHCHO, AERDB_L2_VIIRS_SNPP, ...
 # Defining output path
 outpath = f'{readername}_{date}_{GDNAM}.nc'
 

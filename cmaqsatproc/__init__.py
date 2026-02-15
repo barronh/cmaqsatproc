@@ -1,6 +1,6 @@
 __all__ = [
-    'utils', 'readers', 'cmaq', 'drivers', 'open_ioapi', 'open_griddesc',
-    'reader_dict', 'print_reader_list'
+    'utils', 'daacs', 'readers', 'cmaq', 'drivers', 'open_ioapi',
+    'open_griddesc', 'reader_dict', 'print_reader_list'
 ]
 
 __doc__ = """
@@ -66,11 +66,12 @@ By TropOMI NO2 Example
 """
 
 from . import utils
+from . import daacs
 from . import readers
 from . import cmaq
 from . import drivers
 
-__version__ = '0.4.1'
+__version__ = '0.5.0'
 
 reader_dict = readers.reader_dict
 open_ioapi = cmaq.open_ioapi

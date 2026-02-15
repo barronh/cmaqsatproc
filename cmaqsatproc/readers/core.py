@@ -26,64 +26,54 @@ class satellite:
     @classmethod
     def cmr_links(cls, method='opendap', **kwds):
         """
-        Use utils.getcmrlinks to get links from the NASA Common Metadata Repo
+        Uses utils.getcmrlinks to get links from the NASA Common Metadata
+        Repository (CMR)
 
         Arguments
         ---------
         method : str
             Options are opendap, download, or s3
         kwds : mappable
-            Passed through to utils.getcmrlinks. See getcmrlinks for valid
-            keywords
+            Passed through to utils.getcmrlinks and utils.getcmrgranules.
+            Summary of getcmrgranules copied below for convenience. See
+            getcmrgranules for definitive docs.
 
         Returns
         -------
         links : list
             List of links to OpenDAP, http downloadable, or s3 links
+
+        Notes
+        -----
+        getcmrgranules keywords
+
+        temporal : str
+            NASA temporal that is recognized by NASA CMR
+            For example:
+            - YYYY-MM-DDTHH:MM:SSZ or
+            - YYYY-MM-DDTHH:MM:SSZ/YYYY-MM-DDTHH:MM:SSZ or
+            - YYYY-MM-DDTHH:MM:SSZ/P01D (or P01M, P01Y, etc)
+        bbox : list
+            Longitude/latitude bounding edges as floats (wlon,slat,elon,nlat)
+        poly : shapely.geometry.Polygon
+            The exterior will be converted to floats and ordered x1,y1,...,xN,yN
+        filterfunc : function
+            Takes a link dictionary from CMR and returns True if it should be
+            retained
+        concept_id : str
+            Optional, NASA concept_id that is the unique identifier for a
+            collection in NASA's Common Metadata Repository
+        short_name : str
+            Optional, short_name identifier for a collection that is often, but
+            not always unique in the NASA CMR. If you have the short_name and
+            want the concept_id put the url below in your browser where you
+            replace OMNO2 (the example) with your short_name
+            https://cmr.earthdata.nasa.gov/search/collections?short_name=OMNO2
         """
         from copy import copy
         from ..utils import getcmrlinks
         kwds = copy(kwds)
-        down_f = (
-            lambda x: (
-                'opendap' not in x['href']
-                and (
-                    x['href'].endswith('he5')
-                    or x['href'].endswith('nc')
-                    or x['href'].endswith('h5')
-                    or x['href'].endswith('hdf')
-                )
-                and x['href'].startswith('http')
-            )
-        )
-        s3_f = (
-            lambda x: (
-                'opendap' not in x['href']
-                and (
-                    x['href'].endswith('he5')
-                    or x['href'].endswith('nc')
-                    or x['href'].endswith('h5')
-                    or x['href'].endswith('hdf')
-                )
-                and x['href'].startswith('s3')
-            )
-        )
-        open_f = (
-            lambda x: 'opendap' in x['href']
-            and (
-                not x['href'].endswith('html')
-                or x['href'].endswith('.nc.html')
-                or x['href'].endswith('.he5.html')
-                or x['href'].endswith('.h5.html')
-                or x['href'].endswith('.hdf.html')
-            )
-        )
-        kwds.setdefault(
-            'filterfunc', {
-                'opendap': open_f, 's3': s3_f, 'download': down_f
-            }[method]
-        )
-
+        kwds.setdefault('filterfunc', method)
         rawlinks = sorted(getcmrlinks(**kwds))
         # MODIS requires extra processing because OpenDAP links from CMR are
         # to the html interface instead of to the file itself.
@@ -99,6 +89,48 @@ class satellite:
                 links.append(link)
 
         return links
+
+    @classmethod
+    def cmr_download(cls, check='exists', **kwds):
+        """
+        Uses cmr_links to get links from the NASA Common Metadata Repo
+        and downloads them to local disk.
+
+        Arguments
+        ---------
+        check : str
+            Options are exists and size.
+            - exists : keep cached if it exists.
+            - size : keep cached if it is the full file size
+        kwds : mappable
+            Passed through to utils.getcmrlinks. See getcmrlinks for valid
+            keywords
+
+        Returns
+        -------
+        dests : list
+            List of local files downloaded
+        """
+        from ..utils import _download
+        verbose = kwds.get('verbose', 0)
+        links = cls.cmr_links(method='download', **kwds)
+        if verbose > 0:
+            print(len(links), 'links')
+        if verbose > 1:
+            print('Links:')
+            for link in links:
+                print('    -', link)
+
+        dests = [
+            _download(link, check=check)
+            for link in links
+        ]
+        if verbose > 2:
+            print('Destinations:')
+            for dest in dests:
+                print('    -', dest)
+
+        return dests
 
     @classmethod
     def from_dataset(cls, ds, path='unknown'):
@@ -479,6 +511,13 @@ class satellite:
         """
         Wrapper around cmr_links and paths_to_level3. For description of
         keywords, see those methods.
+        Arguments
+        ---------
+        link_kwargs: mappable
+            The method keyword of link_kwargs defaults to 'download', but can
+            also be 'opendap'. When 'opendap', cmr_to_level3 opens the files
+            directly from the daac. When 'download', the files are downloaded
+            and read from local disk.
         """
         from copy import copy
         if link_kwargs is None:
@@ -487,15 +526,20 @@ class satellite:
         if bbox is None:
             grid.unary_union.envelope
         link_kwargs.setdefault('method', 'opendap')
-        links = cls.cmr_links(
-            temporal=temporal, bbox=bbox, **link_kwargs
-        )
+        if link_kwargs['method'] == 'opendap':
+            paths = cls.cmr_links(
+                temporal=temporal, bbox=bbox, **link_kwargs
+            )
+        elif link_kwargs['method'] == 'download':
+            paths = self.cmr_download(
+                temporal=temporal, bbox=bbox, **link_kwargs
+            )
         if verbose > 1:
-            print(len(links), links)
+            print(len(paths), paths)
         elif verbose > 0:
-            print(len(links), 'first link', links[0])
+            print(len(paths), 'first link', paths[0])
         return cls.paths_to_level3(
-            links, grid=grid, griddims=griddims, weighting=weighting, bbox=bbox,
+            paths, grid=grid, griddims=griddims, weighting=weighting, bbox=bbox,
             verbose=verbose, varkeys=varkeys, as_dataset=as_dataset, **kwargs
         )
 

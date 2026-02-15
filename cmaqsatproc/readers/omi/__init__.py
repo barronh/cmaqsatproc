@@ -881,7 +881,7 @@ class OMPROFOZ(OMIL2):
             swlon, swlat, nelon, nelat in decimal degrees East and North
             of 0, 0
         maxrms : float
-            
+            Maximum root mean square.
         kwargs : mappable
             Passed to xarray.open_dataset
 
@@ -900,12 +900,17 @@ class OMPROFOZ(OMIL2):
         ds = omtmp.ds
         # https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/
         # OMPROFOZ/OMPROFOZ_readme-v3.pdf
+        # 0 < ExitStatus < 10 (pg 8)
+        # RMS < 3 (modified; pg 8)
+        # AverageResiduals < 3 (modified; pg 8)
+        # EffectiveCloudFraction < 0.3 (pg 5)
+        # pg 8
         ds['valid'] = ~(
-            (ds['ExitStatus'] <= 0) | (ds['ExitStatus'] >= 10)     # 0 < ES < 10 (pg 8)
-            | (ds['RMS'].max('nChannel').fillna(maxrms) > maxrms)  # RMS < 2 (modified; pg 8)
-            | (ds['AverageResiduals'].max('nChannel') >= 3)        # Res < 2 (modified; pg 8)
-            | ~cloudleq(ds['EffectiveCloudFraction'], 0.3)         # effcloud < 0.3 (pg 5)
-            | (ds['SolarZenithAngle'] > 75)                        # pg 8
+            (ds['ExitStatus'] <= 0) | (ds['ExitStatus'] >= 10)
+            | (ds['RMS'].max('nChannel').fillna(maxrms) > maxrms)
+            | (ds['AverageResiduals'].max('nChannel') >= 3)
+            | ~cloudleq(ds['EffectiveCloudFraction'], 0.3)
+            | (ds['SolarZenithAngle'] > 75)
         )
         ds['cn_x'] = ds['Longitude']
         ds['cn_y'] = ds['Latitude']

@@ -345,8 +345,17 @@ class CmaqSatProcAccessor:
             times = pd.date_range(date, periods=nt, freq=f'{dh}h')
 
         qf.coords['TSTEP'] = times
-        if 'VGLVLS' in qf.attrs:
-            qf.coords['LAY'] = (qf.VGLVLS[1:] + qf.VGLVLS[:-1]) / 2
+        nz = qf.sizes.get('LAY', 1)
+        nze = nz + 1
+        vglvls = np.linspace(1, 0, nze)
+        vglvls = qf.attrs.get('VGLVLS', vglvls)
+        # CAMx files have VGLVLS == 0
+        if np.allclose(vglvls, 0):
+            vglvls = np.arange(.5, vglvls.size)
+        # CAMx files sometimes have VGLVLS = [0] even with NZ > 0
+        if vglvls.size != (qf.sizes['LAY'] + 1):
+            vglvls = np.linspace(1, 0, nze)
+        qf.coords['LAY'] = (vglvls[1:] + vglvls[:-1]) / 2
 
         crs = get_proj4string(qf.attrs)
         if crs is None:
@@ -829,54 +838,88 @@ class CmaqSatProcAccessor:
         Arguments
         ---------
         metf : xr.Dataset
-            File with ZF and DENS, or ZF, PRES, and TEMP variables.
+            File must have layer top heights and dry-density (preferred) or
+            both pressure and temperature. If using pressure/temperature,
+            specific humidity is optionally used to correct density to dry
+            density. See notes for supported variable names and units.
         add : bool
             If True, add MOL_PER_M2 as a variable to self.
 
         Returns
         -------
         MOL_PER_M2 : xr.DataArray
+
+        Notes
+        -----
+        CMAQ and CAMx variable names are supported, and units are assumed to be
+        consistent with the data source. Variable names and assumed units in
+        parentheses below:
+        - layer top heights: ZF (m), z (m)
+        - dry-density: DENS (kg/m3)
+        - pressure: PRES (Pa), pressure (mb)
+        - temperature: TEMP (K), temperature (K)
+        - specific humidity: Q (g-h2o/kg-air), humidity (ppm)'
         """
         import warnings
-        # copied from
-        # https://github.com/USEPA/CMAQ/blob/main/CCTM/src/ICL/fixed/const/
-        # CONST.EXT
+        # copied from https://github.com/USEPA/CMAQ/blob/main/
+        # CCTM/src/ICL/fixed/const/CONST.EXT
         R = 8.314459848
         MWAIR = 0.0289628
+        MWH2O = 0.01801528
+
         if metf is None:
             metf = self._obj
+        kerr = KeyError(
+            'File must have layer heights and dry-density or both pressure'
+            ' and temperature. See doc string for acceptable variable names'
+        )
         if 'ZF' in metf.variables:
             ZF = metf['ZF']
-            # Layer 1 and the difference above it.
-            DZ = xr.concat([
-                ZF.isel(LAY=slice(None, 1)), ZF.diff('LAY', n=1)
-            ], dim='LAY')
-            DZ.attrs.update(ZF.attrs)
-            DZ.attrs['long_name'] = 'DZ'.ljust(16)
-            DZ.attrs['var_desc'] = 'diff(ZF)'.ljust(80)
-            if 'DENS' in metf.variables:
-                MOL_PER_M2 = metf['DENS'] / MWAIR * DZ
-            elif (
+        elif 'z' in metf.variables:
+            ZF = metf['z']
+        else:
+            raise kerr
+
+        # Layer 1 and the difference above it.
+        DZ = xr.concat([
+            ZF.isel(LAY=slice(None, 1)), ZF.diff('LAY', n=1)
+        ], dim='LAY')
+        DZ.attrs.update(ZF.attrs)
+        DZ.attrs['long_name'] = 'DZ'.ljust(16)
+        DZ.attrs['var_desc'] = 'diff(ZF)'.ljust(80)
+
+        if 'DENS' in metf.variables:
+            # dens is dry-density
+            MOL_PER_M2 = metf['DENS'] / MWAIR * DZ
+        else:
+            # use temp/pres to calculate density and, if available,
+            # specific humidity to correct to dry-density
+            if (
                 'PRES' in metf.variables and 'TEMP' in metf.variables
             ):
                 P = metf['PRES']
                 T = metf['TEMP']
-                MOL_PER_M2 = P / R / T * DZ
-                if 'Q' in metf.variables:
-                    MWH2O = 0.01801528
-                    # Q = gH2O/kgAir
-                    Q = metf['Q']
-                    MOLH2O_PER_MOLAIR = Q * 1000 / MWH2O * MWAIR
-                    MOL_PER_M2 = MOL_PER_M2 * (1 - MOLH2O_PER_MOLAIR)
-                else:
-                    warnings.warn('Using wet mole density')
+            elif (
+                'pressure' in metf.variables
+                and 'temperature' in metf.variables
+            ):
+                P = metf['pressure'] * 100.
+                T = metf['temperature']
             else:
-                raise KeyError(
-                    'You file has ZF, but must also have DENS or PRES/TEMP'
-                    + '(optionally Q)'
-                )
-        else:
-            raise KeyError('Must have ZF and DENS or PRES/TEMP')
+                raise kerr
+
+            if 'Q' in metf.variables:
+                # Q = gH2O/kgAir
+                MOLH2O_PER_MOLAIR = metf['Q'] * 1000 / MWH2O * MWAIR
+            elif 'humidity' in metf.variables:
+                # Q = ppm
+                MOLH2O_PER_MOLAIR = metf['humidity'] * 1e-6
+            else:
+                warnings.warn('Using wet mole density')
+                MOLH2O_PER_MOLAIR = 0
+
+            MOL_PER_M2 = P / R / T * DZ * (1 - MOLH2O_PER_MOLAIR)
+
         MOL_PER_M2.attrs.update(dict(
             long_name='MOL_PER_M2'.ljust(16),
             var_desc='air areal density'.ljust(80),
