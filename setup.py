@@ -23,16 +23,20 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     classifiers=[
         "Programming Language :: Python :: 3",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Development Status :: 2 - Pre-Alpha",
         "Operating System :: OS Independent",
     ],
     python_requires='>=3.6',
     install_requires=[
-        "numpy", "matplotlib", "pandas<3", "requests", "netcdf4", "xarray",
+        "numpy", "scipy", "matplotlib", "pandas<3", "requests", "netcdf4", "xarray",
         "pycno", "pyproj", "geopandas>=0.14.0", "shapely>=0.2.0",
     ],
     extras_require={
-        "gdal":  ["gdal"],
+        "gdal":  ["gdal"], "s3": ["s3fs", "boto3"]
     }
 )
