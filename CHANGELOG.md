@@ -1,4 +1,4 @@
-2026-02-25 v0.5.1:
+2026-02-25 v0.5.2:
 * Added support for Python3.12 https://github.com/pandas-dev/pandas/issues/57500
 
 2026-02-15 v0.5.0:

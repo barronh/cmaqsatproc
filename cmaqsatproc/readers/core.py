@@ -427,7 +427,7 @@ class satellite:
                     # Forcing a fix by exporting
                     # See https://github.com/pandas-dev/pandas/issues/57500
                     colvals = np.concatenate([
-                        tmp.columns.to_numpy() for tmp in [mjustweight, df]
+                        tmp.columns.to_numpy() for tmp in [mjustweight, udf]
                     ])
                     colidx = pd.MultiIndex.from_tuples(colvals, names=minames)
                     df.columns = colidx

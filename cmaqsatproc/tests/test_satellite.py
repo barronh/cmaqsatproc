@@ -3,6 +3,11 @@ from .. import readers
 
 def dataset_example():
     import xarray as xr
+    # 2 times, 3 xtrack, 4 nLays
+    swvals = [
+        [[0.3, 1.3, 2.3, 3.3], [-999] * 4, [0.4, 1.4, 2.4, 3.4]],
+        [[0.5, 1.5, 2.5, 3.5], [-999] * 4, [0.6, 1.6, 2.6, 3.6]]
+    ]
     ds = xr.Dataset(
         data_vars=dict(
             valid=xr.DataArray(
@@ -14,6 +19,10 @@ def dataset_example():
             ),
             Val=xr.DataArray(
                 [[1, -999, 2], [3, -999, 4]], dims=('nTimes', 'nXtrack'),
+                attrs=dict(units='DU')
+            ),
+            ScatWt=xr.DataArray(
+                swvals, dims=('nTimes', 'nXtrack', 'nLayers'),
                 attrs=dict(units='DU')
             ),
             ll_x=xr.DataArray(
@@ -82,3 +91,10 @@ def test_satellite():
     with warnings.catch_warnings(record=True):
         l3 = sat.to_level3('Val', grid=gdf[['geometry']])
     assert ((l3['Val'].values.ravel() == gdf['Val'].values).all())
+
+    with warnings.catch_warnings(record=True):
+        l3 = sat.to_level3('Val', 'ScatWt', grid=gdf[['geometry']])
+
+    np.testing.assert_allclose(l3['Val'].values.ravel(), gdf['Val'].values)
+    chkvals = np.array([1.8, 5.8, 9.8, 13.8]) / 4
+    np.testing.assert_allclose(l3['ScatWt'].values.ravel(), chkvals)
