@@ -167,36 +167,35 @@ class TropOMI(satellite):
         """
         import xarray as xr
         import numpy as np
+        hasbnds = (
+            'latitude_bounds' in ds.variables
+            and 'longitude_bounds' in ds.variables
+        )
         if bbox is not None:
             swlon, swlat, nelon, nelat = bbox
-            lldf = ds[['latitude', 'longitude']].to_dataframe().query(
-                f'latitude >= {swlat} and latitude <= {nelat}'
-                + f' and longitude >= {swlon} and longitude <= {nelon}'
-            )
-            sval = lldf.index.get_level_values('scanline').unique()
+            lat = ds.latitude
+            lon = ds.longitude
+            inlon = (lon >= swlon) & (lon <= nelon)
+            inlat = (lat >= swlat) & (lat <= nelat)
+            inbox = inlon & inlat
+            keepline = inbox.any(('time', 'ground_pixel'))
             # Not subsetting pixel dimension, because I want to use
             # the cross ways dimension in the interpolation to corners
-            if len(sval) < 0:
+            if keepline.sum() < 1:
                 raise ValueError(f'{path} has no values in {bbox}')
 
-            ds = ds.sel(scanline=slice(sval.min() - 1, sval.max() + 1))
+            if hasbnds:
+                scanslice = keepline
+            else:
+                sval = keepline.scanline.sel(scanline=keepline).to_numpy()
+                scanslice = slice(sval.min() - 1, sval.max() + 1)
+
+            ds = ds.sel(scanline=scanslice)
+
         ds['cn_x'] = ds['longitude']
         ds['cn_y'] = ds['latitude']
 
-        scanline = ds.scanline.values
-        scanline_edges = xr.DataArray(
-            np.concatenate([scanline[:1], scanline[1:] - 0.5, scanline[-1:]]),
-            dims=('scanline',)
-        )
-        pixel = ds.ground_pixel.values
-        pixel_edges = xr.DataArray(
-            np.concatenate([pixel[:1], pixel[1:] - 0.5, pixel[-1:]]),
-            dims=('ground_pixel',)
-        )
-        if (
-            'latitude_bounds' in ds.variables
-            and 'longitude_bounds' in ds.variables
-        ):
+        if hasbnds:
             lat_bnds = ds.latitude_bounds
             lon_bnds = ds.longitude_bounds
             dims = ('time', 'scanline', 'ground_pixel')
@@ -207,6 +206,18 @@ class TropOMI(satellite):
                 ds[f'{cornerkey}_y'] = lat_bnds.isel(corner=corner_slice)
                 ds[f'{cornerkey}_x'] = lon_bnds.isel(corner=corner_slice)
         else:
+            scanline = ds.scanline.values
+            pixel = ds.ground_pixel.values
+            scanline_edges = xr.DataArray(
+                np.concatenate([
+                    scanline[:1], scanline[1:] - 0.5, scanline[-1:]
+                ]),
+                dims=('scanline',)
+            )
+            pixel_edges = xr.DataArray(
+                np.concatenate([pixel[:1], pixel[1:] - 0.5, pixel[-1:]]),
+                dims=('ground_pixel',)
+            )
             lat_edges = ds.latitude.interp(
                 scanline=scanline_edges, ground_pixel=pixel_edges,
             )

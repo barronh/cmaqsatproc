@@ -474,10 +474,15 @@ class satellite:
         if as_dataset:
             import xarray as xr
             from datetime import datetime
-            dss = {}
+            # dss = {}
+            outds = xr.Dataset()
             for dimks, outdf in overlays.items():
-                dss[dimks] = xr.Dataset.from_dataframe(outdf)
-            outds = xr.merge(dss.values()).reindex(**{
+                dimds = xr.Dataset.from_dataframe(outdf)
+                # dss[dimks] = dimds
+                for vk in dimds.data_vars:
+                    outds[vk] = dimds[vk]
+            # outds = xr.merge(dss.values())
+            outds = outds.reindex(**{
                 griddim: grid.index.get_level_values(griddim).unique()
                 for griddim in griddims
             })
@@ -612,11 +617,16 @@ class satellite:
         if as_dataset:
             import xarray as xr
             from datetime import datetime
-            dss = {}
+            # dss = {}
+            outds = xr.Dataset()
             for dimks, outdf in outputs.items():
-                dss[dimks] = xr.Dataset.from_dataframe(outdf)
+                dimds = xr.Dataset.from_dataframe(outdf)
+                # dss[dimks] = dimds
+                for vk in dimds.data_vars:
+                    outds[vk] = dimds[vk]
 
-            outds = xr.merge(dss.values()).reindex(**{
+            # outds = xr.merge(dss.values())
+            outds = outds.reindex(**{
                 griddim: grid.index.get_level_values(griddim).unique()
                 for griddim in griddims
             })

@@ -494,7 +494,6 @@ class CmaqSatProcAccessor:
             import numpy as np
             import pandas as pd
             import geopandas as gpd
-            from shapely.geometry import box
             from shapely import polygons
             attrs = self._obj.attrs
             rows = self._obj['ROW'].values
@@ -510,22 +509,24 @@ class CmaqSatProcAccessor:
                 dy = dx = 0.5
             midx = pd.MultiIndex.from_product([rows, cols])
             midx.names = 'ROW', 'COL'
-            geomarray = True
-            if geomarray:
-                XS, YS = np.meshgrid(xs, ys)
-                XS = XS.ravel()[:, None] + np.array([-dx, dx, dx, -dx, -dx])
-                YS = YS.ravel()[:, None] + np.array([-dy, -dy, dy, dy, -dx])
-                geoms = polygons(np.stack([XS, YS], axis=2))
-            else:
-                geoms = []
-                for r in ys:
-                    for c in xs:
-                        geoms.append(
-                            box(c - dx, r - dy, c + dx, r + dy)
-                        )
+
+            # polygons is substatially faster than iterative boxes
+            XS, YS = np.meshgrid(xs, ys)
+            # counter-clock-wise order and orientation of shpaley.box
+            # [(maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]
+            # largely to make tests.test_cmaq.test_cmaqgrid_geodf pass
+            dx = np.array([dx, dx, -dx, -dx])
+            dy = np.array([-dy, dy, dy, -dy])
+            XS = XS.ravel()[:, None] + dx
+            YS = YS.ravel()[:, None] + dy
+            # npoints, 4-corners, x-y
+            coords = np.stack([XS, YS], axis=2)
+            geoms = polygons(coords)
+
             self._geodf = gpd.GeoDataFrame(
                 geometry=geoms, index=midx, crs=self.proj4string
             )
+
         return self._geodf
 
     @property
@@ -782,8 +783,12 @@ class CmaqSatProcAccessor:
         else:
             if isinstance(satellite, dict):
                 overpasstimes = satellite
-            else:
+            elif isinstance(satellite, str):
                 overpasstimes = {satellite: known_overpasstimes[satellite]}
+            else:
+                st = type(satellite)
+                msg = f'satellite must be dict, int, float, or str; got {st}'
+                raise TypeError(msg)
         isoverpass = {
             key: ((LST >= (midh - 1)) & (LST <= (midh + 1)))
             for key, midh in overpasstimes.items()

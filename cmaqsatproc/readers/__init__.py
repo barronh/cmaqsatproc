@@ -16,7 +16,7 @@ from . import viirs
 import inspect
 
 reader_dict = {}
-for submod in [goes, iasi, modis, omi, omps, tropomi, viirs]:
+for submod in [goes, iasi, modis, omi, omps, tempo, tropomi, viirs]:
     readers = getattr(submod, '__all__', [])
     for _readerkey in readers:
         _reader = getattr(submod, _readerkey)
@@ -28,6 +28,7 @@ for submod in [goes, iasi, modis, omi, omps, tropomi, viirs]:
             reader_dict[short_name] = _reader
             reader_dict[long_name] = _reader
 
+# add aliases for TropOMI
 reader_dict['TropOMINO2'] = reader_dict['S5P_L2__NO2___']
 reader_dict['TropOMICO'] = reader_dict['S5P_L2__CO____']
 reader_dict['TropOMIHCHO'] = reader_dict['S5P_L2__HCHO__']

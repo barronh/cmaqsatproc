@@ -11,7 +11,7 @@ _ycrnrkeys = [f'{ckey}_y' for ckey in _ckeys]
 
 
 def csp_version():
-    from . import __version__ as _csp_version
+    from .. import __version__ as _csp_version
     return _csp_version
 
 
@@ -436,6 +436,8 @@ def _download(url, dest=None, check='exists', verbose=0):
     parsed = urlparse(url)
     dest = parsed.netloc + parsed.path
     if check == 'exists' and os.path.exists(dest):
+        if verbose > 0:
+            print('INFO:: cached', url)
         return dest
 
     resp = requests.get(url, stream=True)
