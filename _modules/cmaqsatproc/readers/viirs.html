@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cmaqsatproc.readers.viirs &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../../../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cmaqsatproc.readers.viirs</h1><div class="highlight"><pre>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;L2_VIIRS_SNPP&#39;</span><span class="p">,</span> <span class="s1">&#39;AERDB_L2_VIIRS_SNPP&#39;</span><span class="p">,</span> <span class="s1">&#39;AERDT_L2_VIIRS_SNPP&#39;</span><span class="p">]</span>
+<span class="c1"># https://ladsweb.modaps.eosdis.nasa.gov/opendap/allData/5110/AERDB_L2_VIIRS_SNPP/contents.html</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..</span><span class="w"> </span><span class="kn">import</span> <span class="n">satellite</span>
+
+
+<div class="viewcode-block" id="L2_VIIRS_SNPP">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.L2_VIIRS_SNPP">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">L2_VIIRS_SNPP</span><span class="p">(</span><span class="n">satellite</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    VIIRS SNPP</span>
+
+<span class="s2">    * valid = Land_Ocean_Quality_Flag &gt; isvalid (default 2)</span>
+<span class="s2">    * pixel corners are based on interpolated lat/lon</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Optical_Depth_Land_And_Ocean&#39;</span><span class="p">,</span> <span class="s1">&#39;Land_Ocean_Quality_Flag&#39;</span><span class="p">)</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_open_hierarchical_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to promote groups geophysical_data and</span>
+<span class="sd">        geolocation_data from groups into the main xarray.Dataset object.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a L2_VIIRS_SNPP OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        isvalid : float</span>
+<span class="sd">            Minimum value of flag for valid date (flag&gt;=isvalid)</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: L2_VIIRS_SNPP</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">datakey</span> <span class="o">=</span> <span class="s1">&#39;geophysical_data&#39;</span>
+        <span class="n">geokey</span> <span class="o">=</span> <span class="s1">&#39;geolocation_data&#39;</span>
+
+        <span class="n">dss</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">datakey</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span>
+            <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">geokey</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">),</span>
+        <span class="p">]</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">dss</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">prep_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="n">isvalid</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span>
+
+<div class="viewcode-block" id="L2_VIIRS_SNPP.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.L2_VIIRS_SNPP.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Open a local or remote path as a VIIRS satellite processor.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a L2_VIIRS_SNPP OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        isvalid : float</span>
+<span class="sd">            Minimum value of flag for valid date (flag&gt;=isvalid)</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: L2_VIIRS_SNPP</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">reset_coords</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_open_hierarchical_dataset</span><span class="p">(</span>
+                <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="n">isvalid</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+            <span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">prep_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="n">isvalid</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="L2_VIIRS_SNPP.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.L2_VIIRS_SNPP.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Reimplemenation of satellite.cmr_links to account for html links in</span>
+<span class="sd">        VIIRS OpenDAP links in the CMR.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP or s3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">getcmrlinks</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="n">down_f</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s1">&#39;opendap&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;he5&#39;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;nc&#39;</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;http&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">s3_f</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s1">&#39;opendap&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span>
+                <span class="ow">and</span> <span class="p">(</span>
+                    <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;he5&#39;</span><span class="p">)</span>
+                    <span class="ow">or</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;nc&#39;</span><span class="p">)</span>
+                <span class="p">)</span>
+                <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;s3&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">open_f</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">(</span>
+                <span class="s1">&#39;opendap&#39;</span> <span class="ow">in</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span> <span class="ow">and</span> <span class="n">x</span><span class="p">[</span><span class="s1">&#39;href&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.nc.html&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span>
+            <span class="s1">&#39;filterfunc&#39;</span><span class="p">,</span> <span class="p">{</span>
+                <span class="s1">&#39;opendap&#39;</span><span class="p">:</span> <span class="n">open_f</span><span class="p">,</span> <span class="s1">&#39;s3&#39;</span><span class="p">:</span> <span class="n">s3_f</span><span class="p">,</span> <span class="s1">&#39;download&#39;</span><span class="p">:</span> <span class="n">down_f</span>
+            <span class="p">}[</span><span class="n">method</span><span class="p">]</span>
+        <span class="p">)</span>
+
+        <span class="n">links</span> <span class="o">=</span> <span class="n">getcmrlinks</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">==</span> <span class="s1">&#39;opendap&#39;</span><span class="p">:</span>
+            <span class="n">links</span> <span class="o">=</span> <span class="p">[</span><span class="n">link</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;.html&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">links</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AERDT_L2_VIIRS_SNPP">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDT_L2_VIIRS_SNPP">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AERDT_L2_VIIRS_SNPP</span><span class="p">(</span><span class="n">L2_VIIRS_SNPP</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    AERDT_L2_VIIRS_SNPP</span>
+
+<span class="s2">    * valid = Land_Ocean_Quality_Flag &gt; isvalid (default 2)</span>
+<span class="s2">    * pixel corners are based on interpolated lat/lon</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+<div class="viewcode-block" id="AERDT_L2_VIIRS_SNPP.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDT_L2_VIIRS_SNPP.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around L2_VIIRS_SNPP.cmr_links with concept_id set to</span>
+<span class="sd">        C1688453112-LAADS.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP or s3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C1688453112-LAADS&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">L2_VIIRS_SNPP</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AERDT_L2_VIIRS_SNPP.prep_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDT_L2_VIIRS_SNPP.prep_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prep_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies spatial subset based on Latitude and Longitude, also</span>
+<span class="sd">        interpolates pixel centers to corners and applies valid flags:</span>
+
+<span class="sd">        * Land_Ocean_Quality_Flag &gt;= isvalid</span>
+<span class="sd">        * ~Optical_Depth_Land_And_Ocean.isnull()</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">            Satellite dataset</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        isvalid : float</span>
+<span class="sd">            Value greater than or equal to 2 are valid.</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Unused.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[[</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span> <span class="s1">&#39;longitude&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;latitude &gt;= </span><span class="si">{</span><span class="n">swlat</span><span class="si">}</span><span class="s1"> and latitude &lt;= </span><span class="si">{</span><span class="n">nelat</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; and longitude &gt;= </span><span class="si">{</span><span class="n">swlon</span><span class="si">}</span><span class="s1"> and longitude &lt;= </span><span class="si">{</span><span class="n">nelon</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">&#39;number_of_lines_8x8&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> has no values in </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                <span class="n">number_of_lines_8x8</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">lines</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">lines</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">scanline</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">number_of_lines_8x8</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">scanline_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">scanline</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">scanline</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">scanline</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;number_of_lines_8x8&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">number_of_pixels_8x8</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">pixel_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">pixel</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">pixel</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;number_of_pixels_8x8&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+
+        <span class="n">lat_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">latitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">number_of_lines_8x8</span><span class="o">=</span><span class="n">scanline_edges</span><span class="p">,</span>
+            <span class="n">number_of_pixels_8x8</span><span class="o">=</span><span class="n">pixel_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">lon_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">longitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">number_of_lines_8x8</span><span class="o">=</span><span class="n">scanline_edges</span><span class="p">,</span>
+            <span class="n">number_of_pixels_8x8</span><span class="o">=</span><span class="n">pixel_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">dims</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;number_of_lines_8x8&#39;</span><span class="p">,</span> <span class="s1">&#39;number_of_pixels_8x8&#39;</span><span class="p">)</span>
+        <span class="n">corner_slices</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;number_of_lines_8x8&#39;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;number_of_lines_8x8&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;number_of_pixels_8x8&#39;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;number_of_pixels_8x8&#39;</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">cornerkey</span><span class="p">,</span> <span class="n">corner_slice</span> <span class="ow">in</span> <span class="n">corner_slices</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lat_edges</span><span class="p">[</span><span class="n">corner_slice</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lon_edges</span><span class="p">[</span><span class="n">corner_slice</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span>
+            <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Land_Ocean_Quality_Flag&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">isvalid</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Optical_Depth_Land_And_Ocean&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="AERDT_L2_VIIRS_SNPP.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDT_L2_VIIRS_SNPP.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process CMAQ as though it were observed by VIIRS, which is simply based</span>
+<span class="sd">        on the overpass time.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xarray.Dataset</span>
+<span class="sd">            CMAQ file that has composition (e.g., NH3)</span>
+<span class="sd">        l3 : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        overf : xr.DataArray</span>
+<span class="sd">            An overpass file with satellite-like CMAQ.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">saodkey</span> <span class="o">=</span> <span class="s1">&#39;Optical_Depth_Land_And_Ocean&#39;</span>
+        <span class="n">overf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mean_overpass</span><span class="p">(</span><span class="n">satellite</span><span class="o">=</span><span class="s1">&#39;aura&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="o">~</span><span class="n">l3</span><span class="p">[</span><span class="n">saodkey</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">overf</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="AERDB_L2_VIIRS_SNPP">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDB_L2_VIIRS_SNPP">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">AERDB_L2_VIIRS_SNPP</span><span class="p">(</span><span class="n">L2_VIIRS_SNPP</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    AERDB_L2_VIIRS_SNPP</span>
+
+<span class="s2">    * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate not None</span>
+<span class="s2">    * pixel corners are based on interpolated lat/lon</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Aerosol_Optical_Thickness_550_Ocean_Best_Estimate&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Aerosol_Optical_Thickness_550_Land_Best_Estimate&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Aerosol_Optical_Thickness_QA_Flag_Ocean&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;Aerosol_Optical_Thickness_QA_Flag_Land&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="AERDB_L2_VIIRS_SNPP.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDB_L2_VIIRS_SNPP.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around L2_VIIRS_SNPP.cmr_links with concept_id set to</span>
+<span class="sd">        C2600303218-LAADS.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP or s3</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C2600303218-LAADS&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">L2_VIIRS_SNPP</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="AERDB_L2_VIIRS_SNPP.prep_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDB_L2_VIIRS_SNPP.prep_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prep_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">isvalid</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies spatial subset based on Latitude and Longitude, also</span>
+<span class="sd">        interpolates pixel centers to corners and applies valid flags:</span>
+
+<span class="sd">        * AOT_QA_Flag_Land &gt;= isvalid, or</span>
+<span class="sd">        * AOT_QA_Flag_Ocean &gt;= isvalid</span>
+<span class="sd">        * and ~AOT_550_Land_Ocean_Best_Estimate.isnull()</span>
+<span class="sd">        * where AOT = Aerosol_Optical_Thickness</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">            Satellite dataset</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        isvalid : float</span>
+<span class="sd">            Value greater than or equal to 2 are valid.</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Unused.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">,</span> <span class="s1">&#39;Longitude&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Latitude &gt;= </span><span class="si">{</span><span class="n">swlat</span><span class="si">}</span><span class="s1"> and Latitude &lt;= </span><span class="si">{</span><span class="n">nelat</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; and Longitude &gt;= </span><span class="si">{</span><span class="n">swlon</span><span class="si">}</span><span class="s1"> and Longitude &lt;= </span><span class="si">{</span><span class="n">nelon</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+            <span class="n">lines</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">&#39;Idx_Atrack&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">lines</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> has no values in </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span>
+                <span class="n">Idx_Atrack</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">lines</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">lines</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">scanline</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Idx_Atrack</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">scanline_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">scanline</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">scanline</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">scanline</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Idx_Atrack&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="n">pixel</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Idx_Xtrack</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">pixel_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">pixel</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">pixel</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">pixel</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;Idx_Xtrack&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+
+        <span class="n">lat_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Latitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">Idx_Atrack</span><span class="o">=</span><span class="n">scanline_edges</span><span class="p">,</span>
+            <span class="n">Idx_Xtrack</span><span class="o">=</span><span class="n">pixel_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">lon_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Longitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">Idx_Atrack</span><span class="o">=</span><span class="n">scanline_edges</span><span class="p">,</span>
+            <span class="n">Idx_Xtrack</span><span class="o">=</span><span class="n">pixel_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">dims</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;Idx_Atrack&#39;</span><span class="p">,</span> <span class="s1">&#39;Idx_Xtrack&#39;</span><span class="p">)</span>
+        <span class="n">corner_slices</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="n">coords</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;Idx_Atrack&#39;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;Idx_Atrack&#39;</span><span class="p">],</span>
+            <span class="s1">&#39;Idx_Xtrack&#39;</span><span class="p">:</span> <span class="n">ds</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;Idx_Xtrack&#39;</span><span class="p">],</span>
+        <span class="p">}</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">cornerkey</span><span class="p">,</span> <span class="n">corner_slice</span> <span class="ow">in</span> <span class="n">corner_slices</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lat_edges</span><span class="p">[</span><span class="n">corner_slice</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lon_edges</span><span class="p">[</span><span class="n">corner_slice</span><span class="p">],</span> <span class="n">dims</span><span class="o">=</span><span class="n">dims</span><span class="p">,</span> <span class="n">coords</span><span class="o">=</span><span class="n">coords</span>
+            <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span>
+                <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Aerosol_Optical_Thickness_QA_Flag_Land&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">isvalid</span><span class="p">)</span>
+                <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Aerosol_Optical_Thickness_QA_Flag_Ocean&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">isvalid</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="o">~</span><span class="n">ds</span><span class="p">[</span>
+                <span class="s1">&#39;Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate&#39;</span>
+            <span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="AERDB_L2_VIIRS_SNPP.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.viirs.html#cmaqsatproc.readers.viirs.AERDB_L2_VIIRS_SNPP.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process CMAQ as though it were observed by VIIRS, which is simply based</span>
+<span class="sd">        on the overpass time.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xarray.Dataset</span>
+<span class="sd">            CMAQ file that has composition (e.g., NH3)</span>
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        overf : xr.DataArray</span>
+<span class="sd">            An overpass file with satellite-like CMAQ.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">saodkey</span> <span class="o">=</span> <span class="s1">&#39;Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate&#39;</span>
+        <span class="n">overf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mean_overpass</span><span class="p">(</span><span class="n">satellite</span><span class="o">=</span><span class="s1">&#39;aura&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span>
+            <span class="o">~</span><span class="n">satl3f</span><span class="p">[</span><span class="n">saodkey</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">overf</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../readers.html">cmaqsatproc.readers</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

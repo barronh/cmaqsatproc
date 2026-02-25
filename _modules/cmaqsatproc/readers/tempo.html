@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cmaqsatproc.readers.tempo &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../../../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cmaqsatproc.readers.tempo</h1><div class="highlight"><pre>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;TEMPO_L2&#39;</span><span class="p">,</span> <span class="s1">&#39;TEMPO_NO2_L2&#39;</span><span class="p">,</span> <span class="s1">&#39;TEMPO_HCHO_L2&#39;</span><span class="p">]</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core</span><span class="w"> </span><span class="kn">import</span> <span class="n">satellite</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="c1"># GEOS-5 Ap [hPa] for 72 levels (73 edges)</span>
+<span class="n">geos5_hybi_a</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="p">[</span><span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">4.804826e-02</span><span class="p">,</span> <span class="mf">6.593752e+00</span><span class="p">,</span> <span class="mf">1.313480e+01</span><span class="p">,</span> <span class="mf">1.961311e+01</span><span class="p">,</span>
+     <span class="mf">2.609201e+01</span><span class="p">,</span> <span class="mf">3.257081e+01</span><span class="p">,</span> <span class="mf">3.898201e+01</span><span class="p">,</span> <span class="mf">4.533901e+01</span><span class="p">,</span> <span class="mf">5.169611e+01</span><span class="p">,</span>
+     <span class="mf">5.805321e+01</span><span class="p">,</span> <span class="mf">6.436264e+01</span><span class="p">,</span> <span class="mf">7.062198e+01</span><span class="p">,</span> <span class="mf">7.883422e+01</span><span class="p">,</span> <span class="mf">8.909992e+01</span><span class="p">,</span>
+     <span class="mf">9.936521e+01</span><span class="p">,</span> <span class="mf">1.091817e+02</span><span class="p">,</span> <span class="mf">1.189586e+02</span><span class="p">,</span> <span class="mf">1.286959e+02</span><span class="p">,</span> <span class="mf">1.429100e+02</span><span class="p">,</span>
+     <span class="mf">1.562600e+02</span><span class="p">,</span> <span class="mf">1.696090e+02</span><span class="p">,</span> <span class="mf">1.816190e+02</span><span class="p">,</span> <span class="mf">1.930970e+02</span><span class="p">,</span> <span class="mf">2.032590e+02</span><span class="p">,</span>
+     <span class="mf">2.121500e+02</span><span class="p">,</span> <span class="mf">2.187760e+02</span><span class="p">,</span> <span class="mf">2.238980e+02</span><span class="p">,</span> <span class="mf">2.243630e+02</span><span class="p">,</span> <span class="mf">2.168650e+02</span><span class="p">,</span>
+     <span class="mf">2.011920e+02</span><span class="p">,</span> <span class="mf">1.769300e+02</span><span class="p">,</span> <span class="mf">1.503930e+02</span><span class="p">,</span> <span class="mf">1.278370e+02</span><span class="p">,</span> <span class="mf">1.086630e+02</span><span class="p">,</span>
+     <span class="mf">9.236572e+01</span><span class="p">,</span> <span class="mf">7.851231e+01</span><span class="p">,</span> <span class="mf">6.660341e+01</span><span class="p">,</span> <span class="mf">5.638791e+01</span><span class="p">,</span> <span class="mf">4.764391e+01</span><span class="p">,</span>
+     <span class="mf">4.017541e+01</span><span class="p">,</span> <span class="mf">3.381001e+01</span><span class="p">,</span> <span class="mf">2.836781e+01</span><span class="p">,</span> <span class="mf">2.373041e+01</span><span class="p">,</span> <span class="mf">1.979160e+01</span><span class="p">,</span>
+     <span class="mf">1.645710e+01</span><span class="p">,</span> <span class="mf">1.364340e+01</span><span class="p">,</span> <span class="mf">1.127690e+01</span><span class="p">,</span> <span class="mf">9.292942e+00</span><span class="p">,</span> <span class="mf">7.619842e+00</span><span class="p">,</span>
+     <span class="mf">6.216801e+00</span><span class="p">,</span> <span class="mf">5.046801e+00</span><span class="p">,</span> <span class="mf">4.076571e+00</span><span class="p">,</span> <span class="mf">3.276431e+00</span><span class="p">,</span> <span class="mf">2.620211e+00</span><span class="p">,</span>
+     <span class="mf">2.084970e+00</span><span class="p">,</span> <span class="mf">1.650790e+00</span><span class="p">,</span> <span class="mf">1.300510e+00</span><span class="p">,</span> <span class="mf">1.019440e+00</span><span class="p">,</span> <span class="mf">7.951341e-01</span><span class="p">,</span>
+     <span class="mf">6.167791e-01</span><span class="p">,</span> <span class="mf">4.758061e-01</span><span class="p">,</span> <span class="mf">3.650411e-01</span><span class="p">,</span> <span class="mf">2.785261e-01</span><span class="p">,</span> <span class="mf">2.113490e-01</span><span class="p">,</span>
+     <span class="mf">1.594950e-01</span><span class="p">,</span> <span class="mf">1.197030e-01</span><span class="p">,</span> <span class="mf">8.934502e-02</span><span class="p">,</span> <span class="mf">6.600001e-02</span><span class="p">,</span> <span class="mf">4.758501e-02</span><span class="p">,</span>
+     <span class="mf">3.270000e-02</span><span class="p">,</span> <span class="mf">2.000000e-02</span><span class="p">,</span> <span class="mf">1.000000e-02</span><span class="p">],</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;swt_level_edge&#39;</span><span class="p">,),</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;hPa&#39;</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="c1"># Bp [unitless] for 72 levels (73 edges)</span>
+<span class="n">geos5_hybi_b</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="p">[</span><span class="mf">1.000000e+00</span><span class="p">,</span> <span class="mf">9.849520e-01</span><span class="p">,</span> <span class="mf">9.634060e-01</span><span class="p">,</span> <span class="mf">9.418650e-01</span><span class="p">,</span> <span class="mf">9.203870e-01</span><span class="p">,</span>
+     <span class="mf">8.989080e-01</span><span class="p">,</span> <span class="mf">8.774290e-01</span><span class="p">,</span> <span class="mf">8.560180e-01</span><span class="p">,</span> <span class="mf">8.346609e-01</span><span class="p">,</span> <span class="mf">8.133039e-01</span><span class="p">,</span>
+     <span class="mf">7.919469e-01</span><span class="p">,</span> <span class="mf">7.706375e-01</span><span class="p">,</span> <span class="mf">7.493782e-01</span><span class="p">,</span> <span class="mf">7.211660e-01</span><span class="p">,</span> <span class="mf">6.858999e-01</span><span class="p">,</span>
+     <span class="mf">6.506349e-01</span><span class="p">,</span> <span class="mf">6.158184e-01</span><span class="p">,</span> <span class="mf">5.810415e-01</span><span class="p">,</span> <span class="mf">5.463042e-01</span><span class="p">,</span> <span class="mf">4.945902e-01</span><span class="p">,</span>
+     <span class="mf">4.437402e-01</span><span class="p">,</span> <span class="mf">3.928911e-01</span><span class="p">,</span> <span class="mf">3.433811e-01</span><span class="p">,</span> <span class="mf">2.944031e-01</span><span class="p">,</span> <span class="mf">2.467411e-01</span><span class="p">,</span>
+     <span class="mf">2.003501e-01</span><span class="p">,</span> <span class="mf">1.562241e-01</span><span class="p">,</span> <span class="mf">1.136021e-01</span><span class="p">,</span> <span class="mf">6.372006e-02</span><span class="p">,</span> <span class="mf">2.801004e-02</span><span class="p">,</span>
+     <span class="mf">6.960025e-03</span><span class="p">,</span> <span class="mf">8.175413e-09</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span>
+     <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">,</span> <span class="mf">0.000000e+00</span><span class="p">],</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;swt_level_edge&#39;</span><span class="p">,),</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;1&#39;</span><span class="p">}</span>
+<span class="p">)</span>
+
+<span class="n">geos5_hybm_a</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="p">(</span><span class="n">geos5_hybi_a</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">geos5_hybi_a</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,),</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;hPa&#39;</span><span class="p">}</span>
+<span class="p">)</span>
+<span class="n">geos5_hybm_b</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+    <span class="p">(</span><span class="n">geos5_hybi_b</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">geos5_hybi_b</span><span class="p">[</span><span class="mi">1</span><span class="p">:])</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,),</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;1&#39;</span><span class="p">}</span>
+<span class="p">)</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cmaq2tempo</span><span class="p">(</span>
+    <span class="n">tf</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">pkey</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">droppvar</span><span class="o">=</span><span class="kc">False</span>
+<span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interpolate CMAQ to TEMPO (horizontally and/or vertically).</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    tf : xr.Dataset</span>
+<span class="sd">        TEMPO dataset which must have:</span>
+<span class="sd">        - longitude/latitude for horizontal interpolation</span>
+<span class="sd">        - either midlev_pressure or surface_pressure for vertical interpolation</span>
+<span class="sd">    qf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        CMAQ dataset or DataArray. Must have crs as an attribute if crs is not</span>
+<span class="sd">        provided as a keyword</span>
+<span class="sd">    method : str</span>
+<span class="sd">        xarray sel method keyword.</span>
+<span class="sd">    pkey : str</span>
+<span class="sd">        If provided, pkey is pressure in Pa and will be used to vertically</span>
+<span class="sd">        interpolate CMAQ to the TEMPO swt_level.</span>
+<span class="sd">    crs : str</span>
+<span class="sd">        Optional, overrides qf.attrs[&#39;crs&#39;]</span>
+<span class="sd">    droppvar : bool</span>
+<span class="sd">        If True, do not interpolate or output coordinate variable.</span>
+<span class="sd">        If False, keep the PRES variable in the output.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tqf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        Same type as input with dimensions converted from (TSTEP, LAY, ROW,</span>
+<span class="sd">        COL) to (mirror_step, xtrack, LAY)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">qhq</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;COL&#39;</span> <span class="ow">in</span> <span class="n">qf</span><span class="o">.</span><span class="n">dims</span> <span class="ow">and</span> <span class="s1">&#39;ROW&#39;</span> <span class="ow">in</span> <span class="n">qf</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+    <span class="n">thq</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;COL&#39;</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">dims</span> <span class="ow">and</span> <span class="s1">&#39;ROW&#39;</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+    <span class="n">qvq</span> <span class="o">=</span> <span class="s1">&#39;LAY&#39;</span> <span class="ow">in</span> <span class="n">qf</span><span class="o">.</span><span class="n">dims</span>
+    <span class="n">tvq</span> <span class="o">=</span> <span class="s1">&#39;LAY&#39;</span> <span class="ow">in</span> <span class="n">tf</span><span class="o">.</span><span class="n">dims</span>
+    <span class="k">if</span> <span class="n">qhq</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">thq</span><span class="p">:</span>
+        <span class="n">tqf</span> <span class="o">=</span> <span class="n">_cmaq2tempoh</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">crs</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">tqf</span> <span class="o">=</span> <span class="n">qf</span>
+    <span class="k">if</span> <span class="n">pkey</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="p">(</span><span class="n">qvq</span> <span class="ow">and</span> <span class="ow">not</span> <span class="n">tvq</span><span class="p">):</span>
+        <span class="n">PRESPa</span> <span class="o">=</span> <span class="n">tqf</span><span class="p">[</span><span class="n">pkey</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">droppvar</span><span class="p">:</span>
+            <span class="n">tqf</span> <span class="o">=</span> <span class="n">tqf</span><span class="o">.</span><span class="n">drop_vars</span><span class="p">(</span><span class="n">pkey</span><span class="p">)</span>
+        <span class="n">ptqf</span> <span class="o">=</span> <span class="n">_cmaq2tempov</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">tqf</span><span class="p">,</span> <span class="n">PRESPa</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">ptqf</span> <span class="o">=</span> <span class="n">tqf</span>
+
+    <span class="k">return</span> <span class="n">ptqf</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cmaq2tempoh</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interpolate CMAQ to TEMPO (horizontally and/or vertically).</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    tf : xr.Dataset</span>
+<span class="sd">        TEMPO dataset which must have:</span>
+<span class="sd">        - longitude/latitude for horizontal interpolation</span>
+<span class="sd">    qf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        CMAQ dataset or DataArray. Must have crs as an attribute if crs is not</span>
+<span class="sd">        provided as a keyword</span>
+<span class="sd">    method : str</span>
+<span class="sd">        xarray sel method keyword.</span>
+<span class="sd">    crs : str</span>
+<span class="sd">        Optional, overrides qf.attrs[&#39;crs&#39;]</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tqf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        Same type as input with dimensions converted from (TSTEP, LAY, ROW,</span>
+<span class="sd">        COL) to (mirror_step, xtrack, LAY)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">pyproj</span>
+    <span class="k">if</span> <span class="n">crs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">crs</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span>
+
+    <span class="c1"># Regrid CMAQ to mirror_step and xtrack (from TSTEP, LAY, ROW, COL)</span>
+    <span class="n">lon</span> <span class="o">=</span> <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;longitude&#39;</span><span class="p">]</span>
+    <span class="n">lat</span> <span class="o">=</span> <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;latitude&#39;</span><span class="p">]</span>
+    <span class="n">x</span><span class="p">,</span> <span class="n">y</span> <span class="o">=</span> <span class="n">pyproj</span><span class="o">.</span><span class="n">Proj</span><span class="p">(</span><span class="n">crs</span><span class="p">)(</span><span class="n">lon</span><span class="p">,</span> <span class="n">lat</span><span class="p">)</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">lon</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+    <span class="n">y</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">y</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">lat</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span>
+    <span class="n">tidx</span><span class="p">,</span> <span class="n">ridx</span><span class="p">,</span> <span class="n">cidx</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">broadcast</span><span class="p">(</span><span class="n">tf</span><span class="p">[</span><span class="s1">&#39;time&#39;</span><span class="p">],</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span><span class="p">)</span>
+    <span class="n">tqf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">TSTEP</span><span class="o">=</span><span class="n">tidx</span><span class="p">,</span> <span class="n">ROW</span><span class="o">=</span><span class="n">ridx</span><span class="p">,</span> <span class="n">COL</span><span class="o">=</span><span class="n">cidx</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">tqf</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_cmaq2tempov</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">pvar</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Interpolate CMAQ to TEMPO (vertically).</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    tf : xr.Dataset</span>
+<span class="sd">        TEMPO dataset which must have:</span>
+<span class="sd">        - either midlev_pressure or surface_pressure for vertical interpolation</span>
+<span class="sd">    qf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        CMAQ dataset or DataArray. Must have crs as an attribute if crs is not</span>
+<span class="sd">        provided as a keyword</span>
+<span class="sd">    pvar : xr.DataArray</span>
+<span class="sd">        Mid-level pressure in Pa and will be used to vertically interpolate</span>
+<span class="sd">        CMAQ to the TEMPO swt_level.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    tqf : xr.Dataset or xr.DataArray</span>
+<span class="sd">        Same type as input with dimension LAY converted to swt_level:</span>
+<span class="sd">        - (mirror_step, xtrack, LAY) to (mirror_step, xtrack, level)</span>
+<span class="sd">        - (ROW, COL, LAY) to (ROW, COL, level)</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">coord_interp</span>
+    <span class="n">PREShPa</span> <span class="o">=</span> <span class="n">pvar</span> <span class="o">/</span> <span class="mf">100.</span>
+    <span class="n">pres</span> <span class="o">=</span> <span class="n">_get_midp</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span>
+    <span class="c1"># interpolate to the TEMPO pressure coordinate.</span>
+    <span class="c1"># ascending=True because the PRES [1000, ..., 50] variable is sorted</span>
+    <span class="c1"># to [50, ..., 1000] using desceding LAY [0.999, ..., 0] coord</span>
+    <span class="n">tqf</span> <span class="o">=</span> <span class="n">coord_interp</span><span class="p">(</span>
+        <span class="n">pres</span><span class="p">,</span> <span class="n">PREShPa</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span>
+        <span class="n">indim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">outdim</span><span class="o">=</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">True</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">tqf</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_midp</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">add</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;midlev_pressure&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">pres</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;midlev_pressure&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">psfc</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;surface_pressure&#39;</span><span class="p">]</span>
+        <span class="n">pres</span> <span class="o">=</span> <span class="n">psfc</span> <span class="o">*</span> <span class="n">geos5_hybm_b</span> <span class="o">+</span> <span class="n">geos5_hybm_a</span>
+        <span class="k">if</span> <span class="n">add</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;midlev_pressure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pres</span>
+    <span class="k">return</span> <span class="n">pres</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_delp</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">add</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="k">if</span> <span class="s1">&#39;delta_pressure&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="p">:</span>
+        <span class="n">delpres</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;delta_pressure&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">psfc</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;surface_pressure&#39;</span><span class="p">]</span>
+        <span class="n">bigpres</span> <span class="o">=</span> <span class="n">psfc</span> <span class="o">*</span> <span class="n">geos5_hybi_b</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="n">geos5_hybi_a</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">lilpres</span> <span class="o">=</span> <span class="n">psfc</span> <span class="o">*</span> <span class="n">geos5_hybi_b</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">geos5_hybi_a</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span>
+        <span class="n">outdims</span> <span class="o">=</span> <span class="n">psfc</span><span class="o">.</span><span class="n">dims</span> <span class="o">+</span> <span class="p">(</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,)</span>
+        <span class="n">delpres</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">bigpres</span><span class="o">.</span><span class="n">data</span> <span class="o">-</span> <span class="n">lilpres</span><span class="o">.</span><span class="n">data</span><span class="p">,</span>
+            <span class="n">dims</span><span class="o">=</span><span class="n">outdims</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;units&#39;</span><span class="p">:</span> <span class="s1">&#39;hPa&#39;</span><span class="p">}</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">add</span><span class="p">:</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;delta_pressure&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delpres</span>
+
+    <span class="k">return</span> <span class="n">delpres</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_get_sw</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">TA</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return temperature adjusted scattering weights (w&#39;) at PRES levels</span>
+<span class="sd">    using the TEMPO L2 Trace Gas and Cloud Level 2 and 3 Data Products:</span>
+<span class="sd">    User Guide Version 1.1 See pg 19. Where w_z is scattering_weights (sw),</span>
+<span class="sd">    omega_z is the partical vertical column (pvcd), and alpha is calculated</span>
+<span class="sd">    from temperature (TA)</span>
+
+<span class="sd">    AMF = sum_z(w_z * alpha_z * omega_z) / sum_z(omega_z)</span>
+<span class="sd">        = sum_z(w&#39;_z          * omega_z) / sum_z(omega_z)</span>
+
+<span class="sd">    alpha_z = 1 - 0.00316 * (T_z - T_0) + 3.39e-6 * (T_z - T_0)**2</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    TA : xr.DataArray</span>
+<span class="sd">        Mid-level temperature in Kelvin regridded to l2 (mirror_step,</span>
+<span class="sd">        xtrack, LAY)</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    -------</span>
+<span class="sd">    sw : xr.DataArray</span>
+<span class="sd">        Temperature adjusted scattering weights.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="c1"># Zero-scattering weights are not valid.</span>
+    <span class="n">sw</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;scattering_weights&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="n">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">)</span>  <span class="c1"># unitless</span>
+    <span class="n">a</span> <span class="o">=</span> <span class="mf">0.00316</span>
+    <span class="n">b</span> <span class="o">=</span> <span class="mf">3.39e-6</span>
+    <span class="n">T0</span> <span class="o">=</span> <span class="mf">220.</span>
+    <span class="n">dT</span> <span class="o">=</span> <span class="n">TA</span> <span class="o">-</span> <span class="n">T0</span>
+    <span class="n">alpha</span> <span class="o">=</span> <span class="mi">1</span> <span class="o">-</span> <span class="n">a</span> <span class="o">*</span> <span class="n">dT</span> <span class="o">+</span> <span class="n">b</span> <span class="o">*</span> <span class="n">dT</span><span class="o">**</span><span class="mi">2</span>
+    <span class="n">tasw</span> <span class="o">=</span> <span class="n">sw</span> <span class="o">*</span> <span class="n">alpha</span>
+    <span class="n">tasw</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sw</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="n">tasw</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;temperature corrected scattering_weights&#39;</span>
+    <span class="k">return</span> <span class="n">tasw</span>
+
+
+<div class="viewcode-block" id="TEMPO_L2">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_L2">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TEMPO_L2</span><span class="p">(</span><span class="n">satellite</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    Default TEMPO_L2 satellite processor.</span>
+<span class="s2">    * bbox subsets the mirror_step dimensions</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">()</span>
+
+<div class="viewcode-block" id="TEMPO_L2.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_L2.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">min_data_quality_flag</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span>
+        <span class="n">max_eff_cloud_fraction</span><span class="o">=</span><span class="mf">0.2</span><span class="p">,</span> <span class="n">max_solar_zenith_angle</span><span class="o">=</span><span class="mi">70</span><span class="p">,</span>
+        <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a TEMPO file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        min_data_quality_flag : int</span>
+<span class="sd">            Minimum acceptable value of main_data_quality_flag:</span>
+<span class="sd">            - 0=normal</span>
+<span class="sd">            - 1=suspicious</span>
+<span class="sd">            - 2=bad</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: TropOMI</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">kwargs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;verbose&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">rf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s1">&#39;/&#39;</span><span class="p">)</span>
+        <span class="n">sf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s1">&#39;support_data&#39;</span><span class="p">)</span>
+        <span class="n">gf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s1">&#39;geolocation&#39;</span><span class="p">)</span>
+        <span class="n">pf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="s1">&#39;product&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;root:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;  -&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  -&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">rf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;support_data:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;  -&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  -&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">sf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;geolocation:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;  -&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  -&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">gf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;product:&#39;</span><span class="p">)</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;  -&#39;</span> <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">  -&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="n">pf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)))</span>
+        <span class="c1"># default suspicious or better</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="n">pf</span><span class="p">[</span><span class="s1">&#39;main_data_quality_flag&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">min_data_quality_flag</span>
+        <span class="c1"># within lon/lat box</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">inlat</span> <span class="o">=</span> <span class="p">(</span><span class="n">gf</span><span class="p">[</span><span class="s1">&#39;latitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">gf</span><span class="p">[</span><span class="s1">&#39;latitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelat</span><span class="p">)</span>
+            <span class="n">inlon</span> <span class="o">=</span> <span class="p">(</span><span class="n">gf</span><span class="p">[</span><span class="s1">&#39;longitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlon</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">gf</span><span class="p">[</span><span class="s1">&#39;longitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelon</span><span class="p">)</span>
+            <span class="n">keep</span> <span class="o">=</span> <span class="n">keep</span> <span class="o">&amp;</span> <span class="n">inlon</span> <span class="o">&amp;</span> <span class="n">inlat</span>
+        <span class="c1"># not too cloudy</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="n">keep</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">sf</span><span class="p">[</span><span class="s1">&#39;eff_cloud_fraction&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">max_eff_cloud_fraction</span><span class="p">)</span>
+        <span class="c1"># not too dark</span>
+        <span class="n">keep</span> <span class="o">=</span> <span class="n">keep</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">gf</span><span class="p">[</span><span class="s1">&#39;solar_zenith_angle&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">max_solar_zenith_angle</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">keep</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;No valid pixels&#39;</span><span class="p">)</span>
+        <span class="c1"># Gather files</span>
+        <span class="n">fs</span> <span class="o">=</span> <span class="p">[</span><span class="n">rf</span><span class="p">,</span> <span class="n">pf</span><span class="p">,</span> <span class="n">gf</span><span class="p">,</span> <span class="n">sf</span><span class="p">]</span>
+        <span class="c1"># Only keep mirror_steps that have at least one good value.</span>
+        <span class="n">xkeep</span> <span class="o">=</span> <span class="n">keep</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="s1">&#39;mirror_step&#39;</span><span class="p">)</span>
+        <span class="n">fs</span> <span class="o">=</span> <span class="p">[</span><span class="n">f</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">xtrack</span><span class="o">=</span><span class="n">xkeep</span><span class="p">)</span> <span class="k">for</span> <span class="n">f</span> <span class="ow">in</span> <span class="n">fs</span><span class="p">]</span>
+        <span class="n">valid</span> <span class="o">=</span> <span class="n">keep</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">xtrack</span><span class="o">=</span><span class="n">xkeep</span><span class="p">)</span>
+        <span class="c1"># Mask all bad values</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">fs</span><span class="p">)</span>  <span class="c1"># .where(valid)</span>
+        <span class="c1"># Keep track of valid measure.</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">valid</span>
+        <span class="c1"># add corners</span>
+        <span class="n">lat_bnds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">latitude_bounds</span>
+        <span class="n">lon_bnds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">longitude_bounds</span>
+        <span class="n">corner_slices</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span> <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">cornerkey</span><span class="p">,</span> <span class="n">corner_slice</span> <span class="ow">in</span> <span class="n">corner_slices</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lat_bnds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">corner</span><span class="o">=</span><span class="n">corner_slice</span><span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">cornerkey</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">lon_bnds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">corner</span><span class="o">=</span><span class="n">corner_slice</span><span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">longitude</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">latitude</span>
+        <span class="n">pressure_mid</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;surface_pressure&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">geos5_hybm_b</span> <span class="o">+</span> <span class="n">geos5_hybm_a</span>
+        <span class="n">pressure_mid</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">units</span><span class="o">=</span><span class="s1">&#39;hPa&#39;</span><span class="p">,</span> <span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;midlev_pressure&#39;</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">reset_coords</span><span class="p">()</span>
+        <span class="n">_get_midp</span><span class="p">(</span><span class="n">sat</span><span class="o">.</span><span class="n">ds</span><span class="p">,</span> <span class="n">add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="TEMPO_L2.shorten_name">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_L2.shorten_name">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shorten_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provide a short name for long keys. This is useful for renaming</span>
+<span class="sd">        variables to fit IOAPI 16 character restrictions.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Original variable name.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        shortkey : str</span>
+<span class="sd">            Shortened key</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;amf_cloud_fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_cloud_frac&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;amf_cloud_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_cloud_pres&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;amf_diagnostic_flag&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_diag_flag&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;amf_stratosphere&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_strat&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;eff_cloud_fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;eff_cloud_frac&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;fitted_slant_column&#39;</span><span class="p">,</span> <span class="s1">&#39;fit_slant_col&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;fitted_slant_column_uncertainty&#39;</span><span class="p">,</span> <span class="s1">&#39;fit_slant_col&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;ground_pixel_quality_flag&#39;</span><span class="p">,</span> <span class="s1">&#39;pixel_qa_flag&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;longitude_bounds&#39;</span><span class="p">,</span> <span class="s1">&#39;lon_bnds&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;latitude_bounds&#39;</span><span class="p">,</span> <span class="s1">&#39;lat_bnds&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;main_data_quality_flag&#39;</span><span class="p">,</span> <span class="s1">&#39;main_qa_flag&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;relative_azimuth_angle&#39;</span><span class="p">,</span> <span class="s1">&#39;rel_azimuth&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;scattering_weights&#39;</span><span class="p">,</span> <span class="s1">&#39;scattering_wts&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;snow_ice_fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;snow_ice_frac&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;solar_azimuth_angle&#39;</span><span class="p">,</span> <span class="s1">&#39;solar_azimuth&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;solar_zenith_angle&#39;</span><span class="p">,</span> <span class="s1">&#39;solar_zenith&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;surface_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;surface_pres&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;temperature_profile&#39;</span><span class="p">,</span> <span class="s1">&#39;temperature&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;tropopause_pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;tropopause_pres&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;vertical_column_stratosphere&#39;</span><span class="p">,</span> <span class="s1">&#39;vert_col_strat&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;vertical_column_total&#39;</span><span class="p">,</span> <span class="s1">&#39;vert_col_tot&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;vertical_column_total_uncertainty&#39;</span><span class="p">,</span> <span class="s1">&#39;vert_col_tot_u&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;vertical_column_troposphere&#39;</span><span class="p">,</span> <span class="s1">&#39;vert_col_trop&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s1">&#39;vertical_column_troposphere_uncertainty&#39;</span><span class="p">,</span> <span class="s1">&#39;vert_col_trop_u&#39;</span>
+        <span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;viewing_azimuth_angle&#39;</span><span class="p">,</span> <span class="s1">&#39;viewing_azimuth&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;viewing_zenith_angle&#39;</span><span class="p">,</span> <span class="s1">&#39;viewing_zenith&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">key</span></div>
+
+
+<div class="viewcode-block" id="TEMPO_L2.add_cmaq_amf">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_L2.add_cmaq_amf">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_cmaq_amf</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">qkey</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="s1">&#39;troposphere&#39;</span><span class="p">,</span> <span class="n">amfkey</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">swopt</span><span class="o">=</span><span class="s1">&#39;tempo&#39;</span><span class="p">,</span> <span class="n">debug</span><span class="o">=</span><span class="kc">False</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add an AMF using an alternate shape factor from the partial vertical</span>
+<span class="sd">        column density (pvcd) calculated from CMAQ met and conc data</span>
+<span class="sd">        interpolated to the TEMPO grid. This should be done before `to_level3`</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xr.Dataset</span>
+<span class="sd">            Must contain DENS, TA, PRES, and qkey. If DENS is not present, then</span>
+<span class="sd">            PRES/TA/Q can be used. If Q is missing, just PRES and TA.</span>
+<span class="sd">        qkey : str</span>
+<span class="sd">            Model variable to be used for shape factor.</span>
+<span class="sd">        extent : str</span>
+<span class="sd">            troposphere, stratosphere, total</span>
+<span class="sd">        amfkey : str</span>
+<span class="sd">            Name for output variable to be stored. Defaults to amf_cmaq_extent</span>
+<span class="sd">            where extent is troposphere, stratosphere, or total</span>
+<span class="sd">        swopt : str</span>
+<span class="sd">            The scattering weight option determines if the scattering weight is</span>
+<span class="sd">            interpolated to CMAQ or if CMAQ is interpolated to tempo. Options:</span>
+<span class="sd">            &#39;tempo&#39; calculates the AMF on native TEMPO coordinate. &#39;cmaq&#39;</span>
+<span class="sd">            calculates the AMF on native CMAQ coordinate</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        amf : xr.DataArray</span>
+<span class="sd">            Air mass factor with temperature corrected scattering weights</span>
+<span class="sd">            applied to the shape factor from pvcd.</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        CMAQ met/conc data is often unreliable in the stratosphere. It is best</span>
+<span class="sd">        to only use the troposphere.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">coord_interp</span>
+
+        <span class="k">if</span> <span class="n">amfkey</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">amfkey</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;amf_cmaq_</span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="c1"># Subset just the necessary variables for AMF calculation</span>
+        <span class="c1"># - PRES for vertical interpolation</span>
+        <span class="c1"># - TA for scattering weight correction.</span>
+        <span class="c1"># - qkey for shape factor</span>
+        <span class="n">sqf</span> <span class="o">=</span> <span class="n">qf</span><span class="p">[[</span><span class="s1">&#39;TA&#39;</span><span class="p">,</span> <span class="s1">&#39;PRES&#39;</span><span class="p">,</span> <span class="n">qkey</span><span class="p">]]</span>
+        <span class="n">tf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span>
+        <span class="c1"># Pair in space and time with TEMPO using vertical interpolation</span>
+        <span class="k">if</span> <span class="n">swopt</span> <span class="o">==</span> <span class="s1">&#39;tempo&#39;</span><span class="p">:</span>
+            <span class="c1"># Inteprolate CMAQ to TEMPO both horizontally and vertically</span>
+            <span class="n">tqf</span> <span class="o">=</span> <span class="n">_cmaq2tempo</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">sqf</span><span class="p">,</span> <span class="n">pkey</span><span class="o">=</span><span class="s1">&#39;PRES&#39;</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">qf</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> <span class="n">droppvar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="c1"># calculate air area_density for later conversion of ppm to mole/m2</span>
+            <span class="n">delp_pa</span> <span class="o">=</span> <span class="n">_get_delp</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span> <span class="o">*</span> <span class="mf">100.</span>
+            <span class="c1"># P * A = m * a = n * M * g</span>
+            <span class="c1"># P/Mw/g = n/A = delp_pa / MWAIR / GRAV</span>
+            <span class="c1">#       [=] Pa * mol / kg * s**2 /m</span>
+            <span class="c1">#       [=] kg / m / s**2 * mol / kg * s**2 / m</span>
+            <span class="c1">#       [=] mol / m2</span>
+            <span class="c1">#</span>
+            <span class="c1"># copied from https://github.com/USEPA/CMAQ/blob/main/</span>
+            <span class="c1"># CCTM/src/ICL/fixed/const/CONST.EXT</span>
+            <span class="n">MWAIR</span> <span class="o">=</span> <span class="mf">0.0289628</span>
+            <span class="n">GRAV</span> <span class="o">=</span> <span class="mf">9.80622</span>
+            <span class="n">tqf</span><span class="p">[</span><span class="s1">&#39;mole_per_m2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">delp_pa</span> <span class="o">/</span> <span class="n">MWAIR</span> <span class="o">/</span> <span class="n">GRAV</span>
+            <span class="n">taqf</span> <span class="o">=</span> <span class="n">tqf</span>
+            <span class="n">laykey</span> <span class="o">=</span> <span class="s1">&#39;swt_level&#39;</span>
+        <span class="k">elif</span> <span class="n">swopt</span> <span class="o">==</span> <span class="s1">&#39;cmaq&#39;</span><span class="p">:</span>
+            <span class="c1"># calculate air area_density for later conversion of ppm to mole/m2</span>
+            <span class="n">sqf</span><span class="p">[</span><span class="s1">&#39;mole_per_m2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mole_per_m2</span><span class="p">()</span>
+            <span class="c1"># Interpolate NO2, TA, and PRES only horizontally</span>
+            <span class="n">tqf</span> <span class="o">=</span> <span class="n">_cmaq2tempo</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">sqf</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="n">qf</span><span class="o">.</span><span class="n">crs</span><span class="p">,</span> <span class="n">droppvar</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="c1"># Interpolate TA horizontally and vertically</span>
+            <span class="c1"># - PRES will be used to interpolate Ta and then dropped</span>
+            <span class="c1"># - TA used for scattering weight temperature correction</span>
+            <span class="c1">#   on the TEMPO grid before interpolation to the CMAQ grid</span>
+            <span class="n">taqf</span> <span class="o">=</span> <span class="n">_cmaq2tempo</span><span class="p">(</span>
+                <span class="n">tf</span><span class="p">,</span> <span class="n">tqf</span><span class="p">[[</span><span class="s1">&#39;TA&#39;</span><span class="p">,</span> <span class="s1">&#39;PRES&#39;</span><span class="p">]],</span> <span class="n">pkey</span><span class="o">=</span><span class="s1">&#39;PRES&#39;</span><span class="p">,</span> <span class="n">droppvar</span><span class="o">=</span><span class="kc">True</span>
+            <span class="p">)</span>
+            <span class="n">laykey</span> <span class="o">=</span> <span class="s1">&#39;LAY&#39;</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;swopt must be tempo or cmaq; got </span><span class="si">{</span><span class="n">swopt</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="c1"># Get temperature corrected TEMPO scattering weights (sw_z * alpha_z)</span>
+        <span class="n">rsw</span> <span class="o">=</span> <span class="n">_get_sw</span><span class="p">(</span><span class="n">tf</span><span class="p">,</span> <span class="n">taqf</span><span class="o">.</span><span class="n">TA</span><span class="p">)</span>
+        <span class="c1"># Note for future:</span>
+        <span class="c1">#</span>
+        <span class="c1"># The scattering_weights variable is zero below clouds and masked</span>
+        <span class="c1"># within _get_sw. The masked elements of gas_profile column</span>
+        <span class="c1"># is measured only above the zero scattering weights. Regridding</span>
+        <span class="c1"># magnifies challenges implicit in gridded data. The cloud is part way</span>
+        <span class="c1"># between a layer. In that case, the sensitivity to the layer is</span>
+        <span class="c1"># non-zero for the part above the cloud, and not-applicable for the</span>
+        <span class="c1"># part under the cloud. There are options that can be illustrated by a</span>
+        <span class="c1"># scattering weight vector with cloud masking (swc), without cloud</span>
+        <span class="c1"># masking, and an opaque cloud at 825hPa.</span>
+        <span class="c1"># profile:</span>
+        <span class="c1">#                   cloud</span>
+        <span class="c1">#                     |</span>
+        <span class="c1">#                     v</span>
+        <span class="c1"># P [hPa] = [990, 850, 700, 200, 0.015]</span>
+        <span class="c1"># swc [1] = [0.0, 0.0, 2.0, 2.6, 2.5]</span>
+        <span class="c1"># sws [1] = [0.3, 1.0, 2.0, 2.6, 2.5]</span>
+        <span class="c1">#</span>
+        <span class="c1"># and an interpolated sw at destination coordinates below:</span>
+        <span class="c1">#              cloud</span>
+        <span class="c1">#                |</span>
+        <span class="c1">#                v</span>
+        <span class="c1"># P [hPa] = [990, 800, 450]</span>
+        <span class="c1">#</span>
+        <span class="c1"># 1. Masking zeros before interpolating:</span>
+        <span class="c1">#    swi [1] = [nan, nan, 2.3]</span>
+        <span class="c1"># 2. Masking zeros after interpolating:</span>
+        <span class="c1">#    swi [1] = [nan, 0.66, 2.3]</span>
+        <span class="c1"># 3. Interpolating sws then masking (not an option because already 0)</span>
+        <span class="c1">#    swi [1] = [nan, 1.33, 2.3]</span>
+        <span class="c1"># 4. Integrate pvcd to TEMPO coordinate.</span>
+        <span class="c1">#    Have to assume uniform distribution within cell.</span>
+        <span class="c1">#</span>
+        <span class="c1"># For now, interpolating after masking</span>
+        <span class="k">if</span> <span class="n">swopt</span> <span class="o">==</span> <span class="s1">&#39;cmaq&#39;</span><span class="p">:</span>
+            <span class="n">PREShPa</span> <span class="o">=</span> <span class="n">tqf</span><span class="o">.</span><span class="n">PRES</span> <span class="o">/</span> <span class="mf">100.</span>
+            <span class="n">pres</span> <span class="o">=</span> <span class="n">_get_midp</span><span class="p">(</span><span class="n">tf</span><span class="p">)</span>
+            <span class="c1"># ascending=False because the midlev_pressure [1000, ..., 50]</span>
+            <span class="c1"># variable is sorted [1000, ..., 50] using ascending swt_level</span>
+            <span class="c1"># [0, ..., 72] coord</span>
+            <span class="n">rsw</span> <span class="o">=</span> <span class="n">coord_interp</span><span class="p">(</span>
+                <span class="n">PREShPa</span><span class="p">,</span> <span class="n">pres</span><span class="p">,</span> <span class="n">rsw</span><span class="p">,</span>
+                <span class="n">indim</span><span class="o">=</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,</span> <span class="n">outdim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span>
+            <span class="p">)</span>
+
+        <span class="c1"># Add additional filters for atmospheric focus</span>
+        <span class="k">if</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;troposphere&#39;</span><span class="p">:</span>
+            <span class="n">tppres</span> <span class="o">=</span> <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;tropopause_pressure&#39;</span><span class="p">]</span>
+            <span class="n">validsw</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">rsw</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">tqf</span><span class="o">.</span><span class="n">PRES</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">&gt;</span> <span class="n">tppres</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;stratosphere&#39;</span><span class="p">:</span>
+            <span class="n">tppres</span> <span class="o">=</span> <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;tropopause_pressure&#39;</span><span class="p">]</span>
+            <span class="n">validsw</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">rsw</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">tqf</span><span class="o">.</span><span class="n">PRES</span> <span class="o">/</span> <span class="mi">100</span> <span class="o">&lt;</span> <span class="n">tppres</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;total&#39;</span><span class="p">:</span>
+            <span class="n">validsw</span> <span class="o">=</span> <span class="p">(</span><span class="o">~</span><span class="n">rsw</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;extent can be troposphere/stratosphere/total; got </span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+
+        <span class="c1"># remove unseen portions of the column</span>
+        <span class="n">pvcd</span> <span class="o">=</span> <span class="n">tqf</span><span class="p">[</span><span class="n">qkey</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">validsw</span><span class="p">)</span> <span class="o">*</span> <span class="mf">1e-6</span> <span class="o">*</span> <span class="n">tqf</span><span class="p">[</span><span class="s1">&#39;mole_per_m2&#39;</span><span class="p">]</span>
+
+        <span class="c1"># AMF = sum_z(sw_z * alpha_z * omega_z) / sum_z(omega_z)</span>
+        <span class="n">amf</span> <span class="o">=</span> <span class="p">(</span><span class="n">pvcd</span> <span class="o">*</span> <span class="n">rsw</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">laykey</span><span class="p">)</span> <span class="o">/</span> <span class="n">pvcd</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="n">laykey</span><span class="p">)</span>
+        <span class="n">amf</span> <span class="o">=</span> <span class="n">amf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">validsw</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="n">laykey</span><span class="p">))</span>
+        <span class="n">amf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="n">amfkey</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;1&#39;</span><span class="p">,</span>
+            <span class="n">var_desc</span><span class="o">=</span><span class="s1">&#39;air mass factor from alternative pvcd&#39;</span>
+        <span class="p">)</span>
+
+        <span class="c1"># add variable to dataset</span>
+        <span class="n">tf</span><span class="p">[</span><span class="n">amfkey</span><span class="p">]</span> <span class="o">=</span> <span class="n">amf</span><span class="o">.</span><span class="n">reset_coords</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">debug</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">tqf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+                <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;cmaq_&#39;</span> <span class="o">+</span> <span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">tqf</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">tf</span><span class="p">[</span><span class="s1">&#39;cmaq_gas_profile&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pvcd</span>
+        <span class="c1"># if not already default output, add to default output</span>
+        <span class="k">if</span> <span class="n">amfkey</span> <span class="ow">not</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultkeys</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_defaultkeys</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultkeys</span> <span class="o">+</span> <span class="p">(</span><span class="n">amfkey</span><span class="p">,)</span>
+
+        <span class="k">return</span> <span class="n">amf</span></div>
+
+
+<div class="viewcode-block" id="TEMPO_L2.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_L2.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">,</span> <span class="n">qkey</span><span class="p">,</span> <span class="n">l3key</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="s1">&#39;troposphere&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process CMAQ as though it were observed by TEMPO, which is simply</span>
+<span class="sd">        based on the overpass time.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xarray.Dataset</span>
+<span class="sd">            CMAQ file that has composition (e.g., NO2) and met (DENS and TA or</span>
+<span class="sd">            PRES/TA/Q). qf should already have the UTC time selected that</span>
+<span class="sd">            matches l3.</span>
+<span class="sd">        l3 : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+<span class="sd">        qkey : str</span>
+<span class="sd">            CMAQ Key NO2 or HCHO.</span>
+<span class="sd">        l3key : str</span>
+<span class="sd">            Satellite key</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        overf : xr.DataArray</span>
+<span class="sd">            An overpass file with satellite-like CMAQ.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">coord_interp</span>
+        <span class="n">tpkey</span> <span class="o">=</span> <span class="s1">&#39;tropopause_pressure&#39;</span>
+        <span class="n">overf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">l3</span><span class="p">[</span><span class="n">l3key</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="n">n_per_m2</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mole_per_m2</span><span class="p">(</span><span class="n">add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tgtvar</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="n">qkey</span><span class="p">]</span>
+        <span class="n">tgtunit</span> <span class="o">=</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">lower</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">tgtunit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppm&#39;</span><span class="p">):</span>
+            <span class="n">pp2vmr</span> <span class="o">=</span> <span class="mf">1e-6</span>
+        <span class="k">elif</span> <span class="n">tgtunit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppb&#39;</span><span class="p">):</span>
+            <span class="n">pp2vmr</span> <span class="o">=</span> <span class="mf">1e-9</span>
+        <span class="k">elif</span> <span class="n">tgtunit</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppt&#39;</span><span class="p">):</span>
+            <span class="n">pp2vmr</span> <span class="o">=</span> <span class="mf">1e-12</span>
+
+        <span class="n">nden</span> <span class="o">=</span> <span class="n">n_per_m2</span> <span class="o">*</span> <span class="n">tgtvar</span> <span class="o">*</span> <span class="n">pp2vmr</span>  <span class="c1"># moles-air/m2 * moles-i/moles-air</span>
+        <span class="c1"># interpolate TA from LAY to swt_level</span>
+        <span class="n">TAK</span> <span class="o">=</span> <span class="n">_cmaq2tempov</span><span class="p">(</span><span class="n">l3</span><span class="p">,</span> <span class="n">qf</span><span class="p">[</span><span class="s1">&#39;TA&#39;</span><span class="p">],</span> <span class="n">pvar</span><span class="o">=</span><span class="n">qf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">])</span>
+        <span class="n">sw</span> <span class="o">=</span> <span class="n">_get_sw</span><span class="p">(</span><span class="n">l3</span><span class="p">,</span> <span class="n">TAK</span><span class="p">)</span>
+        <span class="n">pmid</span> <span class="o">=</span> <span class="n">_get_midp</span><span class="p">(</span><span class="n">l3</span><span class="p">)</span>
+        <span class="c1"># interpolate sw to LAY</span>
+        <span class="c1"># ascending=False because the midlev_pressure [1000, ..., 50]</span>
+        <span class="c1"># variable is sorted [1000, ..., 50] using ascending swt_level</span>
+        <span class="c1"># [0, ..., 72] coord</span>
+        <span class="n">PREShPa</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">PRES</span> <span class="o">/</span> <span class="mf">100.</span>
+        <span class="n">sw</span> <span class="o">=</span> <span class="n">coord_interp</span><span class="p">(</span>
+            <span class="n">PREShPa</span><span class="p">,</span> <span class="n">pmid</span><span class="p">,</span> <span class="n">sw</span><span class="p">,</span>
+            <span class="n">indim</span><span class="o">=</span><span class="s1">&#39;swt_level&#39;</span><span class="p">,</span> <span class="n">outdim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;troposphere&#39;</span><span class="p">:</span>
+            <span class="n">ismine</span> <span class="o">=</span> <span class="n">PREShPa</span> <span class="o">&gt;</span> <span class="n">l3</span><span class="p">[</span><span class="n">tpkey</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;stratoposphere&#39;</span><span class="p">:</span>
+            <span class="n">ismine</span> <span class="o">=</span> <span class="n">PREShPa</span> <span class="o">&lt;</span> <span class="n">l3</span><span class="p">[</span><span class="n">tpkey</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="n">extent</span> <span class="o">==</span> <span class="s1">&#39;total&#39;</span><span class="p">:</span>
+            <span class="n">ismine</span> <span class="o">=</span> <span class="n">PREShPa</span> <span class="o">&gt;</span> <span class="o">-</span><span class="mi">999</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;extent can be troposphere/stratosphere/total; got </span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">ismine</span> <span class="o">=</span> <span class="n">ismine</span> <span class="o">&amp;</span> <span class="o">~</span><span class="n">sw</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+        <span class="n">nden</span> <span class="o">=</span> <span class="n">nden</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ismine</span><span class="p">)</span>
+        <span class="n">sw</span> <span class="o">=</span> <span class="n">sw</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">ismine</span><span class="p">)</span>
+        <span class="n">vcd</span> <span class="o">=</span> <span class="n">nden</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span>
+        <span class="n">amf</span> <span class="o">=</span> <span class="p">(</span><span class="n">sw</span> <span class="o">*</span> <span class="n">nden</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">vcd</span>
+        <span class="n">overf</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">qkey</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">vcd</span>
+        <span class="n">overf</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;amf_</span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">amf</span>
+        <span class="k">return</span> <span class="n">overf</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TEMPO_NO2_L2">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_NO2_L2">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TEMPO_NO2_L2</span><span class="p">(</span><span class="n">TEMPO_L2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    Default TEMPO satellite processor.</span>
+<span class="s2">    * bbox subsets the mirror_step dimensions</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;vertical_column_troposphere&#39;</span><span class="p">,</span> <span class="s1">&#39;tropopause_pressure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;amf_troposphere&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_stratosphere&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;scattering_weights&#39;</span><span class="p">,</span> <span class="s1">&#39;gas_profile&#39;</span><span class="p">,</span> <span class="s1">&#39;midlev_pressure&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="TEMPO_NO2_L2.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_NO2_L2.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where concept_id is set to</span>
+<span class="sd">        &quot;C3685896872-LARC_CLOUD&quot;, which is the V04 product. For V03, use</span>
+<span class="sd">        &quot;C2930725014-LARC_CLOUD&quot;.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download, s3, or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C3685896872-LARC_CLOUD&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TEMPO_L2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TEMPO_NO2_L2.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_NO2_L2.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">,</span> <span class="n">qkey</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">l3key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">qkey</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qkey</span> <span class="o">=</span> <span class="s1">&#39;NO2&#39;</span>
+        <span class="k">if</span> <span class="n">extent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">extent</span> <span class="o">=</span> <span class="s1">&#39;troposphere&#39;</span>
+        <span class="k">if</span> <span class="n">l3key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">l3key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;vertical_column_</span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">qkey</span><span class="o">=</span><span class="n">qkey</span><span class="p">,</span> <span class="n">l3key</span><span class="o">=</span><span class="n">l3key</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TEMPO_L2</span><span class="o">.</span><span class="n">cmaq_process</span><span class="p">(</span><span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">)</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="TEMPO_HCHO_L2">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_HCHO_L2">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">TEMPO_HCHO_L2</span><span class="p">(</span><span class="n">TEMPO_L2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    Default TEMPO satellite processor.</span>
+<span class="s2">    * bbox subsets the mirror_step dimensions</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;vertical_column_troposphere&#39;</span><span class="p">,</span> <span class="s1">&#39;tropopause_pressure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;amf_troposphere&#39;</span><span class="p">,</span> <span class="s1">&#39;amf_stratosphere&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;scattering_weights&#39;</span><span class="p">,</span> <span class="s1">&#39;gas_profile&#39;</span><span class="p">,</span> <span class="s1">&#39;midlev_pressure&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="TEMPO_HCHO_L2.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_HCHO_L2.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;s3&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where concept_id is set to</span>
+<span class="sd">        &quot;C3685912035-LARC_CLOUD&quot;, which is the V04 product. For V03, use</span>
+<span class="sd">        &quot;C2930730944-LARC_CLOUD&quot;</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download, s3, or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="n">kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C3685912035-LARC_CLOUD&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TEMPO_L2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="TEMPO_HCHO_L2.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.tempo.html#cmaqsatproc.readers.tempo.TEMPO_HCHO_L2.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">,</span> <span class="n">qkey</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">l3key</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">qkey</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">qkey</span> <span class="o">=</span> <span class="s1">&#39;HCHO&#39;</span>
+        <span class="k">if</span> <span class="n">extent</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">extent</span> <span class="o">=</span> <span class="s1">&#39;troposphere&#39;</span>
+        <span class="k">if</span> <span class="n">l3key</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">l3key</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;vertical_column_</span><span class="si">{</span><span class="n">extent</span><span class="si">}</span><span class="s1">&#39;</span>
+
+        <span class="n">opts</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">qkey</span><span class="o">=</span><span class="n">qkey</span><span class="p">,</span> <span class="n">l3key</span><span class="o">=</span><span class="n">l3key</span><span class="p">,</span> <span class="n">extent</span><span class="o">=</span><span class="n">extent</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">TEMPO_L2</span><span class="o">.</span><span class="n">cmaq_process</span><span class="p">(</span><span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">,</span> <span class="o">**</span><span class="n">opts</span><span class="p">)</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../readers.html">cmaqsatproc.readers</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,36 @@
+cmaqsatproc.readers package
+===========================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   cmaqsatproc.readers.goes
+   cmaqsatproc.readers.iasi
+   cmaqsatproc.readers.modis
+   cmaqsatproc.readers.omi
+   cmaqsatproc.readers.omps
+   cmaqsatproc.readers.tempo
+   cmaqsatproc.readers.tropomi
+   cmaqsatproc.readers.viirs
+
+Submodules
+----------
+
+cmaqsatproc.readers.core module
+-------------------------------
+
+.. automodule:: cmaqsatproc.readers.core
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cmaqsatproc.cmaq &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+   
+  <link rel="stylesheet" href="../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cmaqsatproc.cmaq</h1><div class="highlight"><pre>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;open_griddesc&#39;</span><span class="p">,</span> <span class="s1">&#39;open_ioapi&#39;</span><span class="p">]</span>
+
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="n">known_overpasstimes</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+    <span class="n">aura</span><span class="o">=</span><span class="mf">13.75</span><span class="p">,</span>
+    <span class="n">terra</span><span class="o">=</span><span class="mf">10.5</span><span class="p">,</span>
+    <span class="n">aqua</span><span class="o">=</span><span class="mf">13.5</span><span class="p">,</span>
+    <span class="n">metop_am</span><span class="o">=</span><span class="mf">9.5</span><span class="p">,</span>
+    <span class="n">metop_pm</span><span class="o">=</span><span class="mf">21.5</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">default_griddesc_txt</span> <span class="o">=</span> <span class="sa">b</span><span class="s2">&quot;&quot;&quot;&#39; &#39;</span>
+<span class="s2">&#39;LATLON&#39;</span>
+<span class="s2">  1  0.0 0.0 0.0 0.0 0.0</span>
+<span class="s2">&#39;POLSTE_HEMI&#39;</span>
+<span class="s2">  6         1.000        45.000       -98.000       -98.000        90.000</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;</span>
+<span class="s2">  2        33.000        45.000       -97.000       -97.000        40.000</span>
+<span class="s2">&#39;LamCon_25N_95W&#39;</span>
+<span class="s2">  2        25.000        25.000       -95.000       -95.000        25.000</span>
+<span class="s2">&#39;LamCon_HRRR&#39;</span>
+<span class="s2">  2        38.500        38.500       -97.500       -97.500        38.500</span>
+<span class="s2">&#39; &#39;</span>
+<span class="s2">&#39;US_1deg&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -140.00        20.0      1.0      1.0   90   40 1</span>
+<span class="s2">&#39;US_0pt1deg&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -140.00        20.0      0.1      0.1  900  400 1</span>
+<span class="s2">&#39;global_1deg&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -180.00       -90.0      1.0      1.0  360  180 1</span>
+<span class="s2">&#39;global_0pt1deg&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -180.00       -90.0      0.1      0.1 3600 1800 1</span>
+<span class="s2">&#39;global_2x2.5&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -181.25       -89.0      2.5      2.0  144   89 1</span>
+<span class="s2">&#39;global_4x5&#39;</span>
+<span class="s2">&#39;LATLON&#39;              -182.50       -88.0      5.0      4.0   72   44 1</span>
+<span class="s2">&#39;108NHEMI2&#39;</span>
+<span class="s2">&#39;POLSTE_HEMI&#39;     -10098000.0 -10098000.0 108000.0 108000.0  187  187 1</span>
+<span class="s2">&#39;324NHEMI2&#39;</span>
+<span class="s2">&#39;POLSTE_HEMI&#39;     -10098000.0 -10098000.0 324000.0 324000.0   63   63 1</span>
+<span class="s2">&#39;1188NHEMI2&#39;</span>
+<span class="s2">&#39;POLSTE_HEMI&#39;     -10098000.0 -10098000.0 1188000. 1188000.   17   17 1</span>
+<span class="s2">&#39;972US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0 972000.0 972000.0   6    4 1</span>
+<span class="s2">&#39;324US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0 324000.0 324000.0   17   12 1</span>
+<span class="s2">&#39;108US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0 108000.0 108000.0   51   34 1</span>
+<span class="s2">&#39;36US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0  36000.0  36000.0  153  100 1</span>
+<span class="s2">&#39;12US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0  12000.0  12000.0  459  299 1</span>
+<span class="s2">&#39;4US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0   4000.0   4000.0 1377  897 1</span>
+<span class="s2">&#39;1US1&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2556000.0  -1728000.0   1000.0   1000.0 5508 3588 1</span>
+<span class="s2">&#39;12US2&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2412000.0  -1620000.0  12000.0  12000.0  396  246 1</span>
+<span class="s2">&#39;4US2&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2412000.0  -1620000.0   4000.0   4000.0 1188  738 1</span>
+<span class="s2">&#39;1US2&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2412000.0  -1620000.0   1000.0   1000.0 4752 2952 1</span>
+<span class="s2">&#39;36US3&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2952000.0  -2772000.0  36000.0  36000.0  172  148 1</span>
+<span class="s2">&#39;12US3&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2952000.0  -2772000.0  12000.0  12000.0  516  444 1</span>
+<span class="s2">&#39;4US3&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2952000.0  -2772000.0   4000.0   4000.0 1548 1332 1</span>
+<span class="s2">&#39;1US3&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2952000.0  -2772000.0   1000.0   1000.0 4644 3996 1</span>
+<span class="s2">&#39;108US3&#39;</span>
+<span class="s2">&#39;LamCon_40N_97W&#39;   -2952000.0  -2772000.0 108000.0 108000.0   60   50 1</span>
+<span class="s2">&#39;NAQFC_CONUS&#39;</span>
+<span class="s2">&#39;LamCon_25N_95W&#39; -4226153.11044303 -834746.472325356 5079.0 5079.0  1473 1025 1</span>
+<span class="s2">&#39;HRRR3K&#39;</span>
+<span class="s2">&#39;LamCon_HRRR&#39; -2699020.14252193 -1588806.15255666 3000.0 3000.0 1799 1059 1</span>
+<span class="s2">&#39; &#39;&quot;&quot;&quot;</span>
+<span class="c1"># HRRR/NAQFC earth_radius=6371229. must use</span>
+
+
+<span class="c1"># All GRIDDESC definitions come in pairs of lines. The first is the name and</span>
+<span class="c1"># the second is either all numeric for projections or, for grids, a string</span>
+<span class="c1">#  projection name followed by numeric grid definitions</span>
+<span class="n">_prjattrkeys</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">,</span> <span class="s1">&#39;P_ALP&#39;</span><span class="p">,</span> <span class="s1">&#39;P_BET&#39;</span><span class="p">,</span> <span class="s1">&#39;P_GAM&#39;</span><span class="p">,</span> <span class="s1">&#39;XCENT&#39;</span><span class="p">,</span> <span class="s1">&#39;YCENT&#39;</span><span class="p">]</span>
+<span class="n">_gdattrkeys</span> <span class="o">=</span> <span class="p">[</span>
+    <span class="s1">&#39;PRJNAME&#39;</span><span class="p">,</span> <span class="s1">&#39;XORIG&#39;</span><span class="p">,</span> <span class="s1">&#39;YORIG&#39;</span><span class="p">,</span> <span class="s1">&#39;XCELL&#39;</span><span class="p">,</span> <span class="s1">&#39;YCELL&#39;</span><span class="p">,</span> <span class="s1">&#39;NCOLS&#39;</span><span class="p">,</span>
+    <span class="s1">&#39;NROWS&#39;</span><span class="p">,</span> <span class="s1">&#39;NTHIK&#39;</span>
+<span class="p">]</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">griddesc</span><span class="p">(</span><span class="n">griddesc_txt</span><span class="p">):</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">collections</span><span class="w"> </span><span class="kn">import</span> <span class="n">OrderedDict</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+    <span class="n">gddefns</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="n">prjdefns</span> <span class="o">=</span> <span class="n">OrderedDict</span><span class="p">()</span>
+    <span class="c1"># Clean up GRIDDESC</span>
+    <span class="c1"># Replace commas with spaces</span>
+    <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="n">griddesc_txt</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;,&#39;</span><span class="p">,</span> <span class="s1">&#39; &#39;</span><span class="p">)</span>
+    <span class="c1"># Remove comments prefixed by !</span>
+    <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+        <span class="n">gdl</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;!&#39;</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">gdl</span> <span class="ow">in</span> <span class="n">griddesc_txt</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="p">])</span>
+    <span class="n">dble</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;([\d.])[Dd]([\d])&#39;</span><span class="p">)</span>
+    <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="n">dble</span><span class="o">.</span><span class="n">sub</span><span class="p">(</span><span class="sa">r</span><span class="s1">&#39;\1e\2&#39;</span><span class="p">,</span> <span class="n">griddesc_txt</span><span class="p">)</span>
+    <span class="c1"># lines with &#39; &#39; are separators and blank shouldn&#39;t happen</span>
+    <span class="n">reallines</span> <span class="o">=</span> <span class="p">[</span>
+        <span class="n">_l</span> <span class="k">for</span> <span class="n">_l</span> <span class="ow">in</span> <span class="n">griddesc_txt</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">_l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="s2">&quot;&#39;&#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&#39; &#39;&quot;</span><span class="p">,</span> <span class="s2">&quot;&quot;</span><span class="p">)</span>
+    <span class="p">]</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">defn</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">reallines</span><span class="p">[</span><span class="mi">0</span><span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">:</span><span class="mi">2</span><span class="p">],</span> <span class="n">reallines</span><span class="p">[</span><span class="mi">1</span><span class="p">::</span><span class="mi">2</span><span class="p">]):</span>
+        <span class="n">name</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">name</span><span class="p">)</span>
+        <span class="n">values</span> <span class="o">=</span> <span class="n">defn</span><span class="o">.</span><span class="n">split</span><span class="p">()</span>
+        <span class="k">if</span> <span class="s2">&quot;&#39;&quot;</span> <span class="ow">in</span> <span class="n">defn</span><span class="p">:</span>
+            <span class="n">gddefn</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">_gdattrkeys</span><span class="p">,</span> <span class="n">values</span><span class="p">))</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;PRJNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;PRJNAME&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;GDNAM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;XORIG&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;XORIG&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;YORIG&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;YORIG&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;XCELL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;XCELL&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;YCELL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;YCELL&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NCOLS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NCOLS&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NROWS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NROWS&#39;</span><span class="p">])</span>
+            <span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NTHIK&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">gddefn</span><span class="p">[</span><span class="s1">&#39;NTHIK&#39;</span><span class="p">])</span>
+            <span class="n">gddefns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">gddefn</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">prjdefn</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">_prjattrkeys</span><span class="p">,</span> <span class="n">values</span><span class="p">))</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;PRJNAME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">name</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">])</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_ALP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_ALP&#39;</span><span class="p">])</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_BET&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_BET&#39;</span><span class="p">])</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_GAM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;P_GAM&#39;</span><span class="p">])</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;XCENT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;XCENT&#39;</span><span class="p">])</span>
+            <span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;YCENT&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">prjdefn</span><span class="p">[</span><span class="s1">&#39;YCENT&#39;</span><span class="p">])</span>
+            <span class="n">prjdefns</span><span class="p">[</span><span class="n">name</span><span class="p">]</span> <span class="o">=</span> <span class="n">prjdefn</span>
+    <span class="k">for</span> <span class="n">name</span><span class="p">,</span> <span class="n">defn</span> <span class="ow">in</span> <span class="n">gddefns</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+        <span class="n">defn</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">prjdefns</span><span class="p">[</span><span class="n">defn</span><span class="p">[</span><span class="s1">&#39;PRJNAME&#39;</span><span class="p">]])</span>
+        <span class="k">if</span> <span class="n">name</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;NAQFC_CONUS&#39;</span><span class="p">,</span> <span class="s1">&#39;HRRR3K&#39;</span><span class="p">):</span>
+            <span class="c1"># HRRR/NAQFC earth_radius=6371229. must use</span>
+            <span class="n">defn</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;earth_radius&#39;</span><span class="p">,</span> <span class="mf">6371229.0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">defn</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;earth_radius&#39;</span><span class="p">,</span> <span class="mf">6370000.0</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">gddefns</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">griddesc_from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an xarray Dataset that defines a CMAQ grid using attributes</span>
+<span class="sd">    supplied by the user. A minimum number of attributes is required:</span>
+<span class="sd">    GDTYP, P_ALP, P_BET, P_GAM, XCENT, YCENT</span>
+<span class="sd">    GDNAM, NCOLS, NROWS, XCELL, YCELL, XORIG, YORIG, NTHIK</span>
+
+<span class="sd">    For attribute definitions, see https://www.cmascenter.org/ioapi/</span>
+<span class="sd">    documentation/all_versions/html/GRIDS.html.</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    attrs : dict</span>
+<span class="sd">        IOAPI attritbutes (e.g, attrs=dict(NCOLS=3, NROWS=2, ...))</span>
+<span class="sd">    GDNAM: str</span>
+<span class="sd">        Name of grid as defined in GRIDDESC file</span>
+<span class="sd">    gdpath : str</span>
+<span class="sd">        Path to GRIDDESC file. If None (default), use contents of</span>
+<span class="sd">        default_griddesc_txt instead. default_griddesc_txt can be modified</span>
+<span class="sd">        directly, although that is discouraged.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ---------</span>
+<span class="sd">    gf : xarray.Dataset</span>
+<span class="sd">        File with coordinates based on GDNAM in gdpath</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+    <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">get_proj4string</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="n">outf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span>
+        <span class="n">data_vars</span><span class="o">=</span><span class="nb">dict</span><span class="p">(),</span>
+        <span class="n">coords</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">ROW</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;NROWS&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
+            <span class="n">COL</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;NCOLS&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">,</span>
+        <span class="p">),</span> <span class="n">attrs</span><span class="o">=</span><span class="n">attrs</span>
+    <span class="p">)</span>
+    <span class="k">return</span> <span class="n">outf</span>
+
+
+<div class="viewcode-block" id="open_griddesc">
+<a class="viewcode-back" href="../../api/cmaqsatproc.html#cmaqsatproc.cmaq.open_griddesc">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_griddesc</span><span class="p">(</span><span class="n">GDNAM</span><span class="p">,</span> <span class="n">gdpath</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Create an xarray Dataset that defines a CMAQ grid using GRIDDESC</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    GDNAM: str</span>
+<span class="sd">        Name of grid as defined in GRIDDESC file</span>
+<span class="sd">    gdpath : str</span>
+<span class="sd">        Path to GRIDDESC file. If None (default), use contents of</span>
+<span class="sd">        default_griddesc_txt instead. default_griddesc_txt can be modified</span>
+<span class="sd">        directly, although that is discouraged.</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ---------</span>
+<span class="sd">    gf : xarray.Dataset</span>
+<span class="sd">        File with coordinates based on GDNAM in gdpath</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+    <span class="k">if</span> <span class="n">gdpath</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="n">default_griddesc_txt</span><span class="o">.</span><span class="n">decode</span><span class="p">()</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span><span class="n">gdpath</span><span class="p">):</span>
+            <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="nb">open</span><span class="p">(</span><span class="n">gdpath</span><span class="p">)</span><span class="o">.</span><span class="n">read</span><span class="p">()</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">griddesc_txt</span> <span class="o">=</span> <span class="n">gdpath</span>
+
+    <span class="n">gdattrs</span> <span class="o">=</span> <span class="n">griddesc</span><span class="p">(</span><span class="n">griddesc_txt</span><span class="p">)</span>
+    <span class="n">attrs</span> <span class="o">=</span> <span class="n">gdattrs</span><span class="p">[</span><span class="n">GDNAM</span><span class="p">]</span>
+    <span class="n">outf</span> <span class="o">=</span> <span class="n">griddesc_from_attrs</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">outf</span></div>
+
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">get_proj4string</span><span class="p">(</span><span class="n">attrs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Return a proj4 string from IOAPI attributes supplied by the user.</span>
+
+<span class="sd">    Typical attributes required include:</span>
+<span class="sd">    GDTYP, P_ALP, P_BET, P_GAM, XCENT, YCENT</span>
+<span class="sd">    GDNAM, NCOLS, NROWS, XCELL, YCELL, XORIG, YORIG, NTHIK</span>
+
+<span class="sd">    The file can have earth_radius to explicitly set the radius of the</span>
+<span class="sd">    earth.</span>
+
+<span class="sd">    For attribute definitions, see https://www.cmascenter.org/ioapi/</span>
+<span class="sd">    documentation/all_versions/html/GRIDS.html.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">copy</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">os</span>
+
+    <span class="n">popts</span> <span class="o">=</span> <span class="n">copy</span><span class="o">.</span><span class="n">copy</span><span class="p">(</span><span class="n">attrs</span><span class="p">)</span>
+    <span class="n">ENV_IOAPI_ISPH</span> <span class="o">=</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;IOAPI_ISPH&#39;</span><span class="p">,</span> <span class="s1">&#39;6370000.&#39;</span><span class="p">)</span>
+    <span class="n">er</span> <span class="o">=</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;R&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">popts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;earth_radius&#39;</span><span class="p">,</span> <span class="nb">float</span><span class="p">(</span><span class="n">ENV_IOAPI_ISPH</span><span class="p">))</span>
+    <span class="k">if</span> <span class="n">popts</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;GDNAM&#39;</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">upper</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="s1">&#39;NAQFC_CONUS&#39;</span><span class="p">,</span> <span class="s1">&#39;HRRR3K&#39;</span><span class="p">):</span>
+        <span class="k">if</span> <span class="n">er</span> <span class="o">!=</span> <span class="mf">6371229.0</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Grid expects earth_radius=6371229.0, got </span><span class="si">{</span><span class="n">er</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+    <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;x_0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XORIG&#39;</span><span class="p">]</span>
+    <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;y_0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">-</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YORIG&#39;</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">projtmpl</span> <span class="o">=</span> <span class="s1">&#39;+proj=lonlat +lat_0=</span><span class="si">{YCENT}</span><span class="s1"> +lon_0=</span><span class="si">{XCENT}</span><span class="s1"> +R=</span><span class="si">{R}</span><span class="s1"> +no_defs&#39;</span>
+    <span class="k">elif</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">2</span><span class="p">:</span>
+        <span class="n">projtmpl</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s1">&#39;+proj=lcc +lat_0=</span><span class="si">{YCENT}</span><span class="s1"> +lon_0=</span><span class="si">{P_GAM}</span><span class="s1"> +lat_1=</span><span class="si">{P_ALP}</span><span class="s1">&#39;</span>
+            <span class="o">+</span> <span class="s1">&#39; +lat_2=</span><span class="si">{P_BET}</span><span class="s1"> +x_0=</span><span class="si">{x_0}</span><span class="s1"> +y_0=</span><span class="si">{y_0}</span><span class="s1"> +R=</span><span class="si">{R}</span><span class="s1"> +to_meter=</span><span class="si">{XCELL}</span><span class="s1">&#39;</span>
+            <span class="o">+</span> <span class="s1">&#39; +no_defs&#39;</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+        <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;lat_0&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;P_ALP&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">90</span>
+        <span class="n">projtmpl</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s1">&#39;+proj=stere +lat_0=</span><span class="si">{lat_0}</span><span class="s1"> +lat_ts=</span><span class="si">{P_BET}</span><span class="s1"> +lon_0=</span><span class="si">{P_GAM}</span><span class="s1">&#39;</span>
+            <span class="o">+</span> <span class="s1">&#39; +x_0=</span><span class="si">{x_0}</span><span class="s1"> +y_0=</span><span class="si">{y_0}</span><span class="s1"> +R=</span><span class="si">{R}</span><span class="s1"> +to_meter=</span><span class="si">{XCELL}</span><span class="s1"> +no_defs&#39;</span>
+        <span class="p">)</span>
+    <span class="k">elif</span> <span class="n">popts</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">7</span><span class="p">:</span>
+        <span class="n">projtmpl</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="s1">&#39;+proj=merc +lat_ts=0 +lon_0=</span><span class="si">{XCENT}</span><span class="s1">&#39;</span>
+            <span class="o">+</span> <span class="s1">&#39; +x_0=</span><span class="si">{x_0}</span><span class="s1"> +y_0=</span><span class="si">{y_0}</span><span class="s1"> +R=</span><span class="si">{R}</span><span class="s1"> +to_meter=</span><span class="si">{XCELL}</span><span class="s1"> +no_defs&#39;</span>
+        <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="kc">None</span>
+    <span class="k">return</span> <span class="n">projtmpl</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="o">**</span><span class="n">popts</span><span class="p">)</span>
+
+
+<div class="viewcode-block" id="open_ioapi">
+<a class="viewcode-back" href="../../api/cmaqsatproc.html#cmaqsatproc.cmaq.open_ioapi">[docs]</a>
+<span class="k">def</span><span class="w"> </span><span class="nf">open_ioapi</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Open an IOAPI file in NetCDF format using xarray and construct coordinate</span>
+<span class="sd">    variables. (time based on TFLAG or properties, ROW/COL in projected space,</span>
+<span class="sd">    and LAY based on VGTYP, VGLVLS, and VGTOP)</span>
+
+<span class="sd">    Arguments</span>
+<span class="sd">    ---------</span>
+<span class="sd">    path : str</span>
+<span class="sd">        Path to the IOAPI file in NetCDF format</span>
+<span class="sd">    kwargs : mappable</span>
+<span class="sd">        Passed to xarray.open_dataset as keyword arguments</span>
+
+<span class="sd">    Returns</span>
+<span class="sd">    ---------</span>
+<span class="sd">    qf : xarray.Dataset</span>
+<span class="sd">        File with data and coordinates based on path</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+    <span class="n">qf</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+    <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">add_coords</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+    <span class="k">return</span> <span class="n">qf</span></div>
+
+
+
+<span class="nd">@xr</span><span class="o">.</span><span class="n">register_dataset_accessor</span><span class="p">(</span><span class="s2">&quot;csp&quot;</span><span class="p">)</span>
+<span class="k">class</span><span class="w"> </span><span class="nc">CmaqSatProcAccessor</span><span class="p">:</span>
+    <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">xarray_obj</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span> <span class="o">=</span> <span class="n">xarray_obj</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_coords</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add TSTEP, LAY, ROW, and COL coordinates based file.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+
+        <span class="k">if</span> <span class="n">inplace</span><span class="p">:</span>
+            <span class="n">qf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">qf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="s1">&#39;TFLAG&#39;</span> <span class="ow">in</span> <span class="n">qf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="n">tflag</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">][:,</span> <span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">tflag</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="n">sdate</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;SDATE&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">sdate</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="n">sdate</span> <span class="o">=</span> <span class="mi">1970001</span>
+                <span class="n">tflag</span><span class="p">[:,</span> <span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">sdate</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">([</span>
+                <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">JDATE</span><span class="si">}</span><span class="s1">T</span><span class="si">{</span><span class="n">TIME</span><span class="si">:</span><span class="s1">06d</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;%Y%jT%H%M%S&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">JDATE</span><span class="p">,</span> <span class="n">TIME</span> <span class="ow">in</span> <span class="n">tflag</span>
+            <span class="p">])</span>
+        <span class="k">elif</span> <span class="s1">&#39;TSTEP&#39;</span> <span class="ow">in</span> <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">:</span>
+            <span class="n">tstep</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span>
+            <span class="k">if</span> <span class="n">tstep</span><span class="o">.</span><span class="n">size</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">tstep</span> <span class="o">=</span> <span class="p">[</span><span class="n">tstep</span><span class="p">]</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">datetime</span><span class="p">(</span>
+                    <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">month</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">day</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span><span class="p">,</span> <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">minute</span><span class="p">,</span>
+                    <span class="n">t</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">second</span>
+                <span class="p">)</span> <span class="k">for</span> <span class="n">t</span> <span class="ow">in</span> <span class="n">tstep</span>
+            <span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">SDATE</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">SDATE</span>
+            <span class="k">if</span> <span class="n">SDATE</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">SDATE</span> <span class="o">=</span> <span class="mi">1970001</span>
+            <span class="n">date</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">SDATE</span><span class="si">}</span><span class="s1">T</span><span class="si">{</span><span class="n">qf</span><span class="o">.</span><span class="n">STIME</span><span class="si">:</span><span class="s1">06d</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="s1">&#39;%Y%jT%H%M%S&#39;</span><span class="p">)</span>
+            <span class="n">nt</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span>
+            <span class="n">dm</span> <span class="o">=</span> <span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="mi">10000</span><span class="p">)</span> <span class="o">//</span> <span class="mi">100</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">%</span> <span class="mi">100</span><span class="p">)</span>
+            <span class="n">dh</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">//</span> <span class="mi">10000</span> <span class="o">+</span> <span class="n">dm</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">+</span> <span class="n">ds</span> <span class="o">/</span> <span class="mf">3600.</span>
+            <span class="k">if</span> <span class="n">nt</span> <span class="o">==</span> <span class="mi">1</span> <span class="ow">and</span> <span class="n">dh</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="n">dh</span> <span class="o">=</span> <span class="mi">1</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="n">date</span><span class="p">,</span> <span class="n">periods</span><span class="o">=</span><span class="n">nt</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">dh</span><span class="si">}</span><span class="s1">h&#39;</span><span class="p">)</span>
+
+        <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">times</span>
+        <span class="n">nz</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+        <span class="n">nze</span> <span class="o">=</span> <span class="n">nz</span> <span class="o">+</span> <span class="mi">1</span>
+        <span class="n">vglvls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nze</span><span class="p">)</span>
+        <span class="n">vglvls</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;VGLVLS&#39;</span><span class="p">,</span> <span class="n">vglvls</span><span class="p">)</span>
+        <span class="c1"># CAMx files have VGLVLS == 0</span>
+        <span class="k">if</span> <span class="n">np</span><span class="o">.</span><span class="n">allclose</span><span class="p">(</span><span class="n">vglvls</span><span class="p">,</span> <span class="mi">0</span><span class="p">):</span>
+            <span class="n">vglvls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mf">.5</span><span class="p">,</span> <span class="n">vglvls</span><span class="o">.</span><span class="n">size</span><span class="p">)</span>
+        <span class="c1"># CAMx files sometimes have VGLVLS = [0] even with NZ &gt; 0</span>
+        <span class="k">if</span> <span class="n">vglvls</span><span class="o">.</span><span class="n">size</span> <span class="o">!=</span> <span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">&#39;LAY&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="mi">1</span><span class="p">):</span>
+            <span class="n">vglvls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">nze</span><span class="p">)</span>
+        <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;LAY&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">vglvls</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">+</span> <span class="n">vglvls</span><span class="p">[:</span><span class="o">-</span><span class="mi">1</span><span class="p">])</span> <span class="o">/</span> <span class="mi">2</span>
+
+        <span class="n">crs</span> <span class="o">=</span> <span class="n">get_proj4string</span><span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">crs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">((</span>
+                <span class="s1">&#39;Unknown project (</span><span class="si">{GDTYP}</span><span class="s1">); currently support lonlat (1),&#39;</span>
+                <span class="o">+</span> <span class="s1">&#39; lcc (2), polar stereograpic (6), equatorial mercator (7)&#39;</span>
+            <span class="p">)</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">GDTYP</span><span class="o">=</span><span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]))</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">crs</span>
+            <span class="n">row</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="mf">0.5</span>
+            <span class="n">col</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">qf</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">])</span> <span class="o">+</span> <span class="mf">0.5</span>
+            <span class="k">if</span> <span class="n">qf</span><span class="o">.</span><span class="n">GDTYP</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">row</span> <span class="o">=</span> <span class="n">row</span> <span class="o">*</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YCELL&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YORIG&#39;</span><span class="p">]</span>
+                <span class="n">col</span> <span class="o">=</span> <span class="n">col</span> <span class="o">*</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XCELL&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">qf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XORIG&#39;</span><span class="p">]</span>
+            <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">row</span>
+            <span class="n">qf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">col</span>
+
+        <span class="k">return</span> <span class="n">qf</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_ioapi</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">reset_index</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Infer standard IOAPI properties (including TFLAG) as possible.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+        <span class="n">now</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">to_datetime</span><span class="p">(</span><span class="s1">&#39;now&#39;</span><span class="p">)</span>
+        <span class="n">jnow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%Y%j&#39;</span><span class="p">))</span>
+        <span class="n">tnow</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">now</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H%M%S&#39;</span><span class="p">))</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+        <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">outf</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">k</span> <span class="o">==</span> <span class="s1">&#39;TFLAG&#39;</span><span class="p">:</span>
+                <span class="k">continue</span>
+            <span class="n">outvar</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="n">k</span><span class="p">]</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="n">outvar</span><span class="o">.</span><span class="n">dims</span>
+            <span class="k">if</span> <span class="s1">&#39;LAY&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dims</span><span class="p">:</span>
+                <span class="n">outvar</span> <span class="o">=</span> <span class="n">outvar</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">LAY</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;TSTEP&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">dims</span><span class="p">:</span>
+                <span class="n">outvar</span> <span class="o">=</span> <span class="n">outvar</span><span class="o">.</span><span class="n">expand_dims</span><span class="p">(</span><span class="n">TSTEP</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="n">outf</span><span class="p">[</span><span class="n">k</span><span class="p">]</span> <span class="o">=</span> <span class="n">outvar</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">)</span>
+            <span class="n">defattrs</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span>
+                <span class="n">units</span><span class="o">=</span><span class="s1">&#39;unknown&#39;</span><span class="p">,</span> <span class="n">long_name</span><span class="o">=</span><span class="n">k</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span> <span class="n">var_desc</span><span class="o">=</span><span class="n">k</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">defattrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">outf</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">outf</span><span class="p">[</span><span class="n">k</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">defattrs</span><span class="p">)</span>
+
+        <span class="n">outkeys</span> <span class="o">=</span> <span class="p">[</span><span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">outf</span><span class="o">.</span><span class="n">data_vars</span> <span class="k">if</span> <span class="n">k</span> <span class="o">!=</span> <span class="s1">&#39;TFLAG&#39;</span><span class="p">]</span>
+        <span class="n">nv</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">outkeys</span><span class="p">))</span>
+
+        <span class="n">nl</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">outf</span><span class="o">.</span><span class="n">sizes</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">))</span>
+        <span class="n">vglvls</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">nl</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="s1">&#39;f&#39;</span><span class="p">)[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+        <span class="n">vgtyp</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="o">-</span><span class="mi">9999</span><span class="p">)</span>
+        <span class="n">vgtop</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">(</span><span class="mi">5000</span><span class="p">)</span>
+        <span class="n">sdate</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="o">-</span><span class="mi">635</span><span class="p">)</span>
+
+        <span class="n">defattrs</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;EXEC_ID&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span> <span class="s1">&#39;IOAPI_VERSION&#39;</span><span class="p">:</span> <span class="s1">&#39;NA&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span>
+            <span class="s1">&#39;UPNAM&#39;</span><span class="p">:</span> <span class="s1">&#39;cmaqsatproc     &#39;</span><span class="p">,</span> <span class="s1">&#39;FTYPE&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span> <span class="s1">&#39;NLAYS&#39;</span><span class="p">:</span> <span class="n">nl</span><span class="p">,</span>
+            <span class="s1">&#39;VGTOP&#39;</span><span class="p">:</span> <span class="n">vgtop</span><span class="p">,</span> <span class="s1">&#39;VGLVLS&#39;</span><span class="p">:</span> <span class="n">vglvls</span><span class="p">,</span> <span class="s1">&#39;VGTYP&#39;</span><span class="p">:</span> <span class="n">vgtyp</span><span class="p">,</span>
+            <span class="s1">&#39;WDATE&#39;</span><span class="p">:</span> <span class="n">jnow</span><span class="p">,</span> <span class="s1">&#39;CDATE&#39;</span><span class="p">:</span> <span class="n">jnow</span><span class="p">,</span> <span class="s1">&#39;WTIME&#39;</span><span class="p">:</span> <span class="n">tnow</span><span class="p">,</span> <span class="s1">&#39;CTIME&#39;</span><span class="p">:</span> <span class="n">tnow</span><span class="p">,</span>
+            <span class="s1">&#39;SDATE&#39;</span><span class="p">:</span> <span class="n">sdate</span><span class="p">,</span> <span class="s1">&#39;STIME&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="s1">&#39;TSTEP&#39;</span><span class="p">:</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span>
+            <span class="s1">&#39;NVARS&#39;</span><span class="p">:</span> <span class="n">nv</span><span class="p">,</span> <span class="s1">&#39;VAR-LIST&#39;</span><span class="p">:</span> <span class="s1">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="n">k</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="n">outkeys</span><span class="p">]),</span>
+            <span class="s1">&#39;FILEDESC&#39;</span><span class="p">:</span> <span class="s1">&#39;Unknown&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span>
+            <span class="s1">&#39;HISTORY&#39;</span><span class="p">:</span> <span class="sa">f</span><span class="s1">&#39;Created </span><span class="si">{</span><span class="n">now</span><span class="si">:</span><span class="s1">%Y-%m-%dT%H:%M:%S</span><span class="si">}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span>
+        <span class="p">}</span>
+
+        <span class="c1"># Overwrite any pre-existing values</span>
+        <span class="n">defattrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">defattrs</span><span class="p">)</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">add_coords</span><span class="p">(</span><span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;TFLAG&#39;</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="n">tflag</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">]</span>
+            <span class="n">tstep</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">jday</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">outf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span> <span class="o">*</span> <span class="mi">1000</span>
+                <span class="o">+</span> <span class="n">outf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">dayofyear</span>
+            <span class="p">)</span>
+            <span class="n">time</span> <span class="o">=</span> <span class="n">outf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H%M%S&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">)</span>
+            <span class="n">tflag</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">jday</span><span class="p">,</span> <span class="n">time</span><span class="p">])</span><span class="o">.</span><span class="n">T</span><span class="p">[:,</span> <span class="kc">None</span><span class="p">,</span> <span class="p">:]</span><span class="o">.</span><span class="n">repeat</span><span class="p">(</span><span class="n">nv</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="n">tflag</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">tflag</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="s1">&#39;VAR&#39;</span><span class="p">,</span> <span class="s1">&#39;DATE-TIME&#39;</span><span class="p">,),</span>
+                <span class="n">attrs</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span>
+                    <span class="n">units</span><span class="o">=</span><span class="s1">&#39;&lt;YYYYJJJ,HHMMSS&gt;&#39;</span><span class="p">,</span> <span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;TFLAG&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+                    <span class="n">var_desc</span><span class="o">=</span><span class="s1">&#39;TFLAG&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span>
+                <span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="n">outf</span><span class="o">.</span><span class="n">sizes</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">dt</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="n">outf</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">])</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;l&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="mf">1e9</span>
+                <span class="n">dth</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">//</span> <span class="mi">3600</span>
+                <span class="n">dtm</span> <span class="o">=</span> <span class="p">(</span><span class="n">dt</span> <span class="o">%</span> <span class="mi">3600</span><span class="p">)</span> <span class="o">//</span> <span class="mi">60</span>
+                <span class="n">dts</span> <span class="o">=</span> <span class="n">dt</span> <span class="o">%</span> <span class="mi">60</span>
+                <span class="n">tstep</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">dth</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}{</span><span class="n">dtm</span><span class="si">:</span><span class="s1">02.0f</span><span class="si">}{</span><span class="n">dts</span><span class="si">:</span><span class="s1">02.0f</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">tstep</span> <span class="o">=</span> <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+
+        <span class="n">outf</span><span class="p">[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">tflag</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;SDATE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">outf</span><span class="p">[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">])</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;STIME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">outf</span><span class="p">[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">][</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">(</span><span class="n">tstep</span><span class="p">)</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;WDATE&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defattrs</span><span class="p">[</span><span class="s1">&#39;WDATE&#39;</span><span class="p">]</span>
+        <span class="n">outf</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;WTIME&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">defattrs</span><span class="p">[</span><span class="s1">&#39;WTIME&#39;</span><span class="p">]</span>
+        <span class="n">outf</span> <span class="o">=</span> <span class="n">outf</span><span class="p">[[</span><span class="s1">&#39;TFLAG&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">outkeys</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">reset_index</span><span class="p">:</span>
+            <span class="n">outf</span> <span class="o">=</span> <span class="n">outf</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span>
+                <span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">],</span> <span class="n">drop</span><span class="o">=</span><span class="n">drop</span>
+            <span class="p">)</span>
+        <span class="k">return</span> <span class="n">outf</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">proj4string</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_proj4string&#39;</span><span class="p">):</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_proj4string</span> <span class="o">=</span> <span class="n">get_proj4string</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proj4string</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">proj</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_proj&#39;</span><span class="p">):</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">pyproj</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_proj</span> <span class="o">=</span> <span class="n">pyproj</span><span class="o">.</span><span class="n">Proj</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">proj4string</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_proj</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cno</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_cno&#39;</span><span class="p">):</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">pycno</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_cno</span> <span class="o">=</span> <span class="n">pycno</span><span class="o">.</span><span class="n">cno</span><span class="p">(</span><span class="n">proj</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">)</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_cno</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">geodf</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_geodf&#39;</span><span class="p">):</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">shapely</span><span class="w"> </span><span class="kn">import</span> <span class="n">polygons</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="k">if</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">ys</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YORIG&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">rows</span> <span class="o">*</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YCELL&#39;</span><span class="p">]</span>
+                <span class="n">xs</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XORIG&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">cols</span> <span class="o">*</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XCELL&#39;</span><span class="p">]</span>
+                <span class="n">dx</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;XCELL&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+                <span class="n">dy</span> <span class="o">=</span> <span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;YCELL&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">2</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">ys</span> <span class="o">=</span> <span class="n">rows</span>
+                <span class="n">xs</span> <span class="o">=</span> <span class="n">cols</span>
+                <span class="n">dy</span> <span class="o">=</span> <span class="n">dx</span> <span class="o">=</span> <span class="mf">0.5</span>
+            <span class="n">midx</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_product</span><span class="p">([</span><span class="n">rows</span><span class="p">,</span> <span class="n">cols</span><span class="p">])</span>
+            <span class="n">midx</span><span class="o">.</span><span class="n">names</span> <span class="o">=</span> <span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span>
+
+            <span class="c1"># polygons is substatially faster than iterative boxes</span>
+            <span class="n">XS</span><span class="p">,</span> <span class="n">YS</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">xs</span><span class="p">,</span> <span class="n">ys</span><span class="p">)</span>
+            <span class="c1"># counter-clock-wise order and orientation of shpaley.box</span>
+            <span class="c1"># [(maxx, miny), (maxx, maxy), (minx, maxy), (minx, miny)]</span>
+            <span class="c1"># largely to make tests.test_cmaq.test_cmaqgrid_geodf pass</span>
+            <span class="n">dx</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">dx</span><span class="p">,</span> <span class="n">dx</span><span class="p">,</span> <span class="o">-</span><span class="n">dx</span><span class="p">,</span> <span class="o">-</span><span class="n">dx</span><span class="p">])</span>
+            <span class="n">dy</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="o">-</span><span class="n">dy</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="n">dy</span><span class="p">,</span> <span class="o">-</span><span class="n">dy</span><span class="p">])</span>
+            <span class="n">XS</span> <span class="o">=</span> <span class="n">XS</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">dx</span>
+            <span class="n">YS</span> <span class="o">=</span> <span class="n">YS</span><span class="o">.</span><span class="n">ravel</span><span class="p">()[:,</span> <span class="kc">None</span><span class="p">]</span> <span class="o">+</span> <span class="n">dy</span>
+            <span class="c1"># npoints, 4-corners, x-y</span>
+            <span class="n">coords</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">stack</span><span class="p">([</span><span class="n">XS</span><span class="p">,</span> <span class="n">YS</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+            <span class="n">geoms</span> <span class="o">=</span> <span class="n">polygons</span><span class="p">(</span><span class="n">coords</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">_geodf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
+                <span class="n">geometry</span><span class="o">=</span><span class="n">geoms</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">midx</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">proj4string</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geodf</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">exterior</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Exterior polygon using row/col exterior points. This is archived</span>
+<span class="sd">        from the dataframe once for efficiency.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_bbox&#39;</span><span class="p">):</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">shapely.geometry</span><span class="w"> </span><span class="kn">import</span> <span class="n">Polygon</span>
+
+            <span class="n">nr</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;NROWS&#39;</span><span class="p">]</span>
+            <span class="n">nc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;NCOLS&#39;</span><span class="p">]</span>
+            <span class="n">rowc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">colc</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+            <span class="n">rows</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rowc</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">rowc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">cols</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">colc</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">colc</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">+</span> <span class="mf">0.5</span><span class="p">)</span>
+            <span class="n">se</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">cols</span><span class="p">,</span> <span class="n">cols</span> <span class="o">*</span> <span class="mi">0</span><span class="p">])</span>
+            <span class="n">ee</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">rows</span> <span class="o">*</span> <span class="mi">0</span> <span class="o">+</span> <span class="n">nc</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">rows</span><span class="p">])</span>
+            <span class="n">ne</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">cols</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span> <span class="n">cols</span> <span class="o">*</span> <span class="mi">0</span> <span class="o">+</span> <span class="n">nr</span> <span class="o">+</span> <span class="mi">1</span><span class="p">])</span>
+            <span class="n">we</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="n">rows</span> <span class="o">*</span> <span class="mi">0</span><span class="p">,</span> <span class="n">rows</span><span class="p">[::</span><span class="o">-</span><span class="mi">1</span><span class="p">]])</span>
+            <span class="n">points</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">se</span><span class="p">,</span> <span class="n">ee</span><span class="p">,</span> <span class="n">ne</span><span class="p">,</span> <span class="n">we</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
+                <span class="n">geometry</span><span class="o">=</span><span class="p">[</span><span class="n">Polygon</span><span class="p">(</span><span class="n">points</span><span class="o">.</span><span class="n">T</span><span class="p">)],</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">proj4string</span>
+            <span class="p">)</span>
+
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_bbox</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">bbox</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">crs</span><span class="o">=</span><span class="mi">4326</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        crs : scalar</span>
+<span class="sd">            Coordinate reference system accepted by geopandas.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        (swlon, swlat, nelon, nelat)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+        <span class="n">g</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">exterior</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">crs</span><span class="p">)</span>
+        <span class="n">ge</span> <span class="o">=</span> <span class="n">g</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">iloc</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">envelope</span><span class="o">.</span><span class="n">exterior</span>
+        <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="n">ge</span><span class="o">.</span><span class="n">xy</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">min</span><span class="p">(</span><span class="n">ge</span><span class="o">.</span><span class="n">xy</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">if</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;GDTYP&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">6</span><span class="p">:</span>
+            <span class="n">nelat</span> <span class="o">=</span> <span class="mi">90</span>
+            <span class="n">swlon</span> <span class="o">=</span> <span class="o">-</span><span class="mi">180</span>
+            <span class="n">nelon</span> <span class="o">=</span> <span class="mi">180</span>
+        <span class="k">return</span> <span class="p">(</span><span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_tz</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the timezone.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            Currently only supports &#39;longitude&#39;, but more to come.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        tz : xr.DataArray</span>
+<span class="sd">            time zone as decimal hours since 0Z</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">!=</span> <span class="s1">&#39;longitude&#39;</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;only longitude is supported at this time&#39;</span><span class="p">)</span>
+        <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lonlat</span><span class="p">()</span>
+        <span class="n">tz</span> <span class="o">=</span> <span class="n">lon</span> <span class="o">/</span> <span class="mi">15</span>
+        <span class="n">tz</span><span class="o">.</span><span class="n">name</span> <span class="o">=</span> <span class="s1">&#39;utcoffset&#39;</span>
+        <span class="k">return</span> <span class="n">tz</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_lonlat</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;centroid&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Return the xarray.DataArrays for longitude and latitude.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        how : str</span>
+<span class="sd">            Currently supports centroid, upper_left, upper_right, lower_left,</span>
+<span class="sd">            and lower_right</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lon, lat : xr.DataArray</span>
+<span class="sd">            time zone as decimal hours since 0Z</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">_opts</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="s1">&#39;centroid&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;upper_left&#39;</span><span class="p">,</span> <span class="s1">&#39;upper_right&#39;</span><span class="p">,</span> <span class="s1">&#39;lower_left&#39;</span><span class="p">,</span> <span class="s1">&#39;lower_right&#39;</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">how</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">_opts</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;only </span><span class="si">{</span><span class="n">_opts</span><span class="si">}</span><span class="s1"> are supported at this time&#39;</span><span class="p">)</span>
+        <span class="n">x</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">y</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span>
+        <span class="k">if</span> <span class="n">how</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;upper&#39;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="mf">0.5</span>
+        <span class="k">elif</span> <span class="n">how</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;lower&#39;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="mf">0.5</span>
+        <span class="k">if</span> <span class="n">how</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;right&#39;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">+</span> <span class="mf">0.5</span>
+        <span class="k">elif</span> <span class="n">how</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;left&#39;</span><span class="p">):</span>
+            <span class="n">y</span> <span class="o">=</span> <span class="n">y</span> <span class="o">-</span> <span class="mf">0.5</span>
+        <span class="n">X</span><span class="p">,</span> <span class="n">Y</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">meshgrid</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="n">y</span><span class="p">)</span>
+        <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">X</span><span class="p">,</span> <span class="n">Y</span><span class="p">,</span> <span class="n">inverse</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">lon</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">lon</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lon&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">))</span>
+        <span class="n">lon</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees_east&#39;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">how</span>
+        <span class="p">)</span>
+        <span class="n">lat</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">lat</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;lat&#39;</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">))</span>
+        <span class="n">lat</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;latitude&#39;</span><span class="p">,</span> <span class="n">units</span><span class="o">=</span><span class="s1">&#39;degrees_north&#39;</span><span class="p">,</span> <span class="n">description</span><span class="o">=</span><span class="n">how</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">lon</span><span class="p">,</span> <span class="n">lat</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">as_grid</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert self ROW/COL coordinates from self to ROW/COL coordinates</span>
+<span class="sd">        from other. This requires that they be a consistent GDTYP with the</span>
+<span class="sd">        same P_ALP, P_BET, P_GAM, XCENT, YCENT parameters. Very useful for</span>
+<span class="sd">        plotting on the same grid. Note that XCELL and YCELL will be updated</span>
+<span class="sd">        to the target grid.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        other : xarray.Dataset</span>
+<span class="sd">            Must be a CMAQ-like object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : xarray.Dataset</span>
+<span class="sd">            Dataset with CMAQ grid properties from other and data values from</span>
+<span class="sd">            self object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_prjattrkeys</span><span class="p">:</span>
+            <span class="k">assert</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">==</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+
+        <span class="n">me</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">me</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">me</span><span class="o">.</span><span class="n">XCELL</span> <span class="o">+</span> <span class="n">me</span><span class="o">.</span><span class="n">XORIG</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">XORIG</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="n">other</span><span class="o">.</span><span class="n">XCELL</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">me</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">me</span><span class="o">.</span><span class="n">YCELL</span> <span class="o">+</span> <span class="n">me</span><span class="o">.</span><span class="n">YORIG</span> <span class="o">-</span> <span class="n">other</span><span class="o">.</span><span class="n">YORIG</span>
+        <span class="p">)</span> <span class="o">/</span> <span class="n">other</span><span class="o">.</span><span class="n">YCELL</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_gdattrkeys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s1">&#39;crs&#39;</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span>
+
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">sample_at</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">other</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;nearest&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create an object like other with contents of this object.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        other : xarray.Dataset</span>
+<span class="sd">            Must be a CMAQ-like object.</span>
+<span class="sd">        method : str</span>
+<span class="sd">            Passed to sel method of self object.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : xarray.Dataset</span>
+<span class="sd">            Dataset with CMAQ grid properties from other and data values from</span>
+<span class="sd">            self object.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">olon</span><span class="p">,</span> <span class="n">olat</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">get_lonlat</span><span class="p">()</span>
+        <span class="n">oX</span><span class="p">,</span> <span class="n">oY</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">proj</span><span class="p">(</span><span class="n">olon</span><span class="p">,</span> <span class="n">olat</span><span class="p">)</span>
+        <span class="n">cidx</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">oX</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">))</span>
+        <span class="n">ridx</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span><span class="n">oY</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">))</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">ROW</span><span class="o">=</span><span class="n">ridx</span><span class="p">,</span> <span class="n">COL</span><span class="o">=</span><span class="n">cidx</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="p">[</span><span class="s1">&#39;ROW&#39;</span><span class="p">]</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="p">[</span><span class="s1">&#39;COL&#39;</span><span class="p">]</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">_gdattrkeys</span> <span class="o">+</span> <span class="n">_prjattrkeys</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+                <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="s1">&#39;crs&#39;</span> <span class="ow">in</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">:</span>
+            <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">other</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">out</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">get_lst</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate LST from times in UTC using method.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        times : array-like</span>
+<span class="sd">            Times in UTC, otherwise, times will be read from TSTEP coordinate</span>
+<span class="sd">            variable.</span>
+<span class="sd">        method : str</span>
+<span class="sd">            Method supported by get_tz</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lst_hour : xr.DataArray</span>
+<span class="sd">            Times in hours using LST offset from UTC.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="k">if</span> <span class="n">times</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span>
+
+        <span class="n">tz</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_tz</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">times</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">):</span>
+            <span class="n">utc_hour</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">times</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">hour</span> <span class="o">+</span> <span class="n">times</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">minute</span> <span class="o">/</span> <span class="mf">60.</span> <span class="o">+</span> <span class="n">times</span><span class="o">.</span><span class="n">dt</span><span class="o">.</span><span class="n">second</span> <span class="o">/</span> <span class="mf">3600.</span>
+            <span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">utc_hour</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span>
+                <span class="n">time</span><span class="o">.</span><span class="n">hour</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">minute</span> <span class="o">/</span> <span class="mi">60</span> <span class="o">+</span> <span class="n">time</span><span class="o">.</span><span class="n">second</span> <span class="o">/</span> <span class="mi">3600</span>
+                <span class="k">for</span> <span class="n">time</span> <span class="ow">in</span> <span class="n">times</span>
+            <span class="p">])</span>
+        <span class="n">utc_hour</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">utc_hour</span><span class="p">,</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="n">lst_hour</span> <span class="o">=</span> <span class="p">(</span><span class="n">tz</span> <span class="o">+</span> <span class="n">utc_hour</span><span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">)</span> <span class="o">%</span> <span class="mi">24</span>
+        <span class="k">return</span> <span class="n">lst_hour</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">is_overpass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">times</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span> <span class="n">satellite</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Identify if times UTC are consistent with an overpass of satellite.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        times : array-like</span>
+<span class="sd">            Times in UTC, otherwise, times will be read from TSTEP coordinate</span>
+<span class="sd">            variable.</span>
+<span class="sd">        method : str</span>
+<span class="sd">            Method supported by get_tz</span>
+<span class="sd">        satellite : None or str or dict</span>
+<span class="sd">            If None, then all satellites in known_overpasstimes are processed.</span>
+<span class="sd">            If str, the one satellite in known_overpasstimes is processed.</span>
+<span class="sd">            If dict, then keys are satellites and values are overpass times.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        lst_hour : xr.DataArray</span>
+<span class="sd">            Times in hours using LST offset from UTC.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">LST</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">get_lst</span><span class="p">(</span><span class="n">times</span><span class="o">=</span><span class="n">times</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">satellite</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="c1"># Overpass in UTC space</span>
+            <span class="n">overpasstimes</span> <span class="o">=</span> <span class="n">known_overpasstimes</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">satellite</span><span class="p">,</span> <span class="nb">dict</span><span class="p">):</span>
+                <span class="n">overpasstimes</span> <span class="o">=</span> <span class="n">satellite</span>
+            <span class="k">elif</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">satellite</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                <span class="n">overpasstimes</span> <span class="o">=</span> <span class="p">{</span><span class="n">satellite</span><span class="p">:</span> <span class="n">known_overpasstimes</span><span class="p">[</span><span class="n">satellite</span><span class="p">]}</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">st</span> <span class="o">=</span> <span class="nb">type</span><span class="p">(</span><span class="n">satellite</span><span class="p">)</span>
+                <span class="n">msg</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;satellite must be dict, int, float, or str; got </span><span class="si">{</span><span class="n">st</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="k">raise</span> <span class="ne">TypeError</span><span class="p">(</span><span class="n">msg</span><span class="p">)</span>
+        <span class="n">isoverpass</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="n">key</span><span class="p">:</span> <span class="p">((</span><span class="n">LST</span> <span class="o">&gt;=</span> <span class="p">(</span><span class="n">midh</span> <span class="o">-</span> <span class="mi">1</span><span class="p">))</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">LST</span> <span class="o">&lt;=</span> <span class="p">(</span><span class="n">midh</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)))</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">midh</span> <span class="ow">in</span> <span class="n">overpasstimes</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+        <span class="p">}</span>
+        <span class="k">return</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">isoverpass</span><span class="p">)</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">mean_overpass</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">satellite</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;longitude&#39;</span><span class="p">,</span> <span class="n">times</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        satellite: str</span>
+<span class="sd">            Satellite to use as overpass</span>
+<span class="sd">        method: str</span>
+<span class="sd">            Method for converting UTC times to LST</span>
+<span class="sd">        times: None or array-like</span>
+<span class="sd">            Times in UTC</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ovpf : xr.Dataset</span>
+<span class="sd">            Average of all data at times within 1 hour plus or minus of the</span>
+<span class="sd">            overpass time.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">inputf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span>
+        <span class="n">isoverpass</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">is_overpass</span><span class="p">(</span>
+            <span class="n">times</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="n">satellite</span><span class="o">=</span><span class="n">satellite</span>
+        <span class="p">)[</span><span class="n">satellite</span><span class="p">]</span>
+        <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">key</span> <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">inputf</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+            <span class="k">if</span> <span class="n">var</span><span class="o">.</span><span class="n">dims</span> <span class="o">==</span> <span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">,</span> <span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="s1">&#39;ROW&#39;</span><span class="p">,</span> <span class="s1">&#39;COL&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">inputf</span><span class="p">,</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">):</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">inputf</span><span class="p">[</span><span class="n">keys</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">isoverpass</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span><span class="p">:</span>
+                <span class="n">output</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">inputf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">output</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">inputf</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">output</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">({</span>
+                <span class="n">key</span><span class="p">:</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                    <span class="n">var</span><span class="p">,</span> <span class="n">dims</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">dimensions</span><span class="p">,</span> <span class="n">attrs</span><span class="o">=</span><span class="n">var</span><span class="o">.</span><span class="n">getncatts</span><span class="p">()</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">isoverpass</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">inputf</span><span class="o">.</span><span class="n">variables</span><span class="o">.</span><span class="n">items</span><span class="p">()</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">keys</span>
+            <span class="p">})</span>
+            <span class="n">output</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">inputf</span><span class="o">.</span><span class="n">getncatts</span><span class="p">())</span>
+        <span class="n">output</span><span class="o">.</span><span class="n">coords</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">inputf</span><span class="p">[</span><span class="s1">&#39;TSTEP&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">TSTEP</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">output</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">mole_per_m2</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metf</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">add</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        metf : xr.Dataset</span>
+<span class="sd">            File must have layer top heights and dry-density (preferred) or</span>
+<span class="sd">            both pressure and temperature. If using pressure/temperature,</span>
+<span class="sd">            specific humidity is optionally used to correct density to dry</span>
+<span class="sd">            density. See notes for supported variable names and units.</span>
+<span class="sd">        add : bool</span>
+<span class="sd">            If True, add MOL_PER_M2 as a variable to self.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        MOL_PER_M2 : xr.DataArray</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        CMAQ and CAMx variable names are supported, and units are assumed to be</span>
+<span class="sd">        consistent with the data source. Variable names and assumed units in</span>
+<span class="sd">        parentheses below:</span>
+<span class="sd">        - layer top heights: ZF (m), z (m)</span>
+<span class="sd">        - dry-density: DENS (kg/m3)</span>
+<span class="sd">        - pressure: PRES (Pa), pressure (mb)</span>
+<span class="sd">        - temperature: TEMP (K), temperature (K)</span>
+<span class="sd">        - specific humidity: Q (g-h2o/kg-air), humidity (ppm)&#39;</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+        <span class="c1"># copied from https://github.com/USEPA/CMAQ/blob/main/</span>
+        <span class="c1"># CCTM/src/ICL/fixed/const/CONST.EXT</span>
+        <span class="n">R</span> <span class="o">=</span> <span class="mf">8.314459848</span>
+        <span class="n">MWAIR</span> <span class="o">=</span> <span class="mf">0.0289628</span>
+        <span class="n">MWH2O</span> <span class="o">=</span> <span class="mf">0.01801528</span>
+
+        <span class="k">if</span> <span class="n">metf</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">metf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span>
+        <span class="n">kerr</span> <span class="o">=</span> <span class="ne">KeyError</span><span class="p">(</span>
+            <span class="s1">&#39;File must have layer heights and dry-density or both pressure&#39;</span>
+            <span class="s1">&#39; and temperature. See doc string for acceptable variable names&#39;</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;ZF&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="n">ZF</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;ZF&#39;</span><span class="p">]</span>
+        <span class="k">elif</span> <span class="s1">&#39;z&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="n">ZF</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;z&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="n">kerr</span>
+
+        <span class="c1"># Layer 1 and the difference above it.</span>
+        <span class="n">DZ</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">concat</span><span class="p">([</span>
+            <span class="n">ZF</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">LAY</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="mi">1</span><span class="p">)),</span> <span class="n">ZF</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">n</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="p">],</span> <span class="n">dim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span>
+        <span class="n">DZ</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ZF</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">DZ</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;long_name&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;DZ&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+        <span class="n">DZ</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;var_desc&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;diff(ZF)&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="s1">&#39;DENS&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+            <span class="c1"># dens is dry-density</span>
+            <span class="n">MOL_PER_M2</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;DENS&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">MWAIR</span> <span class="o">*</span> <span class="n">DZ</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># use temp/pres to calculate density and, if available,</span>
+            <span class="c1"># specific humidity to correct to dry-density</span>
+            <span class="k">if</span> <span class="p">(</span>
+                <span class="s1">&#39;PRES&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span> <span class="ow">and</span> <span class="s1">&#39;TEMP&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span>
+            <span class="p">):</span>
+                <span class="n">P</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">]</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;TEMP&#39;</span><span class="p">]</span>
+            <span class="k">elif</span> <span class="p">(</span>
+                <span class="s1">&#39;pressure&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span>
+                <span class="ow">and</span> <span class="s1">&#39;temperature&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span>
+            <span class="p">):</span>
+                <span class="n">P</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;pressure&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">100.</span>
+                <span class="n">T</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;temperature&#39;</span><span class="p">]</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="n">kerr</span>
+
+            <span class="k">if</span> <span class="s1">&#39;Q&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                <span class="c1"># Q = gH2O/kgAir</span>
+                <span class="n">MOLH2O_PER_MOLAIR</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;Q&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mi">1000</span> <span class="o">/</span> <span class="n">MWH2O</span> <span class="o">*</span> <span class="n">MWAIR</span>
+            <span class="k">elif</span> <span class="s1">&#39;humidity&#39;</span> <span class="ow">in</span> <span class="n">metf</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                <span class="c1"># Q = ppm</span>
+                <span class="n">MOLH2O_PER_MOLAIR</span> <span class="o">=</span> <span class="n">metf</span><span class="p">[</span><span class="s1">&#39;humidity&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-6</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Using wet mole density&#39;</span><span class="p">)</span>
+                <span class="n">MOLH2O_PER_MOLAIR</span> <span class="o">=</span> <span class="mi">0</span>
+
+            <span class="n">MOL_PER_M2</span> <span class="o">=</span> <span class="n">P</span> <span class="o">/</span> <span class="n">R</span> <span class="o">/</span> <span class="n">T</span> <span class="o">*</span> <span class="n">DZ</span> <span class="o">*</span> <span class="p">(</span><span class="mi">1</span> <span class="o">-</span> <span class="n">MOLH2O_PER_MOLAIR</span><span class="p">)</span>
+
+        <span class="n">MOL_PER_M2</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="nb">dict</span><span class="p">(</span>
+            <span class="n">long_name</span><span class="o">=</span><span class="s1">&#39;MOL_PER_M2&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">),</span>
+            <span class="n">var_desc</span><span class="o">=</span><span class="s1">&#39;air areal density&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">80</span><span class="p">),</span>
+            <span class="n">units</span><span class="o">=</span><span class="s1">&#39;mole/m**2&#39;</span><span class="o">.</span><span class="n">ljust</span><span class="p">(</span><span class="mi">16</span><span class="p">)</span>
+        <span class="p">))</span>
+        <span class="k">if</span> <span class="n">add</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="s1">&#39;MOL_PER_M2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">MOL_PER_M2</span>
+
+        <span class="k">return</span> <span class="n">MOL_PER_M2</span>
+
+    <span class="k">def</span><span class="w"> </span><span class="nf">apply_ak</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">key</span><span class="p">,</span> <span class="n">ak</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Apply averaging kernel to variable identified by key.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Variable key to apply averaging kernel to.</span>
+<span class="sd">        ak : xr.DataArray</span>
+<span class="sd">            Averaging kernel.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        out : xr.DataArray</span>
+<span class="sd">            Output of KEY * AK).sum(LAY)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">pcd</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_obj</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="n">validak</span> <span class="o">=</span> <span class="o">~</span><span class="n">ak</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span>
+        <span class="n">validcell</span> <span class="o">=</span> <span class="n">validak</span><span class="o">.</span><span class="n">any</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span>
+        <span class="n">out</span> <span class="o">=</span> <span class="p">(</span><span class="n">pcd</span> <span class="o">*</span> <span class="n">ak</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">validcell</span><span class="p">)</span>
+        <span class="n">out</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">pcd</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">out</span>
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../index.html">Documentation overview</a><ul>
+  <li><a href="../index.html">Module code</a><ul>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

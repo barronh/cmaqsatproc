@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>TropOMI/CMAQ L3 &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="VIIRS L3 Local Disk" href="ex4_viirs_local.html" />
+    <link rel="prev" title="TropOMI L3 OpenDAP" href="ex2_tropomi_opendap.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="sphx-glr-download-link-note admonition note">
+<p class="admonition-title">Note</p>
+<p><a class="reference internal" href="#sphx-glr-download-auto-examples-ex3-cmaq-tropomi-py"><span class="std std-ref">Go to the end</span></a>
+to download the full example code.</p>
+</div>
+<section class="sphx-glr-example-title" id="tropomi-cmaq-l3">
+<span id="sphx-glr-auto-examples-ex3-cmaq-tropomi-py"></span><h1>TropOMI/CMAQ L3<a class="headerlink" href="#tropomi-cmaq-l3" title="Link to this heading">¶</a></h1>
+<p>This script is designed to create a CMAQ L3 file including alternative TropOMI
+NO2 using the CMAQ AMF.</p>
+<p>It assumes that you have a 3D CMAQ CONC file, the METCRO3D file, and a TropOMI
+NO2 custom L3 file. The TropOMI custom L3 file is created in the TropOMI L3
+OpenDAP example. For the 3D CONC or METCRO3D, there are two options.</p>
+<p>For CONC and METCRO3D, you can either use your own data or download data from
+the EPA’s Air QUAlity TimE Series (<a class="reference external" href="https://www.epa.gov/cmaq/equates">EQUATES</a>) Project. The EQUATES project is
+available through EPA’s Remote Sensing Information Gateway (RSIG) data archive.
+RSIG data is served one variable at a time, so you will have four files: (1) 3D
+CONC file and (3) METCRO3D files – DENS, ZF, and PRES. The links below are each
+approximately 1 GB in size and must be saved using the names suggested.</p>
+<ul class="simple">
+<li><p>Download CMAQ CONC3D <a class="reference external" href="https://ofmpub.epa.gov/rsig/rsigserver?SERVICE=wcs&amp;VERSION=1.0.0&amp;REQUEST=GetCoverage&amp;FORMAT=netcdf-ioapi&amp;TIME=2019-07-24T00:00:00Z/2019-07-24T23:59:59Z&amp;BBOX=-135.000000,15.000000,-55.000000,70.000000&amp;COVERAGE=cmaq.equates.conus.conc.NO2&amp;COMPRESS=0&amp;NOLONLATS=1">NO2</a> and save as <cite>CCTM_CONC_2019-07-24_12US1.nc</cite></p></li>
+<li><p>Download METCRO3D <a class="reference external" href="https://ofmpub.epa.gov/rsig/rsigserver?SERVICE=wcs&amp;VERSION=1.0.0&amp;REQUEST=GetCoverage&amp;FORMAT=netcdf-ioapi&amp;TIME=2019-07-24T00:00:00Z/2019-07-24T23:59:59Z&amp;BBOX=-135.000000,15.000000,-55.000000,70.000000&amp;COVERAGE=cmaq.equates.conus.metcro3d.PRES&amp;COMPRESS=0&amp;NOLONLATS=1">PRES</a> and save as <cite>METCRO3D_PRES_2019-07-24_12US1.nc</cite></p></li>
+<li><p>Download METCRO3D <a class="reference external" href="https://ofmpub.epa.gov/rsig/rsigserver?SERVICE=wcs&amp;VERSION=1.0.0&amp;REQUEST=GetCoverage&amp;FORMAT=netcdf-ioapi&amp;TIME=2019-07-24T00:00:00Z/2019-07-24T23:59:59Z&amp;BBOX=-135.000000,15.000000,-55.000000,70.000000&amp;COVERAGE=cmaq.equates.conus.metcro3d.DENS&amp;COMPRESS=0&amp;NOLONLATS=1">DENS</a> and save as <cite>METCRO3D_DENS_2019-07-24_12US1.nc</cite></p></li>
+<li><p>Download METCRO3D <a class="reference external" href="https://ofmpub.epa.gov/rsig/rsigserver?SERVICE=wcs&amp;VERSION=1.0.0&amp;REQUEST=GetCoverage&amp;FORMAT=netcdf-ioapi&amp;TIME=2019-07-24T00:00:00Z/2019-07-24T23:59:59Z&amp;BBOX=-135.000000,15.000000,-55.000000,70.000000&amp;COVERAGE=cmaq.equates.conus.metcro3d.ZF&amp;COMPRESS=0&amp;NOLONLATS=1">ZF</a> and save as <cite>METCRO3D_ZF_2019-07-24_12US1.nc</cite></p></li>
+</ul>
+<section id="import-library-and-configure">
+<h2>Import Library and Configure<a class="headerlink" href="#import-library-and-configure" title="Link to this heading">¶</a></h2>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span><span class="w"> </span><span class="nn">cmaqsatproc</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">csp</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+<span class="c1"># Using common EPA Lambert Conic Conformal 12-km grid</span>
+<span class="n">GDNAM</span> <span class="o">=</span> <span class="s1">&#39;12US1&#39;</span>
+<span class="c1"># Doing just one day</span>
+<span class="n">date</span><span class="o">=</span><span class="s1">&#39;2019-07-24&#39;</span>
+<span class="c1"># Using TropOMINO2 reader</span>
+<span class="n">readername</span> <span class="o">=</span> <span class="s1">&#39;TropOMINO2&#39;</span>
+<span class="c1"># Defining output path</span>
+<span class="n">outpath</span> <span class="o">=</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">readername</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">_CMAQ.nc&#39;</span>
+</pre></div>
+</div>
+</section>
+<section id="gather-data-and-processors">
+<h2>Gather Data and Processors<a class="headerlink" href="#gather-data-and-processors" title="Link to this heading">¶</a></h2>
+<div class="highlight-Python notranslate"><div class="highlight"><pre><span></span><span class="c1"># Get satellite reader</span>
+<span class="n">satreader</span> <span class="o">=</span> <span class="n">csp</span><span class="o">.</span><span class="n">reader_dict</span><span class="p">[</span><span class="n">readername</span><span class="p">]</span>
+<span class="c1"># Get custom L3 file made earlier</span>
+<span class="n">l3</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">readername</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">.nc&#39;</span><span class="p">)</span>
+
+<span class="c1"># Open a CMAQ 3D CONC file that has the NO2 variable.</span>
+<span class="n">qf</span> <span class="o">=</span> <span class="n">csp</span><span class="o">.</span><span class="n">open_ioapi</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;CCTM_CONC_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">.nc&#39;</span><span class="p">)[[</span><span class="s1">&#39;NO2&#39;</span><span class="p">]]</span>
+
+<span class="c1"># Open a single METCRO3D file or separate files if downloaded from RSIG.</span>
+<span class="c1"># Defaulting to separate files</span>
+<span class="n">presf</span> <span class="o">=</span> <span class="n">csp</span><span class="o">.</span><span class="n">open_ioapi</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;METCRO3D_PRES_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">.nc&#39;</span><span class="p">)</span>
+<span class="n">densf</span> <span class="o">=</span> <span class="n">csp</span><span class="o">.</span><span class="n">open_ioapi</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;METCRO3D_DENS_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">.nc&#39;</span><span class="p">)</span>
+<span class="n">zff</span> <span class="o">=</span> <span class="n">csp</span><span class="o">.</span><span class="n">open_ioapi</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;METCRO3D_ZF_</span><span class="si">{</span><span class="n">date</span><span class="si">}</span><span class="s1">_</span><span class="si">{</span><span class="n">GDNAM</span><span class="si">}</span><span class="s1">.nc&#39;</span><span class="p">)</span>
+
+<span class="c1"># Combine DENS, ZF and PRES from METCRO3D files (or file) with CONC</span>
+<span class="n">qf</span><span class="p">[</span><span class="s1">&#39;DENS&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">densf</span><span class="p">[</span><span class="s1">&#39;DENS&#39;</span><span class="p">]</span>
+<span class="n">qf</span><span class="p">[</span><span class="s1">&#39;ZF&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">zff</span><span class="p">[</span><span class="s1">&#39;ZF&#39;</span><span class="p">]</span>
+<span class="n">qf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">presf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">]</span>
+
+<span class="c1"># Create satellite according to CMAQ, and CMAQ according to satellite</span>
+<span class="n">overf</span> <span class="o">=</span> <span class="n">satreader</span><span class="o">.</span><span class="n">cmaq_process</span><span class="p">(</span><span class="n">qf</span><span class="p">,</span> <span class="n">l3</span><span class="p">)</span>
+<span class="n">overf</span><span class="o">.</span><span class="n">to_netcdf</span><span class="p">(</span><span class="n">outpath</span><span class="p">)</span>
+</pre></div>
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-example docutils container" id="sphx-glr-download-auto-examples-ex3-cmaq-tropomi-py">
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/e663db419928c48425b401aeaf695a74/ex3_cmaq_tropomi.ipynb"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Jupyter</span> <span class="pre">notebook:</span> <span class="pre">ex3_cmaq_tropomi.ipynb</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/bf0bb07fac4ee2544102938f455cd094/ex3_cmaq_tropomi.py"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">ex3_cmaq_tropomi.py</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-zip docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/9ed6776258ec897c647d6c15bc3160b9/ex3_cmaq_tropomi.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">zipped:</span> <span class="pre">ex3_cmaq_tropomi.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">User’s Guide</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="index.html">Example Gallery</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="ex1_config_netrc.html">Configure OpenDAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ex2_tropomi_opendap.html">TropOMI L3 OpenDAP</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">TropOMI/CMAQ L3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ex4_viirs_local.html">VIIRS L3 Local Disk</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="index.html">Example Gallery</a><ul>
+      <li>Previous: <a href="ex2_tropomi_opendap.html" title="previous chapter">TropOMI L3 OpenDAP</a></li>
+      <li>Next: <a href="ex4_viirs_local.html" title="next chapter">VIIRS L3 Local Disk</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/auto_examples/ex3_cmaq_tropomi.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

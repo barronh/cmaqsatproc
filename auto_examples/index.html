@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Example Gallery &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="Configure OpenDAP" href="ex1_config_netrc.html" />
+    <link rel="prev" title="User’s Guide" href="../index.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="example-gallery">
+<h1>Example Gallery<a class="headerlink" href="#example-gallery" title="Link to this heading">¶</a></h1>
+<p>This gallery houses examples on how to use cmaqsatproc with various satellite
+products and using different data acquisition methods.</p>
+<ul class="simple">
+<li><p>Configure</p>
+<ul>
+<li><p>Configure OpenDAP : setup to use OpenDAP connection (required by OpenDAP examples)</p></li>
+</ul>
+</li>
+<li><p>TropOMI:</p>
+<ul>
+<li><p>TropOMI L3 OpenDAP: create custom L3 file from TropOMI via OpenDAP server.</p></li>
+<li><p>TropOMI/CMAQ L3: create custom L3 file from CMAQ and TropOMI with CMAQ AMF</p></li>
+</ul>
+</li>
+<li><p>VIIRS</p>
+<ul>
+<li><p>VIIRS L3 Local Disk: create custom L3 file from VIIRS via files on disk.</p></li>
+</ul>
+</li>
+</ul>
+<p>All examples require <cite>cmaqsatproc</cite> which can be installed via <cite>shell</cite> or in a
+Jupyter Notebook. In <cite>shell</cite>, the command is:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>python<span class="w"> </span>-m<span class="w"> </span>pip<span class="w"> </span>install<span class="w"> </span>--user<span class="w"> </span>cmaqsatproc
+</pre></div>
+</div>
+<p>In notebooks (e.g., on Google Colab), this can be done live with
+the command below (may require kernel restart):</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="o">%</span><span class="n">pip</span> <span class="n">install</span> <span class="o">--</span><span class="n">user</span> <span class="n">cmaqsatproc</span>
+</pre></div>
+</div>
+<p>To run an example in a notebook:</p>
+<ol class="arabic simple">
+<li><p>Copy the command above into a new cell and run it.</p></li>
+<li><p>Click on example below to see code.</p></li>
+<li><p>Copy the code from the example into a new cell and run it.</p></li>
+</ol>
+<div class="sphx-glr-thumbnails"><div class="sphx-glr-thumbcontainer" tooltip="This script is designed to create create a .netrc, .dodsrc, and .urs_cookies if those files do not yet exist. All files will be created in the user&#x27;s home directory. The .netrc file must contain a valid EarthData login and password. The file will be created as read/write for user only to avoid revealing your password to others."><img alt="" src="../_images/sphx_glr_ex1_config_netrc_thumb.png" />
+<p><a class="reference internal" href="ex1_config_netrc.html"><span class="doc">Configure OpenDAP</span></a></p>
+  <div class="sphx-glr-thumbnail-title">Configure OpenDAP</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This script is designed to create a custom L3 file from TropOMI NO2 files streamed remotely from an OpenDAP server. OpenDAP access to TropOMI data requires that you:"><img alt="" src="../_images/sphx_glr_ex2_tropomi_opendap_thumb.png" />
+<p><a class="reference internal" href="ex2_tropomi_opendap.html"><span class="doc">TropOMI L3 OpenDAP</span></a></p>
+  <div class="sphx-glr-thumbnail-title">TropOMI L3 OpenDAP</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This script is designed to create a CMAQ L3 file including alternative TropOMI NO2 using the CMAQ AMF."><img alt="" src="../_images/sphx_glr_ex3_cmaq_tropomi_thumb.png" />
+<p><a class="reference internal" href="ex3_cmaq_tropomi.html"><span class="doc">TropOMI/CMAQ L3</span></a></p>
+  <div class="sphx-glr-thumbnail-title">TropOMI/CMAQ L3</div>
+</div><div class="sphx-glr-thumbcontainer" tooltip="This script is designed to make custom L3 files from SNPP VIIRS Deep Blue using files that have already been downloaded to local disk. This example can be edited to work with TropOMI HCHO, VIIRS_AERDB, OMNO2, OMHCHO, ..."><img alt="" src="../_images/sphx_glr_ex4_viirs_local_thumb.png" />
+<p><a class="reference internal" href="ex4_viirs_local.html"><span class="doc">VIIRS L3 Local Disk</span></a></p>
+  <div class="sphx-glr-thumbnail-title">VIIRS L3 Local Disk</div>
+</div></div><div class="toctree-wrapper compound">
+</div>
+<div class="sphx-glr-footer sphx-glr-footer-gallery docutils container">
+<div class="sphx-glr-download sphx-glr-download-python docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/07fcc19ba03226cd3d83d4e40ec44385/auto_examples_python.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Python</span> <span class="pre">source</span> <span class="pre">code:</span> <span class="pre">auto_examples_python.zip</span></code></a></p>
+</div>
+<div class="sphx-glr-download sphx-glr-download-jupyter docutils container">
+<p><a class="reference download internal" download="" href="../_downloads/6f1e7a639e0699d6164445b55e6c116d/auto_examples_jupyter.zip"><code class="xref download docutils literal notranslate"><span class="pre">Download</span> <span class="pre">all</span> <span class="pre">examples</span> <span class="pre">in</span> <span class="pre">Jupyter</span> <span class="pre">notebooks:</span> <span class="pre">auto_examples_jupyter.zip</span></code></a></p>
+</div>
+</div>
+<p class="sphx-glr-signature"><a class="reference external" href="https://sphinx-gallery.github.io">Gallery generated by Sphinx-Gallery</a></p>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">User’s Guide</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Example Gallery</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="ex1_config_netrc.html">Configure OpenDAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ex2_tropomi_opendap.html">TropOMI L3 OpenDAP</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ex3_cmaq_tropomi.html">TropOMI/CMAQ L3</a></li>
+<li class="toctree-l2"><a class="reference internal" href="ex4_viirs_local.html">VIIRS L3 Local Disk</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="../index.html" title="previous chapter">User’s Guide</a></li>
+      <li>Next: <a href="ex1_config_netrc.html" title="next chapter">Configure OpenDAP</a></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/auto_examples/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

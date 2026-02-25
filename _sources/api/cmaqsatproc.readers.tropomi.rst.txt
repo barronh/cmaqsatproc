@@ -1,0 +1,10 @@
+cmaqsatproc.readers.tropomi package
+===================================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.tropomi
+   :members:
+   :show-inheritance:
+   :undoc-members:

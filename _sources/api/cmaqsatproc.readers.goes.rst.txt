@@ -1,0 +1,10 @@
+cmaqsatproc.readers.goes package
+================================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.goes
+   :members:
+   :show-inheritance:
+   :undoc-members:

@@ -1,0 +1,10 @@
+cmaqsatproc.readers.omi package
+===============================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.omi
+   :members:
+   :show-inheritance:
+   :undoc-members:

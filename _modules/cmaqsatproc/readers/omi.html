@@ -1,0 +1,1154 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cmaqsatproc.readers.omi &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../../../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cmaqsatproc.readers.omi</h1><div class="highlight"><pre>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;OMIL2&#39;</span><span class="p">,</span> <span class="s1">&#39;OMNO2&#39;</span><span class="p">,</span> <span class="s1">&#39;OMHCHO&#39;</span><span class="p">,</span> <span class="s1">&#39;OMPROFOZ&#39;</span><span class="p">,</span> <span class="s1">&#39;OMO3PR&#39;</span><span class="p">]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..core</span><span class="w"> </span><span class="kn">import</span> <span class="n">satellite</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">walk_groups</span>
+
+
+<span class="k">def</span><span class="w"> </span><span class="nf">cloudleq</span><span class="p">(</span><span class="n">cldf</span><span class="p">,</span> <span class="n">thresh</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Check if cloud is less than or equal to thresh.</span>
+
+<span class="sd">    This is a convenience function to deal with he5 files having a different</span>
+<span class="sd">    metadata than their OpenDAP counterparts.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="n">cldval</span> <span class="o">=</span> <span class="n">cldf</span><span class="o">.</span><span class="n">load</span><span class="p">()</span>
+    <span class="n">scale</span> <span class="o">=</span> <span class="n">cldf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;ScaleFactor&#39;</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="n">offset</span> <span class="o">=</span> <span class="n">cldf</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;Offset&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">scale</span> <span class="o">!=</span> <span class="mi">1</span> <span class="ow">or</span> <span class="n">offset</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="n">cldval</span> <span class="o">=</span> <span class="n">cldval</span> <span class="o">*</span> <span class="n">scale</span> <span class="o">+</span> <span class="n">offset</span>
+    <span class="k">elif</span> <span class="n">cldval</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span> <span class="o">&gt;</span> <span class="mi">100</span> <span class="ow">and</span> <span class="n">thresh</span> <span class="o">&lt;</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+        <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;Cloud scaled by 0.001 because avg &gt; 100 and limit &lt; 1&#39;</span><span class="p">)</span>
+        <span class="n">cldval</span> <span class="o">=</span> <span class="n">cldval</span> <span class="o">*</span> <span class="mf">0.001</span>
+    <span class="k">return</span> <span class="n">cldval</span> <span class="o">&lt;=</span> <span class="n">thresh</span>
+
+
+<div class="viewcode-block" id="OMIL2">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMIL2">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OMIL2</span><span class="p">(</span><span class="n">satellite</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    Default OMI satellite processor.</span>
+
+<span class="s2">    * bbox subsets the nTimes and nTimes_1  dimensions</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_open_hierarchical_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convenience function to promote groups Data and Geolocation Fields from</span>
+<span class="sd">        groups into the main xarray.Dataset object. It also uses the</span>
+<span class="sd">        StructMetadata.0 property to rename dimensions.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI he5-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMIL2</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="kn">import</span><span class="w"> </span><span class="nn">netCDF4</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">re</span>
+        <span class="n">tmpf</span> <span class="o">=</span> <span class="n">netCDF4</span><span class="o">.</span><span class="n">Dataset</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">struct</span> <span class="o">=</span> <span class="n">tmpf</span><span class="p">[</span><span class="s1">&#39;HDFEOS INFORMATION/StructMetadata.0&#39;</span><span class="p">][:]</span>
+        <span class="n">dimassignments</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="c1"># DataFieldName=&quot;O3TotalColumn&quot;</span>
+        <span class="c1"># DimList=(&quot;nTimes&quot;,&quot;nXtrack&quot;)</span>
+
+        <span class="n">ore</span> <span class="o">=</span> <span class="n">re</span><span class="o">.</span><span class="n">compile</span><span class="p">(</span><span class="s1">&#39;OBJECT=.*?END_OBJECT&#39;</span><span class="p">,</span> <span class="n">re</span><span class="o">.</span><span class="n">MULTILINE</span> <span class="o">|</span> <span class="n">re</span><span class="o">.</span><span class="n">S</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">ore</span><span class="o">.</span><span class="n">findall</span><span class="p">(</span><span class="n">struct</span><span class="p">):</span>
+            <span class="c1"># Get FieldName and DimList</span>
+            <span class="c1"># Never let a dimension be named +1 or _1</span>
+            <span class="c1"># (e.g., nTimes+1, nTimes_1, or nTimesp1)</span>
+            <span class="c1"># use _1 to be consistent</span>
+            <span class="n">namedim</span> <span class="o">=</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1">,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span>
+                <span class="n">l</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;+1&#39;</span><span class="p">,</span> <span class="s1">&#39;_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;p1&#39;</span><span class="p">,</span> <span class="s1">&#39;_1&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">l</span> <span class="ow">in</span> <span class="n">i</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;</span><span class="se">\n</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="k">if</span> <span class="s1">&#39;DimList=&#39;</span> <span class="ow">in</span> <span class="n">l</span> <span class="ow">or</span> <span class="s1">&#39;FieldName&#39;</span> <span class="ow">in</span> <span class="n">l</span>
+            <span class="p">])</span>
+            <span class="k">if</span> <span class="s1">&#39;DimList&#39;</span> <span class="ow">in</span> <span class="n">namedim</span> <span class="ow">and</span> <span class="s1">&#39;FieldName&#39;</span> <span class="ow">in</span> <span class="n">namedim</span><span class="p">:</span>
+                <span class="n">namedimd</span> <span class="o">=</span> <span class="nb">eval</span><span class="p">(</span><span class="s1">&#39;dict(&#39;</span> <span class="o">+</span> <span class="n">namedim</span> <span class="o">+</span> <span class="s1">&#39;)&#39;</span><span class="p">)</span>
+                <span class="k">for</span> <span class="n">fn</span> <span class="ow">in</span> <span class="n">namedimd</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">fn</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;FieldName&#39;</span><span class="p">):</span>
+                        <span class="k">break</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No field name in </span><span class="si">{</span><span class="nb">sorted</span><span class="p">(</span><span class="n">namedimd</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+                <span class="n">dimv</span> <span class="o">=</span> <span class="n">namedimd</span><span class="p">[</span><span class="s1">&#39;DimList&#39;</span><span class="p">]</span>
+                <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">dimv</span><span class="p">,</span> <span class="nb">str</span><span class="p">):</span>
+                    <span class="k">if</span> <span class="n">dimv</span><span class="o">.</span><span class="n">isnumeric</span><span class="p">():</span>
+                        <span class="n">dimv</span> <span class="o">=</span> <span class="s1">&#39;n&#39;</span> <span class="o">+</span> <span class="n">dimv</span>
+                    <span class="n">dimv</span> <span class="o">=</span> <span class="p">(</span><span class="n">dimv</span><span class="p">,)</span>
+                <span class="n">dimassignments</span><span class="p">[</span><span class="n">namedimd</span><span class="p">[</span><span class="n">fn</span><span class="p">]]</span> <span class="o">=</span> <span class="n">dimv</span>
+
+        <span class="n">uniqdims</span> <span class="o">=</span> <span class="nb">set</span><span class="p">()</span>
+        <span class="k">for</span> <span class="n">vark</span><span class="p">,</span> <span class="n">dimset</span> <span class="ow">in</span> <span class="n">dimassignments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">uniqdims</span> <span class="o">=</span> <span class="n">uniqdims</span><span class="o">.</span><span class="n">union</span><span class="p">(</span><span class="n">dimset</span><span class="p">)</span>
+
+        <span class="n">datakey</span><span class="p">,</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">gk</span> <span class="k">for</span> <span class="n">gk</span> <span class="ow">in</span> <span class="n">walk_groups</span><span class="p">(</span><span class="n">tmpf</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span> <span class="k">if</span> <span class="n">gk</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;Data Fields&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="n">geokey</span><span class="p">,</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">gk</span> <span class="k">for</span> <span class="n">gk</span> <span class="ow">in</span> <span class="n">walk_groups</span><span class="p">(</span><span class="n">tmpf</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">gk</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;Geolocation Fields&#39;</span><span class="p">)</span>
+        <span class="p">]</span>
+        <span class="k">del</span> <span class="n">tmpf</span>
+        <span class="n">datads</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">datakey</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">geods</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">group</span><span class="o">=</span><span class="n">geokey</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+
+        <span class="n">redatadims</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">regeodims</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">dimk</span> <span class="ow">in</span> <span class="n">uniqdims</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">vark</span><span class="p">,</span> <span class="n">dimset</span> <span class="ow">in</span> <span class="n">dimassignments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">vark</span> <span class="ow">in</span> <span class="n">datads</span> <span class="ow">and</span> <span class="n">dimk</span> <span class="ow">in</span> <span class="n">dimset</span><span class="p">:</span>
+                    <span class="n">tmpvar</span> <span class="o">=</span> <span class="n">datads</span><span class="p">[</span><span class="n">vark</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">di</span><span class="p">,</span> <span class="n">dk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dimset</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">dimk</span> <span class="o">==</span> <span class="n">dk</span><span class="p">:</span>
+                            <span class="n">phonydk</span> <span class="o">=</span> <span class="n">tmpvar</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="n">di</span><span class="p">]</span>
+                            <span class="n">redatadims</span><span class="p">[</span><span class="n">phonydk</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimk</span>
+
+            <span class="k">for</span> <span class="n">vark</span><span class="p">,</span> <span class="n">dimset</span> <span class="ow">in</span> <span class="n">dimassignments</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="k">if</span> <span class="n">vark</span> <span class="ow">in</span> <span class="n">geods</span> <span class="ow">and</span> <span class="n">dimk</span> <span class="ow">in</span> <span class="n">dimset</span><span class="p">:</span>
+                    <span class="n">tmpvar</span> <span class="o">=</span> <span class="n">geods</span><span class="p">[</span><span class="n">vark</span><span class="p">]</span>
+                    <span class="k">for</span> <span class="n">di</span><span class="p">,</span> <span class="n">dk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">dimset</span><span class="p">):</span>
+                        <span class="k">if</span> <span class="n">dimk</span> <span class="o">==</span> <span class="n">dk</span><span class="p">:</span>
+                            <span class="n">phonydk</span> <span class="o">=</span> <span class="n">tmpvar</span><span class="o">.</span><span class="n">dims</span><span class="p">[</span><span class="n">di</span><span class="p">]</span>
+                            <span class="n">regeodims</span><span class="p">[</span><span class="n">phonydk</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimk</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">merge</span><span class="p">([</span><span class="n">datads</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="o">**</span><span class="n">redatadims</span><span class="p">),</span> <span class="n">geods</span><span class="o">.</span><span class="n">rename</span><span class="p">(</span><span class="o">**</span><span class="n">regeodims</span><span class="p">)])</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">prep_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span>
+
+<div class="viewcode-block" id="OMIL2.prep_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMIL2.prep_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">prep_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Applies spatial subset based on Latitude and Longitude</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">            Satellite dataset</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Unused.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">,</span> <span class="s1">&#39;Longitude&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Latitude &gt;= </span><span class="si">{</span><span class="n">swlat</span><span class="si">}</span><span class="s1"> and Latitude &lt;= </span><span class="si">{</span><span class="n">nelat</span><span class="si">}</span><span class="s1">&#39;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; and Longitude &gt;= </span><span class="si">{</span><span class="n">swlon</span><span class="si">}</span><span class="s1"> and Longitude &lt;= </span><span class="si">{</span><span class="n">nelon</span><span class="si">}</span><span class="s1">&#39;</span>
+            <span class="p">)</span>
+            <span class="n">times</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+            <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">times</span><span class="p">)</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> has no values in </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                <span class="n">nTimes</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">times</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">times</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">1</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;nTimes_1&#39;</span> <span class="ow">in</span> <span class="n">ds</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">nTimes_1</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="n">times</span><span class="o">.</span><span class="n">min</span><span class="p">(),</span> <span class="n">times</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">+</span> <span class="mi">2</span><span class="p">))</span>
+        <span class="k">return</span> <span class="n">ds</span></div>
+
+
+<div class="viewcode-block" id="OMIL2.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMIL2.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMIL2</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span><span class="o">.</span><span class="n">reset_coords</span><span class="p">()</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">ds</span><span class="o">.</span><span class="n">dims</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">_open_hierarchical_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">prep_dataset</span><span class="p">(</span><span class="n">ds</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="OMIL2.shorten_name">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMIL2.shorten_name">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shorten_name</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">key</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Provide a short name for long keys. This is useful for renaming</span>
+<span class="sd">        variables to fit IOAPI 16 character restrictions.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Original variable name.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        shortkey : str</span>
+<span class="sd">            Shortened key</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span>
+            <span class="s1">&#39;ReferenceSectorCorrectedVerticalColumn&#39;</span><span class="p">,</span> <span class="s1">&#39;RefSctCor_VCD&#39;</span>
+        <span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;SlantColumnAmount&#39;</span><span class="p">,</span> <span class="s1">&#39;SCD&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;ColumnAmount&#39;</span><span class="p">,</span> <span class="s1">&#39;VCD&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Pressure&#39;</span><span class="p">,</span> <span class="s1">&#39;Press&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Scattering&#39;</span><span class="p">,</span> <span class="s1">&#39;Scat&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Altitude&#39;</span><span class="p">,</span> <span class="s1">&#39;Alt&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Spacecraft&#39;</span><span class="p">,</span> <span class="s1">&#39;Craft&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Wavelength&#39;</span><span class="p">,</span> <span class="s1">&#39;WvLen&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Registration&#39;</span><span class="p">,</span> <span class="s1">&#39;Reg&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Viewing&#39;</span><span class="p">,</span> <span class="s1">&#39;View&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Angle&#39;</span><span class="p">,</span> <span class="s1">&#39;Ang&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Pixel&#39;</span><span class="p">,</span> <span class="s1">&#39;Pix&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Measurement&#39;</span><span class="p">,</span> <span class="s1">&#39;Msrmt&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Radiance&#39;</span><span class="p">,</span> <span class="s1">&#39;Rad&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Latitude&#39;</span><span class="p">,</span> <span class="s1">&#39;Lat&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Longitude&#39;</span><span class="p">,</span> <span class="s1">&#39;Lon&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Check&#39;</span><span class="p">,</span> <span class="s1">&#39;Chk&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Fraction&#39;</span><span class="p">,</span> <span class="s1">&#39;Frac&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Configuration&#39;</span><span class="p">,</span> <span class="s1">&#39;Cfg&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;Pointer&#39;</span><span class="p">,</span> <span class="s1">&#39;Ptr&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;CloudRadianceFraction&#39;</span><span class="p">,</span> <span class="s1">&#39;CldRadFrac&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;QualityFlags&#39;</span><span class="p">,</span> <span class="s1">&#39;QAFlag&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;TerrainReflectivity&#39;</span><span class="p">,</span> <span class="s1">&#39;TerrainRefl&#39;</span><span class="p">)</span>
+        <span class="n">key</span> <span class="o">=</span> <span class="n">key</span><span class="o">.</span><span class="n">replace</span><span class="p">(</span><span class="s1">&#39;ClimatologyLevels&#39;</span><span class="p">,</span> <span class="s1">&#39;ClimPresLevels&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">key</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OMNO2">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OMNO2</span><span class="p">(</span><span class="n">OMIL2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    OMNO2 satellite processor.</span>
+
+<span class="s2">    * bbox subsets the nTimes and nTimes_1 dimensions</span>
+<span class="s2">    * valid based three conditions</span>
+<span class="s2">      * (VcdQualityFlags &amp; 1) == 0</span>
+<span class="s2">      * XTrackQualityFlags == 0</span>
+<span class="s2">      * CloudFraction &lt;= 0.3</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;ColumnAmountNO2Trop&#39;</span><span class="p">,</span> <span class="s1">&#39;AmfTrop&#39;</span><span class="p">,</span> <span class="s1">&#39;ColumnAmountNO2Strat&#39;</span><span class="p">,</span> <span class="s1">&#39;AmfStrat&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;ScatteringWeight&#39;</span><span class="p">,</span> <span class="s1">&#39;ScatteringWtPressure&#39;</span><span class="p">,</span> <span class="s1">&#39;TropopausePressure&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;TerrainPressure&#39;</span><span class="p">,</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="OMNO2.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where concept_id is set to</span>
+<span class="sd">        &quot;C1239966842-GES_DISC&quot;.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;. &#39;s3&#39; is not supported for OMI at</span>
+<span class="sd">            this time.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C1239966842-GES_DISC&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMNO2.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMINO2</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">omtmp</span> <span class="o">=</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="mi">3</span><span class="p">,</span> <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="mi">1</span><span class="p">,</span> <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="mi">2</span><span class="p">,</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">corner</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;FoV75CornerLongitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">nCorners</span><span class="o">=</span><span class="n">corner</span><span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;FoV75CornerLatitude&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">nCorners</span><span class="o">=</span><span class="n">corner</span><span class="p">)</span>
+
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">((</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;VcdQualityFlags&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;XTrackQualityFlags&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="n">cloudleq</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;CloudFraction&#39;</span><span class="p">],</span> <span class="mf">0.3</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelat</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlon</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelon</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="s1">&#39;No valid pixels&#39;</span><span class="p">)</span>
+
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="OMNO2.cmaq_sw">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.cmaq_sw">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_sw</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Interpolate satellite scattering weights to CMAQ vertical grid, based</span>
+<span class="sd">        on PRES (pressure in Pa).</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        q_sw : xr.DataArray</span>
+<span class="sd">            Scattering Weights on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">coord_interp</span>
+        <span class="n">qpres_hpa</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="n">sat_press</span> <span class="o">=</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ScatteringWtPressure&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="c1"># No need to overwrite surface pressure</span>
+        <span class="c1"># numpy.interp automatically extends the lowest level</span>
+        <span class="c1"># sat_press.isel(nPresLevels=0)[:] = qpres_hpa.isel(LAY=0)</span>
+        <span class="n">introp</span> <span class="o">=</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;TropopausePressure&#39;</span><span class="p">]</span> <span class="o">&lt;</span> <span class="n">qpres_hpa</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="n">coord_interp</span><span class="p">(</span>
+            <span class="n">qpres_hpa</span><span class="p">,</span>
+            <span class="n">sat_press</span><span class="p">,</span>
+            <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ScatteringWeight&#39;</span><span class="p">],</span>
+            <span class="n">indim</span><span class="o">=</span><span class="s1">&#39;nPresLevels&#39;</span><span class="p">,</span> <span class="n">outdim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">introp</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">q_sw</span></div>
+
+
+<div class="viewcode-block" id="OMNO2.cmaq_amf">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.cmaq_amf">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_amf</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an alternative Air Mass Factor (AMF) using satellite</span>
+<span class="sd">        scattering weights and the CMAQ vertical profile as a partial column</span>
+<span class="sd">        density.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Key of the partial column density variable from CMAQ, which must</span>
+<span class="sd">            have a LAY dimension that describes teh vertical coordinate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cmaqamf : xr.DataArray</span>
+<span class="sd">            Air Mass Factor on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">q_var</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">q_sw</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">q_var</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span>
+        <span class="n">cmaqamf</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_sw</span> <span class="o">*</span> <span class="n">q_var</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="k">return</span> <span class="n">cmaqamf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMNO2.cmaq_ak">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.cmaq_ak">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_ak</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an averaging kernel (AK) that would process CMAQ as though</span>
+<span class="sd">        it were observed by the satellite. In this case, the averaging kernel</span>
+<span class="sd">        is the scattering weights divided by the tropospheric air mass factor.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        q_ak : xr.DataArray</span>
+<span class="sd">            Averaging kernel on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">q_ak</span> <span class="o">=</span> <span class="n">q_sw</span> <span class="o">/</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;AmfTrop&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">q_ak</span></div>
+
+
+<div class="viewcode-block" id="OMNO2.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMNO2.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;NO2&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process CMAQ as though it were observed by OMI and recualculate OMI</span>
+<span class="sd">        tropospheric columns with the CMAQ AMF. This process relies</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xarray.Dataset</span>
+<span class="sd">            CMAQ file that has composition (e.g., NO2), PRES, DENS, and ZF</span>
+<span class="sd">            variables with a LAY dimension describing the vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        overf : xr.DataArray</span>
+<span class="sd">            An overpass file with satellite-like CMAQ and CMAQ-like satellite.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># OMI is on the aura satellite, so we create an average overpass</span>
+        <span class="n">overf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mean_overpass</span><span class="p">(</span><span class="n">satellite</span><span class="o">=</span><span class="s1">&#39;aura&#39;</span><span class="p">)</span>
+        <span class="n">n_per_m2</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mole_per_m2</span><span class="p">(</span><span class="n">add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tgtvar</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppm&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e6</span>
+        <span class="k">elif</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppb&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e9</span>
+        <span class="k">elif</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppt&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e12</span>
+
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_per_m2</span> <span class="o">*</span> <span class="n">vmr</span> <span class="o">*</span> <span class="mf">6.022e23</span> <span class="o">/</span> <span class="mf">1e4</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">overf</span><span class="p">[</span><span class="s1">&#39;NO2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;1/cm**2&#39;</span>
+        <span class="n">ak</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;AK_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_ak</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;ScatWt_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="c1"># uses AK for tropopause</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDNO2_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">apply_ak</span><span class="p">(</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">,</span> <span class="n">ak</span> <span class="o">/</span> <span class="n">ak</span><span class="p">)</span>
+        <span class="c1"># uses AK for vertical weighting</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDNO2_CMAQ_OMI&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">apply_ak</span><span class="p">(</span><span class="s1">&#39;NO2_PER_CM2&#39;</span><span class="p">,</span> <span class="n">ak</span><span class="p">)</span>
+        <span class="c1"># Recalculate satellite</span>
+        <span class="n">amf</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;AmfTropCMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_amf</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDNO2_OMI_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ColumnAmountNO2Trop&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;AmfTrop&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">amf</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">overf</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OMHCHO">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OMHCHO</span><span class="p">(</span><span class="n">OMIL2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    OMHCHO satellite processor.</span>
+
+<span class="s2">    * bbox subsets the nTimes and nTimes_1 dimensions</span>
+<span class="s2">    * valid based three conditions</span>
+<span class="s2">      * MainDataQualityFlag == 0</span>
+<span class="s2">      * (XtrackQualityFlagsExpanded &amp; 1) == 0</span>
+<span class="s2">      * AMFCloudFraction &lt;= 0.3</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;ColumnAmount&#39;</span><span class="p">,</span> <span class="s1">&#39;ReferenceSectorCorrectedVerticalColumn&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;AirMassFactor&#39;</span><span class="p">,</span> <span class="s1">&#39;ScatteringWeights&#39;</span><span class="p">,</span> <span class="s1">&#39;ClimatologyLevels&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="OMHCHO.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where concept_id is set to</span>
+<span class="sd">        &quot;C1239966779-GES_DISC&quot;.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;. &#39;s3&#39; is not supported for OMI at</span>
+<span class="sd">            this time.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C1239966779-GES_DISC&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMHCHO.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMI</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">omtmp</span> <span class="o">=</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;MainDataQualityFlag&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="p">((</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;XtrackQualityFlagsExpanded&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="s1">&#39;i&#39;</span><span class="p">)</span> <span class="o">&amp;</span> <span class="mi">1</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span>
+            <span class="o">&amp;</span> <span class="n">cloudleq</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;AMFCloudFraction&#39;</span><span class="p">],</span> <span class="mf">0.3</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelat</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlon</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelon</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">tslice</span><span class="p">,</span> <span class="n">xslice</span><span class="p">)</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;PixelCornerLongitudes&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;PixelCornerLatitudes&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No valid pixels in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> with </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="OMHCHO.cmaq_sw">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.cmaq_sw">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_sw</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Interpolate satellite scattering weights to CMAQ vertical grid, based</span>
+<span class="sd">        on PRES (pressure in Pa).</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        q_sw : xr.DataArray</span>
+<span class="sd">            Scattering Weights on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">...utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">coord_interp</span>
+        <span class="n">qpres_hpa</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;PRES&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="mi">100</span>
+        <span class="n">sat_press</span> <span class="o">=</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ClimatologyLevels&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+        <span class="n">sat_press</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">nLevels</span><span class="o">=</span><span class="mi">0</span><span class="p">)[:]</span> <span class="o">=</span> <span class="n">qpres_hpa</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span><span class="n">LAY</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="n">coord_interp</span><span class="p">(</span>
+            <span class="n">qpres_hpa</span><span class="p">,</span>
+            <span class="n">sat_press</span><span class="p">,</span>
+            <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ScatteringWeights&#39;</span><span class="p">],</span>
+            <span class="n">indim</span><span class="o">=</span><span class="s1">&#39;nLevels&#39;</span><span class="p">,</span> <span class="n">outdim</span><span class="o">=</span><span class="s1">&#39;LAY&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="k">return</span> <span class="n">q_sw</span></div>
+
+
+<div class="viewcode-block" id="OMHCHO.cmaq_amf">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.cmaq_amf">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_amf</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;FORM_PER_CM2&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an alternative Air Mass Factor (AMF) using satellite</span>
+<span class="sd">        scattering weights and the CMAQ vertical profile as a partial column</span>
+<span class="sd">        density.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Key of the partial column density variable from CMAQ, which must</span>
+<span class="sd">            have a LAY dimension that describes teh vertical coordinate.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        cmaqamf : xr.DataArray</span>
+<span class="sd">            Air Mass Factor on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">q_var</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="o">~</span><span class="n">q_sw</span><span class="o">.</span><span class="n">isnull</span><span class="p">())</span>
+        <span class="n">denom</span> <span class="o">=</span> <span class="n">q_var</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span>
+        <span class="n">cmaqamf</span> <span class="o">=</span> <span class="p">(</span><span class="n">q_sw</span> <span class="o">*</span> <span class="n">q_var</span><span class="p">)</span><span class="o">.</span><span class="n">sum</span><span class="p">(</span><span class="s1">&#39;LAY&#39;</span><span class="p">)</span> <span class="o">/</span> <span class="n">denom</span>
+        <span class="k">return</span> <span class="n">cmaqamf</span><span class="o">.</span><span class="n">where</span><span class="p">(</span><span class="n">denom</span> <span class="o">!=</span> <span class="mi">0</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMHCHO.cmaq_ak">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.cmaq_ak">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_ak</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Calculate an averaging kernel (AK) that would process CMAQ as though</span>
+<span class="sd">        it were observed by the satellite. In this case, the averaging kernel</span>
+<span class="sd">        is the scattering weights divided by the tropospheric air mass factor.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        overf : xarray.Dataset</span>
+<span class="sd">            Must have PRES variable with LAY dimension that describes the</span>
+<span class="sd">            vertical coordinate.</span>
+
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        q_ak : xr.DataArray</span>
+<span class="sd">            Averaging kernel on the CMAQ grid</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">q_sw</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">q_ak</span> <span class="o">=</span> <span class="n">q_sw</span> <span class="o">/</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;AirMassFactor&#39;</span><span class="p">]</span>
+        <span class="k">return</span> <span class="n">q_ak</span></div>
+
+
+<div class="viewcode-block" id="OMHCHO.cmaq_process">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMHCHO.cmaq_process">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmaq_process</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">qf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">,</span> <span class="n">key</span><span class="o">=</span><span class="s1">&#39;FORM&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Process CMAQ as though it were observed by OMI and recualculate OMI</span>
+<span class="sd">        tropospheric columns with the CMAQ AMF. This process relies</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        qf : xarray.Dataset</span>
+<span class="sd">            CMAQ file that has composition (e.g., FORM), PRES, DENS, and ZF</span>
+<span class="sd">            variables with a LAY dimension describing the vertical coordinate.</span>
+<span class="sd">        satl3f : xarray.Dataset</span>
+<span class="sd">            Output from to_level3, paths_to_level3, or cmr_to_level3 with</span>
+<span class="sd">            as_dataset=True (the default).</span>
+<span class="sd">        key : str</span>
+<span class="sd">            Key for composition data.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        overf : xr.DataArray</span>
+<span class="sd">            An overpass file with satellite-like CMAQ and CMAQ-like satellite.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="c1"># OMI is on the aura satellite, so we create an average overpass</span>
+        <span class="n">overf</span> <span class="o">=</span> <span class="n">qf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mean_overpass</span><span class="p">(</span><span class="n">satellite</span><span class="o">=</span><span class="s1">&#39;aura&#39;</span><span class="p">)</span>
+        <span class="n">n_per_m2</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">mole_per_m2</span><span class="p">(</span><span class="n">add</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">tgtvar</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span>
+        <span class="k">if</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppm&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e6</span>
+        <span class="k">elif</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppb&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e9</span>
+        <span class="k">elif</span> <span class="n">tgtvar</span><span class="o">.</span><span class="n">units</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span><span class="o">.</span><span class="n">startswith</span><span class="p">(</span><span class="s1">&#39;ppt&#39;</span><span class="p">):</span>
+            <span class="n">vmr</span> <span class="o">=</span> <span class="n">tgtvar</span> <span class="o">/</span> <span class="mf">1e12</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;FORM_PER_CM2&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">n_per_m2</span> <span class="o">*</span> <span class="n">vmr</span> <span class="o">*</span> <span class="mf">6.022e23</span> <span class="o">/</span> <span class="mf">1e4</span>
+
+        <span class="n">ak</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;FORM_AK_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_ak</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;FORM_SW_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_sw</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+        <span class="c1"># uses AK for tropopause</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDFORM_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">apply_ak</span><span class="p">(</span><span class="s1">&#39;FORM_PER_CM2&#39;</span><span class="p">,</span> <span class="n">ak</span> <span class="o">/</span> <span class="n">ak</span><span class="p">)</span>
+        <span class="c1"># uses AK for vertical weighting</span>
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDFORM_CMAQ_OMI&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">overf</span><span class="o">.</span><span class="n">csp</span><span class="o">.</span><span class="n">apply_ak</span><span class="p">(</span><span class="s1">&#39;FORM_PER_CM2&#39;</span><span class="p">,</span> <span class="n">ak</span><span class="p">)</span>
+        <span class="c1"># Recalculate satellite</span>
+        <span class="n">amf</span> <span class="o">=</span> <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;AMF_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmaq_amf</span><span class="p">(</span><span class="n">overf</span><span class="p">,</span> <span class="n">satl3f</span><span class="p">)</span>
+
+        <span class="n">overf</span><span class="p">[</span><span class="s1">&#39;VCDHCHO_OMI_CMAQ&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+            <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;ColumnAmount&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="n">satl3f</span><span class="p">[</span><span class="s1">&#39;AirMassFactor&#39;</span><span class="p">]</span> <span class="o">/</span> <span class="n">amf</span>
+        <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">overf</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OMO3PR">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMO3PR">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OMO3PR</span><span class="p">(</span><span class="n">OMIL2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    OMO3PR satellite processor.</span>
+
+<span class="s2">    * bbox subsets the nTimes and nTimes_1 dimensions</span>
+<span class="s2">    * valid based three conditions</span>
+<span class="s2">      * MainDataQualityFlag == 0</span>
+<span class="s2">      * (XtrackQualityFlagsExpanded &amp; 1) == 0</span>
+<span class="s2">      * AMFCloudFraction &lt;= 0.3</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;O3&#39;</span><span class="p">,</span> <span class="s1">&#39;AveragingKernel&#39;</span><span class="p">,</span> <span class="s1">&#39;O3APriori&#39;</span><span class="p">,</span> <span class="s1">&#39;Pressure&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="OMO3PR.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMO3PR.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where concept_id is set to</span>
+<span class="sd">        &quot;C1239966827-GES_DISC&quot;.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;. &#39;s3&#39; is not supported for OMI at</span>
+<span class="sd">            this time.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;concept_id&#39;</span><span class="p">,</span> <span class="s1">&#39;C1239966827-GES_DISC&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMO3PR.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMO3PR.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMI</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+
+        <span class="n">omtmp</span> <span class="o">=</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;AveragingKernel&#39;</span> <span class="ow">in</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;AveragingKernel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">,</span> <span class="s1">&#39;nLayers&#39;</span><span class="p">,</span> <span class="s1">&#39;nLayers_s&#39;</span>
+            <span class="p">)</span>
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isnull</span><span class="p">()</span><span class="o">.</span><span class="n">all</span><span class="p">(</span><span class="s1">&#39;nLayers&#39;</span><span class="p">))</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelat</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlon</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelon</span><span class="p">)</span>
+            <span class="p">)</span>
+
+        <span class="n">times</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nTimes</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">times_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">times</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">times</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">times</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="n">xtrack</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">nXtrack</span><span class="o">.</span><span class="n">values</span>
+        <span class="n">xtrack_edges</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+            <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span><span class="n">xtrack</span><span class="p">[:</span><span class="mi">1</span><span class="p">],</span> <span class="n">xtrack</span><span class="p">[</span><span class="mi">1</span><span class="p">:]</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="n">xtrack</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">:]]),</span>
+            <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nXtrack_1&#39;</span><span class="p">,)</span>
+        <span class="p">)</span>
+        <span class="n">lat_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Latitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">nTimes</span><span class="o">=</span><span class="n">times_edges</span><span class="p">,</span>
+            <span class="n">nXtrack</span><span class="o">=</span><span class="n">xtrack_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+        <span class="n">lon_edges</span> <span class="o">=</span> <span class="n">ds</span><span class="o">.</span><span class="n">Longitude</span><span class="o">.</span><span class="n">interp</span><span class="p">(</span>
+            <span class="n">nTimes</span><span class="o">=</span><span class="n">times_edges</span><span class="p">,</span>
+            <span class="n">nXtrack</span><span class="o">=</span><span class="n">xtrack_edges</span><span class="p">,</span>
+        <span class="p">)</span>
+
+        <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">tslice</span><span class="p">,</span> <span class="n">xslice</span><span class="p">)</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lon_edges</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">lat_edges</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        o3du = ds[&#39;O3&#39;].sel(nLayers=[15, 16])</span>
+<span class="sd">        dp = ds[&#39;Pressure&#39;].sel(nLevels=slice(15, 17)).diff(&#39;nLevels&#39;)</span>
+<span class="sd">        airn_per_m2 = dp * 100 / 0.0289 / 9.80665</span>
+<span class="sd">        o3n_per_m3 = o3du * 1e-5 * 101325. / 273.15 / 8.314</span>
+<span class="sd">        o3vmr = o3n_per_m3 / airn_per_m2.values</span>
+<span class="sd">        o3ppm = (o3vmr * 1e6).mean(&#39;nLayers&#39;)</span>
+<span class="sd">        o3ppm.attrs.update(ds[&#39;O3&#39;].attrs)</span>
+<span class="sd">        o3ppm.attrs[&#39;units&#39;] = &#39;ppm&#39;</span>
+<span class="sd">        ds[&#39;O3_500hPa_ppm&#39;] = o3ppm</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No valid pixels in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> with </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+</div>
+
+
+
+<div class="viewcode-block" id="OMPROFOZ">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMPROFOZ">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">OMPROFOZ</span><span class="p">(</span><span class="n">OMIL2</span><span class="p">):</span>
+    <span class="vm">__doc__</span> <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">    OMPROFOZ satellite processor.</span>
+
+<span class="s2">    * bbox subsets the nTimes and nTimes_1 dimensions</span>
+<span class="s2">    * valid based three conditions</span>
+<span class="s2">      * 0 &lt; ExitStatus &lt; 10</span>
+<span class="s2">      * RMS (max of channels) &lt; maxrms (default 3)</span>
+<span class="s2">      * AverageResiduals (max of channels) &lt;= 3</span>
+<span class="s2">      * EffectiveCloudFraction &lt;= 0.3</span>
+<span class="s2">      * SolarZenithAngle &lt; 75</span>
+
+<span class="s2">    https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/</span>
+<span class="s2">    &quot;&quot;&quot;</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;O3TotalColumn&#39;</span><span class="p">,</span> <span class="s1">&#39;O3TroposphericColumn&#39;</span><span class="p">,</span> <span class="s1">&#39;O3Retrieved500hPa&#39;</span>
+        <span class="s1">&#39;AirMassFactor&#39;</span><span class="p">,</span> <span class="s1">&#39;ScatteringWeights&#39;</span><span class="p">,</span> <span class="s1">&#39;ClimatologyLevels&#39;</span>
+    <span class="p">)</span>
+
+<div class="viewcode-block" id="OMPROFOZ.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMPROFOZ.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Thin wrapper around satellite.cmr_links where short_name is set to</span>
+<span class="sd">        &quot;OMPROFOZ&quot;.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            &#39;opendap&#39;, &#39;download&#39;, or &#39;s3&#39;. &#39;s3&#39; is not supported for OMI at</span>
+<span class="sd">            this time.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links for download or OpenDAP</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="c1"># BHH : not sure this product exists in the CMR</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;short_name&#39;</span><span class="p">,</span> <span class="s1">&#39;OMPROFOZ&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="n">method</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="OMPROFOZ.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.omi.html#cmaqsatproc.readers.omi.OMPROFOZ.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">maxrms</span><span class="o">=</span><span class="mf">3.</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a OMI OpenDAP-style file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        maxrms : float</span>
+<span class="sd">            Maximum root mean square.</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: OMI</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">omtmp</span> <span class="o">=</span> <span class="n">OMIL2</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;O3AveragingKernel&#39;</span> <span class="ow">in</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+            <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">[</span><span class="s1">&#39;O3AveragingKernel&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">,</span> <span class="s1">&#39;nLayer&#39;</span><span class="p">,</span> <span class="s1">&#39;nLayer_ak&#39;</span>
+            <span class="p">)</span>
+
+        <span class="n">ds</span> <span class="o">=</span> <span class="n">omtmp</span><span class="o">.</span><span class="n">ds</span>
+        <span class="c1"># https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/</span>
+        <span class="c1"># OMPROFOZ/OMPROFOZ_readme-v3.pdf</span>
+        <span class="c1"># 0 &lt; ExitStatus &lt; 10 (pg 8)</span>
+        <span class="c1"># RMS &lt; 3 (modified; pg 8)</span>
+        <span class="c1"># AverageResiduals &lt; 3 (modified; pg 8)</span>
+        <span class="c1"># EffectiveCloudFraction &lt; 0.3 (pg 5)</span>
+        <span class="c1"># pg 8</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="o">~</span><span class="p">(</span>
+            <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;ExitStatus&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="mi">0</span><span class="p">)</span> <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;ExitStatus&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="mi">10</span><span class="p">)</span>
+            <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;RMS&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="s1">&#39;nChannel&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="n">maxrms</span><span class="p">)</span> <span class="o">&gt;</span> <span class="n">maxrms</span><span class="p">)</span>
+            <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;AverageResiduals&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">max</span><span class="p">(</span><span class="s1">&#39;nChannel&#39;</span><span class="p">)</span> <span class="o">&gt;=</span> <span class="mi">3</span><span class="p">)</span>
+            <span class="o">|</span> <span class="o">~</span><span class="n">cloudleq</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;EffectiveCloudFraction&#39;</span><span class="p">],</span> <span class="mf">0.3</span><span class="p">)</span>
+            <span class="o">|</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;SolarZenithAngle&#39;</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">75</span><span class="p">)</span>
+        <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;cn_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span>
+
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">swlon</span><span class="p">,</span> <span class="n">swlat</span><span class="p">,</span> <span class="n">nelon</span><span class="p">,</span> <span class="n">nelat</span> <span class="o">=</span> <span class="n">bbox</span>
+            <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlat</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Latitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelat</span><span class="p">)</span>
+                <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&gt;=</span> <span class="n">swlon</span><span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;Longitude&#39;</span><span class="p">]</span> <span class="o">&lt;=</span> <span class="n">nelon</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">corners</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;ll&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;ul&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+            <span class="s1">&#39;lu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">)),</span>
+            <span class="s1">&#39;uu&#39;</span><span class="p">:</span> <span class="p">(</span><span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">),</span> <span class="nb">slice</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="kc">None</span><span class="p">)),</span>
+        <span class="p">}</span>
+        <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="p">(</span><span class="n">tslice</span><span class="p">,</span> <span class="n">xslice</span><span class="p">)</span> <span class="ow">in</span> <span class="n">corners</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_x&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;LongitudePixelCorner&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+            <span class="n">ds</span><span class="p">[</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">key</span><span class="si">}</span><span class="s1">_y&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">DataArray</span><span class="p">(</span>
+                <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;LatitudePixelCorner&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">isel</span><span class="p">(</span>
+                    <span class="n">nTimes_1</span><span class="o">=</span><span class="n">tslice</span><span class="p">,</span> <span class="n">nXtrack_1</span><span class="o">=</span><span class="n">xslice</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="s1">&#39;nTimes_1&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">values</span><span class="p">,</span>
+                <span class="n">dims</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;nTimes&#39;</span><span class="p">,</span> <span class="s1">&#39;nXtrack&#39;</span><span class="p">)</span>
+            <span class="p">)</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3Retrieved500hPa&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3RetrievedProfile&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">nLayer</span><span class="o">=</span><span class="mi">22</span><span class="p">)</span>
+        <span class="n">dp</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;ProfileLevelPressure&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span>
+            <span class="n">nLayer_1</span><span class="o">=</span><span class="nb">slice</span><span class="p">(</span><span class="mi">22</span><span class="p">,</span> <span class="mi">24</span><span class="p">)</span>
+        <span class="p">)</span><span class="o">.</span><span class="n">diff</span><span class="p">(</span><span class="s1">&#39;nLayer_1&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">sel</span><span class="p">(</span><span class="n">nLayer_1</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+        <span class="c1"># 1e5 m3 / m2 * 1e-5 * kg / m / s2 / K / (kg m2 / s2 / mol / K)</span>
+        <span class="c1">#                    * kg     / s2 / K / kg / m2 * s2 * mol * K</span>
+        <span class="c1">#                                           / m2      * mol</span>
+        <span class="n">o3n_per_m2</span> <span class="o">=</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3Retrieved500hPa&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="mf">1e-5</span> <span class="o">*</span> <span class="mf">101325.</span> <span class="o">/</span> <span class="mf">273.15</span> <span class="o">/</span> <span class="mf">8.314</span>
+        <span class="n">airn_per_m2</span> <span class="o">=</span> <span class="n">dp</span> <span class="o">/</span> <span class="mf">9.80665</span> <span class="o">/</span> <span class="mf">0.0289</span> <span class="o">*</span> <span class="mi">100</span>
+        <span class="n">o3ppm</span> <span class="o">=</span> <span class="n">o3n_per_m2</span> <span class="o">/</span> <span class="n">airn_per_m2</span> <span class="o">*</span> <span class="mf">1e6</span>
+        <span class="n">o3ppm</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3Retrieved500hPa&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="n">o3ppm</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;units&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;ppm&#39;</span>
+        <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;O3Retrieved500hPa_ppm&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">o3ppm</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">ds</span><span class="p">[</span><span class="s1">&#39;valid&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">any</span><span class="p">():</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;No valid pixels in </span><span class="si">{</span><span class="n">path</span><span class="si">}</span><span class="s1"> with </span><span class="si">{</span><span class="n">bbox</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="n">bbox</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../readers.html">cmaqsatproc.readers</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

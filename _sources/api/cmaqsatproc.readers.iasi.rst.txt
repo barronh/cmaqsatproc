@@ -1,0 +1,10 @@
+cmaqsatproc.readers.iasi package
+================================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.iasi
+   :members:
+   :show-inheritance:
+   :undoc-members:

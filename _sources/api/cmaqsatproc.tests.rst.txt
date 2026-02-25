@@ -1,0 +1,61 @@
+cmaqsatproc.tests package
+=========================
+
+Submodules
+----------
+
+cmaqsatproc.tests.test\_cmaq module
+-----------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_cmaq
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.tests.test\_mod04 module
+------------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_mod04
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.tests.test\_omihcho module
+--------------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_omihcho
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.tests.test\_omino2 module
+-------------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_omino2
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.tests.test\_satellite module
+----------------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_satellite
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.tests.test\_utils module
+------------------------------------
+
+.. automodule:: cmaqsatproc.tests.test_utils
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.tests
+   :members:
+   :show-inheritance:
+   :undoc-members:

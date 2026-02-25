@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cmaqsatproc.readers.omi package &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cmaqsatproc.readers.omps package" href="cmaqsatproc.readers.omps.html" />
+    <link rel="prev" title="cmaqsatproc.readers.modis package" href="cmaqsatproc.readers.modis.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="cmaqsatproc-readers-omi-package">
+<h1>cmaqsatproc.readers.omi package<a class="headerlink" href="#cmaqsatproc-readers-omi-package" title="Link to this heading">¶</a></h1>
+<section id="module-cmaqsatproc.readers.omi">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cmaqsatproc.readers.omi" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.omi.</span></span><span class="sig-name descname"><span class="pre">OMHCHO</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.omi.OMIL2" title="cmaqsatproc.readers.omi.OMIL2"><code class="xref py py-class docutils literal notranslate"><span class="pre">OMIL2</span></code></a></p>
+<p>OMHCHO satellite processor.</p>
+<ul class="simple">
+<li><p>bbox subsets the nTimes and nTimes_1 dimensions</p></li>
+<li><p>valid based three conditions
+* MainDataQualityFlag == 0
+* (XtrackQualityFlagsExpanded &amp; 1) == 0
+* AMFCloudFraction &lt;= 0.3</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.cmaq_ak">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_ak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.cmaq_ak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.cmaq_ak" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an averaging kernel (AK) that would process CMAQ as though
+it were observed by the satellite. In this case, the averaging kernel
+is the scattering weights divided by the tropospheric air mass factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_ak</strong> – Averaging kernel on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.cmaq_amf">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_amf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FORM_PER_CM2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.cmaq_amf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.cmaq_amf" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an alternative Air Mass Factor (AMF) using satellite
+scattering weights and the CMAQ vertical profile as a partial column
+density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key of the partial column density variable from CMAQ, which must
+have a LAY dimension that describes teh vertical coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cmaqamf</strong> – Air Mass Factor on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FORM'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by OMI and recualculate OMI
+tropospheric columns with the CMAQ AMF. This process relies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., FORM), PRES, DENS, and ZF
+variables with a LAY dimension describing the vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key for composition data.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ and CMAQ-like satellite.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.cmaq_sw">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.cmaq_sw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.cmaq_sw" title="Link to this definition">¶</a></dt>
+<dd><p>Interpolate satellite scattering weights to CMAQ vertical grid, based
+on PRES (pressure in Pa).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_sw</strong> – Scattering Weights on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C1239966779-GES_DISC”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’. ‘s3’ is not supported for OMI at
+this time.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMHCHO.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMHCHO.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMHCHO.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a OMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North
+of 0, 0</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OMI</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMIL2">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.omi.</span></span><span class="sig-name descname"><span class="pre">OMIL2</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMIL2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMIL2" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite" title="cmaqsatproc.readers.core.satellite"><code class="xref py py-class docutils literal notranslate"><span class="pre">satellite</span></code></a></p>
+<p>Default OMI satellite processor.</p>
+<ul class="simple">
+<li><p>bbox subsets the nTimes and nTimes_1  dimensions</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMIL2.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMIL2.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMIL2.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a OMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#cmaqsatproc.readers.omi.OMIL2" title="cmaqsatproc.readers.omi.OMIL2">OMIL2</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMIL2.prep_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">prep_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMIL2.prep_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMIL2.prep_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>Applies spatial subset based on Latitude and Longitude</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> (<em>xarray.Dataset</em>) – Satellite dataset</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ds</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xarray.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMIL2.shorten_name">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shorten_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMIL2.shorten_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMIL2.shorten_name" title="Link to this definition">¶</a></dt>
+<dd><p>Provide a short name for long keys. This is useful for renaming
+variables to fit IOAPI 16 character restrictions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – Original variable name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>shortkey</strong> – Shortened key</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.omi.</span></span><span class="sig-name descname"><span class="pre">OMNO2</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.omi.OMIL2" title="cmaqsatproc.readers.omi.OMIL2"><code class="xref py py-class docutils literal notranslate"><span class="pre">OMIL2</span></code></a></p>
+<p>OMNO2 satellite processor.</p>
+<ul class="simple">
+<li><p>bbox subsets the nTimes and nTimes_1 dimensions</p></li>
+<li><p>valid based three conditions
+* (VcdQualityFlags &amp; 1) == 0
+* XTrackQualityFlags == 0
+* CloudFraction &lt;= 0.3</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.cmaq_ak">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_ak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.cmaq_ak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.cmaq_ak" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an averaging kernel (AK) that would process CMAQ as though
+it were observed by the satellite. In this case, the averaging kernel
+is the scattering weights divided by the tropospheric air mass factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_ak</strong> – Averaging kernel on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.cmaq_amf">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_amf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NO2_PER_CM2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.cmaq_amf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.cmaq_amf" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an alternative Air Mass Factor (AMF) using satellite
+scattering weights and the CMAQ vertical profile as a partial column
+density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key of the partial column density variable from CMAQ, which must
+have a LAY dimension that describes teh vertical coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cmaqamf</strong> – Air Mass Factor on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NO2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by OMI and recualculate OMI
+tropospheric columns with the CMAQ AMF. This process relies</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., NO2), PRES, DENS, and ZF
+variables with a LAY dimension describing the vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ and CMAQ-like satellite.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.cmaq_sw">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.cmaq_sw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.cmaq_sw" title="Link to this definition">¶</a></dt>
+<dd><p>Interpolate satellite scattering weights to CMAQ vertical grid, based
+on PRES (pressure in Pa).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_sw</strong> – Scattering Weights on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C1239966842-GES_DISC”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’. ‘s3’ is not supported for OMI at
+this time.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMNO2.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMNO2.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMNO2.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a OMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North
+of 0, 0</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OMINO2</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMO3PR">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.omi.</span></span><span class="sig-name descname"><span class="pre">OMO3PR</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMO3PR"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMO3PR" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.omi.OMIL2" title="cmaqsatproc.readers.omi.OMIL2"><code class="xref py py-class docutils literal notranslate"><span class="pre">OMIL2</span></code></a></p>
+<p>OMO3PR satellite processor.</p>
+<ul class="simple">
+<li><p>bbox subsets the nTimes and nTimes_1 dimensions</p></li>
+<li><p>valid based three conditions
+* MainDataQualityFlag == 0
+* (XtrackQualityFlagsExpanded &amp; 1) == 0
+* AMFCloudFraction &lt;= 0.3</p></li>
+</ul>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMO3PR.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMO3PR.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMO3PR.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C1239966827-GES_DISC”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’. ‘s3’ is not supported for OMI at
+this time.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMO3PR.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMO3PR.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMO3PR.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a OMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North
+of 0, 0</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OMI</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMPROFOZ">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.omi.</span></span><span class="sig-name descname"><span class="pre">OMPROFOZ</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMPROFOZ"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMPROFOZ" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.omi.OMIL2" title="cmaqsatproc.readers.omi.OMIL2"><code class="xref py py-class docutils literal notranslate"><span class="pre">OMIL2</span></code></a></p>
+<p>OMPROFOZ satellite processor.</p>
+<ul class="simple">
+<li><p>bbox subsets the nTimes and nTimes_1 dimensions</p></li>
+<li><p>valid based three conditions
+* 0 &lt; ExitStatus &lt; 10
+* RMS (max of channels) &lt; maxrms (default 3)
+* AverageResiduals (max of channels) &lt;= 3
+* EffectiveCloudFraction &lt;= 0.3
+* SolarZenithAngle &lt; 75</p></li>
+</ul>
+<p><a class="reference external" href="https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/">https://avdc.gsfc.nasa.gov/pub/data/satellite/Aura/OMI/V03/L2/OMPROFOZ/</a></p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMPROFOZ.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwds</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMPROFOZ.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMPROFOZ.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where short_name is set to
+“OMPROFOZ”.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’. ‘s3’ is not supported for OMI at
+this time.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.omi.OMPROFOZ.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">maxrms</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">3.0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/omi.html#OMPROFOZ.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.omi.OMPROFOZ.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a OMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North
+of 0, 0</p></li>
+<li><p><strong>maxrms</strong> (<em>float</em>) – Maximum root mean square.</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>OMI</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cmaqsatproc.html">cmaqsatproc package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="cmaqsatproc.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.cmaq">cmaqsatproc.cmaq module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.config">cmaqsatproc.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="cmaqsatproc.html">cmaqsatproc package</a><ul>
+  <li><a href="cmaqsatproc.readers.html">cmaqsatproc.readers package</a><ul>
+      <li>Previous: <a href="cmaqsatproc.readers.modis.html" title="previous chapter">cmaqsatproc.readers.modis package</a></li>
+      <li>Next: <a href="cmaqsatproc.readers.omps.html" title="next chapter">cmaqsatproc.readers.omps package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/cmaqsatproc.readers.omi.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

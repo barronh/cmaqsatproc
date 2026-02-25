@@ -1,0 +1,815 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../../../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>cmaqsatproc.readers.core &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../../../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../../../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../../../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../../../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../../../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../../../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../../../_static/copybutton.js?v=f281be69"></script>
+    <script src="../../../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../../../genindex.html" />
+    <link rel="search" title="Search" href="../../../search.html" />
+   
+  <link rel="stylesheet" href="../../../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <h1>Source code for cmaqsatproc.readers.core</h1><div class="highlight"><pre>
+<span></span><span class="n">__all__</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;satellite&#39;</span><span class="p">]</span>
+
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">EasyDataFramePolygon</span><span class="p">,</span> <span class="n">grouped_weighted_avg</span><span class="p">,</span> <span class="n">rootremover</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">csp_version</span>
+
+
+<div class="viewcode-block" id="satellite">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite">[docs]</a>
+<span class="k">class</span><span class="w"> </span><span class="nc">satellite</span><span class="p">:</span>
+    <span class="n">_crs</span> <span class="o">=</span> <span class="mi">4326</span>
+    <span class="n">_defaultkeys</span> <span class="o">=</span> <span class="p">()</span>
+    <span class="n">_validkey</span> <span class="o">=</span> <span class="s1">&#39;valid&#39;</span>
+    <span class="n">_geokeys</span> <span class="o">=</span> <span class="p">(</span>
+        <span class="s1">&#39;ll_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ll_y&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;lu_x&#39;</span><span class="p">,</span> <span class="s1">&#39;lu_y&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;uu_x&#39;</span><span class="p">,</span> <span class="s1">&#39;uu_y&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;ul_x&#39;</span><span class="p">,</span> <span class="s1">&#39;ul_y&#39;</span><span class="p">,</span>
+        <span class="s1">&#39;cn_x&#39;</span><span class="p">,</span> <span class="s1">&#39;cn_y&#39;</span>
+    <span class="p">)</span>
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">_defgeofunc</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Function that takes a dataframe and returns geometries for each row.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">EasyDataFramePolygon</span>
+
+<div class="viewcode-block" id="satellite.cmr_links">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.cmr_links">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_links</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">method</span><span class="o">=</span><span class="s1">&#39;opendap&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Uses utils.getcmrlinks to get links from the NASA Common Metadata</span>
+<span class="sd">        Repository (CMR)</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        method : str</span>
+<span class="sd">            Options are opendap, download, or s3</span>
+<span class="sd">        kwds : mappable</span>
+<span class="sd">            Passed through to utils.getcmrlinks and utils.getcmrgranules.</span>
+<span class="sd">            Summary of getcmrgranules copied below for convenience. See</span>
+<span class="sd">            getcmrgranules for definitive docs.</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        links : list</span>
+<span class="sd">            List of links to OpenDAP, http downloadable, or s3 links</span>
+
+<span class="sd">        Notes</span>
+<span class="sd">        -----</span>
+<span class="sd">        getcmrgranules keywords</span>
+
+<span class="sd">        temporal : str</span>
+<span class="sd">            NASA temporal that is recognized by NASA CMR</span>
+<span class="sd">            For example:</span>
+<span class="sd">            - YYYY-MM-DDTHH:MM:SSZ or</span>
+<span class="sd">            - YYYY-MM-DDTHH:MM:SSZ/YYYY-MM-DDTHH:MM:SSZ or</span>
+<span class="sd">            - YYYY-MM-DDTHH:MM:SSZ/P01D (or P01M, P01Y, etc)</span>
+<span class="sd">        bbox : list</span>
+<span class="sd">            Longitude/latitude bounding edges as floats (wlon,slat,elon,nlat)</span>
+<span class="sd">        poly : shapely.geometry.Polygon</span>
+<span class="sd">            The exterior will be converted to floats and ordered x1,y1,...,xN,yN</span>
+<span class="sd">        filterfunc : function</span>
+<span class="sd">            Takes a link dictionary from CMR and returns True if it should be</span>
+<span class="sd">            retained</span>
+<span class="sd">        concept_id : str</span>
+<span class="sd">            Optional, NASA concept_id that is the unique identifier for a</span>
+<span class="sd">            collection in NASA&#39;s Common Metadata Repository</span>
+<span class="sd">        short_name : str</span>
+<span class="sd">            Optional, short_name identifier for a collection that is often, but</span>
+<span class="sd">            not always unique in the NASA CMR. If you have the short_name and</span>
+<span class="sd">            want the concept_id put the url below in your browser where you</span>
+<span class="sd">            replace OMNO2 (the example) with your short_name</span>
+<span class="sd">            https://cmr.earthdata.nasa.gov/search/collections?short_name=OMNO2</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">getcmrlinks</span>
+        <span class="n">kwds</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="n">kwds</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;filterfunc&#39;</span><span class="p">,</span> <span class="n">method</span><span class="p">)</span>
+        <span class="n">rawlinks</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">getcmrlinks</span><span class="p">(</span><span class="o">**</span><span class="n">kwds</span><span class="p">))</span>
+        <span class="c1"># MODIS requires extra processing because OpenDAP links from CMR are</span>
+        <span class="c1"># to the html interface instead of to the file itself.</span>
+        <span class="c1">#</span>
+        <span class="c1"># Conceptually, this may apply to any/all datasets</span>
+        <span class="k">if</span> <span class="n">method</span> <span class="o">!=</span> <span class="s1">&#39;opendap&#39;</span><span class="p">:</span>
+            <span class="n">links</span> <span class="o">=</span> <span class="n">rawlinks</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">links</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">rawlinks</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">link</span><span class="o">.</span><span class="n">endswith</span><span class="p">(</span><span class="s1">&#39;.html&#39;</span><span class="p">):</span>
+                    <span class="n">link</span> <span class="o">=</span> <span class="n">link</span><span class="p">[:</span><span class="o">-</span><span class="mi">5</span><span class="p">]</span>
+                <span class="n">links</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">link</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">links</span></div>
+
+
+<div class="viewcode-block" id="satellite.cmr_download">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.cmr_download">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_download</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="s1">&#39;exists&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Uses cmr_links to get links from the NASA Common Metadata Repo</span>
+<span class="sd">        and downloads them to local disk.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        check : str</span>
+<span class="sd">            Options are exists and size.</span>
+<span class="sd">            - exists : keep cached if it exists.</span>
+<span class="sd">            - size : keep cached if it is the full file size</span>
+<span class="sd">        kwds : mappable</span>
+<span class="sd">            Passed through to utils.getcmrlinks. See getcmrlinks for valid</span>
+<span class="sd">            keywords</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        dests : list</span>
+<span class="sd">            List of local files downloaded</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">..utils</span><span class="w"> </span><span class="kn">import</span> <span class="n">_download</span>
+        <span class="n">verbose</span> <span class="o">=</span> <span class="n">kwds</span><span class="o">.</span><span class="n">get</span><span class="p">(</span><span class="s1">&#39;verbose&#39;</span><span class="p">,</span> <span class="mi">0</span><span class="p">)</span>
+        <span class="n">links</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span><span class="n">method</span><span class="o">=</span><span class="s1">&#39;download&#39;</span><span class="p">,</span> <span class="o">**</span><span class="n">kwds</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">links</span><span class="p">),</span> <span class="s1">&#39;links&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Links:&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;    -&#39;</span><span class="p">,</span> <span class="n">link</span><span class="p">)</span>
+
+        <span class="n">dests</span> <span class="o">=</span> <span class="p">[</span>
+            <span class="n">_download</span><span class="p">(</span><span class="n">link</span><span class="p">,</span> <span class="n">check</span><span class="o">=</span><span class="n">check</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">link</span> <span class="ow">in</span> <span class="n">links</span>
+        <span class="p">]</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Destinations:&#39;</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">dest</span> <span class="ow">in</span> <span class="n">dests</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;    -&#39;</span><span class="p">,</span> <span class="n">dest</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">dests</span></div>
+
+
+<div class="viewcode-block" id="satellite.from_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.from_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">from_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">ds</span><span class="p">,</span> <span class="n">path</span><span class="o">=</span><span class="s1">&#39;unknown&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a satellite object from a dataset</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        ds : xarray.Dataset</span>
+<span class="sd">            Satellite dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: satellite</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">bbox</span> <span class="o">=</span> <span class="kc">None</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+<div class="viewcode-block" id="satellite.open_dataset">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.open_dataset">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">open_dataset</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Create a satellite object from the dataset at a path. The path can be</span>
+<span class="sd">        a local path or a remote path (OpenDAP or s3).</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        path : str</span>
+<span class="sd">            Path to a satellite file</span>
+<span class="sd">        bbox : iterable</span>
+<span class="sd">            swlon, swlat, nelon, nelat in decimal degrees East and North</span>
+<span class="sd">            of 0, 0</span>
+<span class="sd">        kwargs : mappable</span>
+<span class="sd">            Passed to xarray.open_dataset</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        sat: satellite</span>
+<span class="sd">            Satellite processing instance</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+        <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="p">()</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">path</span> <span class="o">=</span> <span class="n">path</span>
+        <span class="k">if</span> <span class="s1">&#39;s3:&#39;</span> <span class="ow">in</span> <span class="n">path</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">s3fs</span>
+            <span class="n">fs</span> <span class="o">=</span> <span class="n">s3fs</span><span class="o">.</span><span class="n">S3FileSystem</span><span class="p">(</span><span class="n">anon</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">with</span> <span class="n">fs</span><span class="o">.</span><span class="n">open</span><span class="p">(</span><span class="n">path</span><span class="p">)</span> <span class="k">as</span> <span class="n">fileObj</span><span class="p">:</span>
+                <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">fileObj</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">ds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="o">*</span><span class="n">kwargs</span><span class="p">)</span>
+        <span class="n">sat</span><span class="o">.</span><span class="n">ds</span> <span class="o">=</span> <span class="n">ds</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+            <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="bp">cls</span><span class="si">}</span><span class="s1"> bbox not implemented; all cells returned&#39;</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">sat</span></div>
+
+
+    <span class="nd">@property</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ds</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+        <span class="k">return</span> <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span>
+
+    <span class="nd">@ds</span><span class="o">.</span><span class="n">setter</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">ds</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">ds</span><span class="p">):</span>
+        <span class="bp">self</span><span class="o">.</span><span class="n">_ds</span> <span class="o">=</span> <span class="n">ds</span>
+
+<div class="viewcode-block" id="satellite.to_dataframe">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.to_dataframe">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_dataframe</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">varkeys</span><span class="p">,</span> <span class="n">valid</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">geo</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">default_keys</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Transform the Dataset into a dataframe. This function is similar to</span>
+<span class="sd">        xr.Dataset.to_dataframe, but includes geopandas support and filtering</span>
+<span class="sd">        for valid pixels.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        varkeys : iterable</span>
+<span class="sd">            Keys to use in the dataframe. Defaults to class._defaultkeys that</span>
+<span class="sd">            is class specific</span>
+<span class="sd">        valid : bool</span>
+<span class="sd">            If true, only return valid pixels.</span>
+<span class="sd">        geo : bool</span>
+<span class="sd">            Add geometry to output a geopandas.GeoDataFrame</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        df : pandas.DataFrame or geopandas.GeoDataFrame</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">default_keys</span><span class="p">:</span>
+            <span class="n">varkeys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">varkeys</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_defaultkeys</span><span class="p">)</span>
+        <span class="n">validdims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_validkey</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span>
+        <span class="n">usevalid</span> <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">varkeys</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span>
+        <span class="k">for</span> <span class="n">varkey</span> <span class="ow">in</span> <span class="n">varkeys</span><span class="p">:</span>
+            <span class="k">for</span> <span class="n">dk</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">varkey</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">validdims</span><span class="p">:</span>
+                    <span class="n">usevalid</span> <span class="o">=</span> <span class="kc">True</span>
+
+        <span class="k">if</span> <span class="n">usevalid</span> <span class="ow">and</span> <span class="n">valid</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="p">[</span><span class="bp">self</span><span class="o">.</span><span class="n">_validkey</span><span class="p">]</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">varkeys</span><span class="p">)</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">varkeys</span><span class="p">)</span>
+
+        <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">keys</span><span class="p">]</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">valid</span> <span class="ow">and</span> <span class="n">usevalid</span><span class="p">:</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">query</span><span class="p">(</span><span class="s1">&#39;valid == True&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="p">(</span><span class="n">geo</span> <span class="ow">is</span> <span class="kc">False</span><span class="p">):</span>
+            <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;_geodf&#39;</span><span class="p">):</span>
+                <span class="n">gdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_geodf</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
+                <span class="k">if</span> <span class="n">geo</span> <span class="ow">is</span> <span class="kc">True</span><span class="p">:</span>
+                    <span class="n">geo</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defgeofunc</span>
+                <span class="n">gdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="o">*</span><span class="bp">self</span><span class="o">.</span><span class="n">_geokeys</span><span class="p">,</span> <span class="n">valid</span><span class="o">=</span><span class="n">valid</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">gdf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;No valid pixels&#39;</span><span class="p">)</span>
+                <span class="n">gdf</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span>
+                    <span class="n">gdf</span><span class="p">,</span> <span class="n">geometry</span><span class="o">=</span><span class="n">geo</span><span class="p">(</span><span class="n">gdf</span><span class="p">),</span> <span class="n">crs</span><span class="o">=</span><span class="bp">self</span><span class="o">.</span><span class="n">_crs</span>
+                <span class="p">)</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">_geokeys</span><span class="p">),</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">_geodf</span> <span class="o">=</span> <span class="n">gdf</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df</span><span class="p">)</span>
+        <span class="k">if</span> <span class="s1">&#39;valid&#39;</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="s1">&#39;valid&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">varkeys</span><span class="p">:</span>
+                <span class="n">df</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="s1">&#39;valid&#39;</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                <span class="n">df</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+        <span class="k">return</span> <span class="n">df</span></div>
+
+
+<div class="viewcode-block" id="satellite.add_weights">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.add_weights">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">add_weights</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="n">intx</span><span class="p">,</span> <span class="n">option</span><span class="o">=</span><span class="s1">&#39;equal&#39;</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Add Weights to intersection dataframe (intx) using predefined options:</span>
+<span class="sd">        * &#39;equal&#39; uses equal weights for all overlapping pixels</span>
+<span class="sd">        * &#39;area&#39; uses area of intersection for all overlapping pixels</span>
+<span class="sd">        * other methods can be added by overriding this mehtod</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        intx : geopandas.GeoDataFrame</span>
+<span class="sd">            Dataframe that has a geometry field that supports area</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        None</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">if</span> <span class="n">option</span> <span class="o">==</span> <span class="s1">&#39;equal&#39;</span><span class="p">:</span>
+            <span class="n">intx</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">elif</span> <span class="n">option</span> <span class="o">==</span> <span class="s1">&#39;area&#39;</span><span class="p">:</span>
+            <span class="n">intx</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">intx</span><span class="o">.</span><span class="n">geometry</span><span class="o">.</span><span class="n">area</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">intx</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">all</span><span class="p">():</span>
+                <span class="kn">import</span><span class="w"> </span><span class="nn">warnings</span>
+                <span class="n">warnings</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="s1">&#39;All areas are zero, which likely means that geometries&#39;</span>
+                    <span class="o">+</span> <span class="s1">&#39; were points. Reverting to equal weights.&#39;</span>
+                <span class="p">)</span>
+                <span class="n">intx</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="mi">1</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">KeyError</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Unknown weighting option </span><span class="si">{</span><span class="n">option</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">)</span>
+
+        <span class="k">return</span> <span class="kc">None</span></div>
+
+
+<div class="viewcode-block" id="satellite.shorten_name">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.shorten_name">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">shorten_name</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">k</span><span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        By default, nothing is done and k is returned. Override this method to</span>
+<span class="sd">        make short names that are suitable for other purposes (e.g., IOAPI 16</span>
+<span class="sd">        character names)</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="k">return</span> <span class="n">k</span></div>
+
+
+<div class="viewcode-block" id="satellite.to_level3">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.to_level3">[docs]</a>
+    <span class="k">def</span><span class="w"> </span><span class="nf">to_level3</span><span class="p">(</span>
+        <span class="bp">self</span><span class="p">,</span> <span class="o">*</span><span class="n">varkeys</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">griddims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weighting</span><span class="o">=</span><span class="s1">&#39;area&#39;</span><span class="p">,</span>
+        <span class="n">as_dataset</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Convert variables from L2 file to a custom L3 file.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        varkeys : iterable</span>
+<span class="sd">            See to_dataframe</span>
+<span class="sd">        grid : geopandas.GeoDataFrame</span>
+<span class="sd">            Defines the grid used as the L3 destination</span>
+<span class="sd">        griddims : iterable</span>
+<span class="sd">            Defaults to grid.index.names</span>
+<span class="sd">        weighting : str</span>
+<span class="sd">            Passed as option to self.add_weights</span>
+
+<span class="sd">        Returns</span>
+<span class="sd">        -------</span>
+<span class="sd">        outputs : dict or xr.Dataset</span>
+<span class="sd">            Dictionary of outputs by output dimensions</span>
+<span class="sd">            or Dataset of outputs as a dataset</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">numpy</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">np</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">geopandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">gpd</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">time</span>
+        <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">varkeys</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="n">varkeys</span> <span class="o">=</span> <span class="p">[</span>
+                <span class="n">k</span> <span class="k">for</span> <span class="n">k</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">_defaultkeys</span> <span class="k">if</span> <span class="n">k</span> <span class="ow">in</span> <span class="nb">list</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)</span>
+            <span class="p">]</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;defaults&#39;</span><span class="p">,</span> <span class="n">varkeys</span><span class="p">)</span>
+        <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">grid</span><span class="p">,</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoSeries</span><span class="p">):</span>
+            <span class="n">grid</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">GeoDataFrame</span><span class="p">(</span><span class="nb">dict</span><span class="p">(),</span> <span class="n">geometry</span><span class="o">=</span><span class="n">grid</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">griddims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">griddims</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;griddims&#39;</span><span class="p">,</span> <span class="n">griddims</span><span class="p">)</span>
+        <span class="n">dimsets</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">varkeys</span><span class="p">:</span>
+            <span class="n">dims</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">dims</span>
+            <span class="n">dimsets</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">dims</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">key</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;dimsets&#39;</span><span class="p">,</span> <span class="n">dimsets</span><span class="p">)</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Making geometry&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="c1"># Index is lost during overlay, and must be recreated</span>
+        <span class="n">geodf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="n">geo</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span><span class="o">.</span><span class="n">to_crs</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">crs</span><span class="p">)[[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]]</span>
+        <span class="n">geodf</span><span class="p">[</span><span class="s1">&#39;source_area&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">geodf</span><span class="p">[</span><span class="s1">&#39;geometry&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">area</span>
+        <span class="c1"># possible_matches_index = grid.sindex.intersection(geodf.total_bounds)</span>
+        <span class="c1"># igrid = grid.iloc[possible_matches_index]</span>
+        <span class="k">if</span> <span class="n">geodf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s1">&#39;No valid pixels&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Geometry has </span><span class="si">{</span><span class="n">geodf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> rows&#39;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; (</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">s)&#39;</span>
+            <span class="p">)</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+        <span class="n">myidx</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">geodf</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span> <span class="o">+</span> <span class="nb">list</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Making overlay&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="n">intx</span> <span class="o">=</span> <span class="n">gpd</span><span class="o">.</span><span class="n">overlay</span><span class="p">(</span>
+            <span class="n">geodf</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span> <span class="n">grid</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(),</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;intersection&#39;</span><span class="p">,</span>
+            <span class="n">keep_geom_type</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">make_valid</span><span class="o">=</span><span class="kc">True</span>
+        <span class="p">)</span>
+        <span class="n">intx</span><span class="o">.</span><span class="n">set_index</span><span class="p">(</span><span class="n">myidx</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span>
+                <span class="sa">f</span><span class="s1">&#39;Overlay has </span><span class="si">{</span><span class="n">intx</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> rows &#39;</span>
+                <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39;(</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">s)&#39;</span>
+            <span class="p">)</span>
+            <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Adding weights&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+
+        <span class="bp">self</span><span class="o">.</span><span class="n">add_weights</span><span class="p">(</span><span class="n">intx</span><span class="p">,</span> <span class="n">option</span><span class="o">=</span><span class="n">weighting</span><span class="p">)</span>
+        <span class="n">justweight</span> <span class="o">=</span> <span class="n">intx</span><span class="p">[[</span><span class="s1">&#39;weight&#39;</span><span class="p">]]</span>
+        <span class="n">overlays</span> <span class="o">=</span> <span class="p">{}</span>
+
+        <span class="k">for</span> <span class="n">dimset</span><span class="p">,</span> <span class="n">keys</span> <span class="ow">in</span> <span class="n">dimsets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Working on&#39;</span><span class="p">,</span> <span class="n">dimset</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">outdims</span> <span class="o">=</span> <span class="n">griddims</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; - Making dataframe&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="n">df</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="o">*</span><span class="n">keys</span><span class="p">,</span> <span class="n">geo</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;   - Dataframe has </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> rows&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">if</span> <span class="nb">any</span><span class="p">([</span><span class="n">n</span> <span class="ow">in</span> <span class="n">dimset</span> <span class="k">for</span> <span class="n">n</span> <span class="ow">in</span> <span class="n">justweight</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">]):</span>
+                <span class="n">notgeodims</span> <span class="o">=</span> <span class="nb">set</span><span class="p">(</span><span class="n">dimset</span><span class="p">)</span><span class="o">.</span><span class="n">difference</span><span class="p">(</span><span class="n">justweight</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+                <span class="n">notgeodims</span> <span class="o">=</span> <span class="p">[</span><span class="n">dk</span> <span class="k">for</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">dimset</span> <span class="k">if</span> <span class="n">dk</span> <span class="ow">in</span> <span class="n">notgeodims</span><span class="p">]</span>
+                <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; - Adding intx geometry&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                        <span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;   - Unstacking </span><span class="si">{</span><span class="n">notgeodims</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">mjustweight</span> <span class="o">=</span> <span class="n">justweight</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+                    <span class="n">laymis</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,)</span>
+                    <span class="n">ckey</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;count&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">laymis</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">wkey</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;weight&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">laymis</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">wskey</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;weight_sum&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">laymis</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">wmkey</span> <span class="o">=</span> <span class="p">(</span><span class="s1">&#39;weight_mean&#39;</span><span class="p">,)</span> <span class="o">+</span> <span class="n">laymis</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">minames</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;var&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">notgeodims</span>
+                    <span class="n">mjustweight</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span>
+                        <span class="p">[</span><span class="n">wkey</span><span class="p">],</span> <span class="n">names</span><span class="o">=</span><span class="n">minames</span>
+                    <span class="p">)</span>
+                    <span class="n">udf</span> <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">unstack</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">udf</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">set_names</span><span class="p">(</span><span class="n">minames</span><span class="p">,</span> <span class="n">inplace</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">mjustweight</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">udf</span><span class="p">)</span>
+                    <span class="c1"># In Python3.12 the concatenation of a MultiIndex columns</span>
+                    <span class="c1"># is unreliable. The indices of each object are known, so</span>
+                    <span class="c1"># the expected multi-level column structure is known.</span>
+                    <span class="c1"># Forcing a fix by exporting</span>
+                    <span class="c1"># See https://github.com/pandas-dev/pandas/issues/57500</span>
+                    <span class="n">colvals</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">concatenate</span><span class="p">([</span>
+                        <span class="n">tmp</span><span class="o">.</span><span class="n">columns</span><span class="o">.</span><span class="n">to_numpy</span><span class="p">()</span> <span class="k">for</span> <span class="n">tmp</span> <span class="ow">in</span> <span class="p">[</span><span class="n">mjustweight</span><span class="p">,</span> <span class="n">udf</span><span class="p">]</span>
+                    <span class="p">])</span>
+                    <span class="n">colidx</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">MultiIndex</span><span class="o">.</span><span class="n">from_tuples</span><span class="p">(</span><span class="n">colvals</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="n">minames</span><span class="p">)</span>
+                    <span class="n">df</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="n">colidx</span>
+                <span class="k">else</span><span class="p">:</span>
+                    <span class="n">wkey</span> <span class="o">=</span> <span class="s1">&#39;weight&#39;</span>
+                    <span class="c1"># Adding on keyword, because it is significanly faster for</span>
+                    <span class="c1"># some products. I would have thought the on would be</span>
+                    <span class="c1"># inferred by names.</span>
+                    <span class="n">sharedidk</span> <span class="o">=</span> <span class="p">[</span>
+                        <span class="n">idk</span> <span class="k">for</span> <span class="n">idk</span> <span class="ow">in</span> <span class="n">df</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span>
+                        <span class="k">if</span> <span class="n">idk</span> <span class="ow">in</span> <span class="n">justweight</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span>
+                    <span class="p">]</span>
+                    <span class="n">df</span> <span class="o">=</span> <span class="n">justweight</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">df</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="n">sharedidk</span><span class="p">)</span>
+
+                <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span>
+                        <span class="sa">f</span><span class="s1">&#39;   - Weighted inputs has </span><span class="si">{</span><span class="n">df</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> rows&#39;</span>
+                        <span class="o">+</span> <span class="sa">f</span><span class="s1">&#39; (</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">s)&#39;</span><span class="p">,</span>
+                        <span class="n">flush</span><span class="o">=</span><span class="kc">True</span>
+                    <span class="p">)</span>
+                    <span class="n">t0</span> <span class="o">=</span> <span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span>
+                <span class="c1"># Geometry objects are not weightable</span>
+                <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; - Weighting&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+                <span class="n">gdf</span> <span class="o">=</span> <span class="n">grouped_weighted_avg</span><span class="p">(</span>
+                    <span class="n">df</span><span class="p">,</span> <span class="n">df</span><span class="p">[</span><span class="n">wkey</span><span class="p">],</span> <span class="n">outdims</span>
+                <span class="p">)</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="n">dropkeys</span> <span class="o">=</span> <span class="p">[</span><span class="n">wkey</span><span class="p">,</span> <span class="n">wskey</span><span class="p">,</span> <span class="n">wmkey</span><span class="p">,</span> <span class="n">ckey</span><span class="p">]</span>
+                    <span class="n">ngdf</span> <span class="o">=</span> <span class="n">gdf</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span><span class="n">dropkeys</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+                    <span class="n">ngdf</span> <span class="o">=</span> <span class="n">ngdf</span><span class="o">.</span><span class="n">stack</span><span class="p">(</span><span class="n">notgeodims</span><span class="p">)</span>
+                    <span class="n">ngdf</span><span class="p">[</span><span class="s1">&#39;weight&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">wkey</span><span class="p">]</span>
+                    <span class="n">ngdf</span><span class="p">[</span><span class="s1">&#39;weight_sum&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">wskey</span><span class="p">]</span>
+                    <span class="n">ngdf</span><span class="p">[</span><span class="s1">&#39;weight_mean&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">wmkey</span><span class="p">]</span>
+                    <span class="n">ngdf</span><span class="p">[</span><span class="s1">&#39;count&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">gdf</span><span class="p">[</span><span class="n">ckey</span><span class="p">]</span>
+                    <span class="n">gdf</span> <span class="o">=</span> <span class="n">ngdf</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">gdf</span> <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">to_dataframe</span><span class="p">(</span><span class="o">*</span><span class="n">keys</span><span class="p">,</span> <span class="n">geo</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">valid</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+                <span class="c1"># tmpgrid = grid.drop(&#39;geometry&#39;, axis=1).copy()</span>
+                <span class="c1"># tmpgrid[&#39;none&#39;] = 1</span>
+                <span class="c1"># gdf = tmpgrid.set_index(&#39;none&#39;, append=True).join(</span>
+                <span class="c1">#     df.set_index(&#39;none&#39;, append=True)</span>
+                <span class="c1"># ).droplevel(&#39;none&#39;)</span>
+                <span class="c1"># gdf[&#39;weight_sum&#39;] = 1</span>
+
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s1">&#39;   - Weighted outputs has </span><span class="si">{</span><span class="n">gdf</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="si">}</span><span class="s1"> rows&#39;</span>
+                    <span class="sa">f</span><span class="s1">&#39; (</span><span class="si">{</span><span class="n">time</span><span class="o">.</span><span class="n">time</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">t0</span><span class="si">:</span><span class="s1">.1f</span><span class="si">}</span><span class="s1">s)&#39;</span><span class="p">,</span>
+                    <span class="n">flush</span><span class="o">=</span><span class="kc">True</span>
+                <span class="p">)</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="s1">&#39; - Adding attributes&#39;</span><span class="p">,</span> <span class="n">flush</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">gdf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                    <span class="n">gdf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+
+            <span class="n">overlays</span><span class="p">[</span><span class="nb">tuple</span><span class="p">(</span><span class="n">dimset</span><span class="p">)]</span> <span class="o">=</span> <span class="n">gdf</span>
+
+        <span class="k">if</span> <span class="n">as_dataset</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+            <span class="c1"># dss = {}</span>
+            <span class="n">outds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">dimks</span><span class="p">,</span> <span class="n">outdf</span> <span class="ow">in</span> <span class="n">overlays</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">dimds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">outdf</span><span class="p">)</span>
+                <span class="c1"># dss[dimks] = dimds</span>
+                <span class="k">for</span> <span class="n">vk</span> <span class="ow">in</span> <span class="n">dimds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+                    <span class="n">outds</span><span class="p">[</span><span class="n">vk</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimds</span><span class="p">[</span><span class="n">vk</span><span class="p">]</span>
+            <span class="c1"># outds = xr.merge(dss.values())</span>
+            <span class="n">outds</span> <span class="o">=</span> <span class="n">outds</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+                <span class="n">griddim</span><span class="p">:</span> <span class="n">grid</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="n">griddim</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">griddim</span> <span class="ow">in</span> <span class="n">griddims</span>
+            <span class="p">})</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">outds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                    <span class="n">outds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">docstr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;__doc__&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">docstr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">docstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">docstr</span>
+                <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> - </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">getattr</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="s1">&#39;path&#39;</span><span class="p">,</span> <span class="s1">&#39;&lt;path unknown&gt;&#39;</span><span class="p">))</span>
+            <span class="p">)</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;updated&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%F</span><span class="s1">T%H:%M:%S%z&#39;</span><span class="p">)</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="s1">&#39;&#39;</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">crs</span><span class="o">.</span><span class="n">srs</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;cmaqsatproc_version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">csp_version</span><span class="p">()</span>
+            <span class="n">comp</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="n">zlib</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">complevel</span><span class="o">=</span><span class="mi">1</span><span class="p">)</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">var</span> <span class="ow">in</span> <span class="n">outds</span><span class="o">.</span><span class="n">data_vars</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">var</span><span class="o">.</span><span class="n">encoding</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">comp</span><span class="p">)</span>
+
+            <span class="k">return</span> <span class="n">outds</span>
+
+        <span class="k">return</span> <span class="n">overlays</span></div>
+
+
+<div class="viewcode-block" id="satellite.cmr_to_level3">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.cmr_to_level3">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">cmr_to_level3</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">temporal</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">griddims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weighting</span><span class="o">=</span><span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">varkeys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">as_dataset</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">link_kwargs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Wrapper around `cmr_links` and `paths_to_level3`. For description of</span>
+<span class="sd">        keywords, see those methods.</span>
+
+<span class="sd">        Arguments</span>
+<span class="sd">        ---------</span>
+<span class="sd">        link_kwargs: mappable</span>
+<span class="sd">            The method keyword of link_kwargs defaults to &#39;download&#39;, but can</span>
+<span class="sd">            also be &#39;opendap&#39;. When &#39;opendap&#39;, `cmr_to_level3` opens the files</span>
+<span class="sd">            directly from the daac. When &#39;download&#39;, the files are downloaded</span>
+<span class="sd">            and read from local disk.</span>
+
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+        <span class="k">if</span> <span class="n">link_kwargs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">link_kwargs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">link_kwargs</span> <span class="o">=</span> <span class="n">copy</span><span class="p">(</span><span class="n">link_kwargs</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bbox</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">grid</span><span class="o">.</span><span class="n">unary_union</span><span class="o">.</span><span class="n">envelope</span>
+        <span class="n">link_kwargs</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="s1">&#39;method&#39;</span><span class="p">,</span> <span class="s1">&#39;opendap&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">link_kwargs</span><span class="p">[</span><span class="s1">&#39;method&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;opendap&#39;</span><span class="p">:</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmr_links</span><span class="p">(</span>
+                <span class="n">temporal</span><span class="o">=</span><span class="n">temporal</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">link_kwargs</span>
+            <span class="p">)</span>
+        <span class="k">elif</span> <span class="n">link_kwargs</span><span class="p">[</span><span class="s1">&#39;method&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s1">&#39;download&#39;</span><span class="p">:</span>
+            <span class="n">paths</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">cmr_download</span><span class="p">(</span>
+                <span class="n">temporal</span><span class="o">=</span><span class="n">temporal</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">link_kwargs</span>
+            <span class="p">)</span>
+        <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">),</span> <span class="n">paths</span><span class="p">)</span>
+        <span class="k">elif</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+            <span class="nb">print</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">paths</span><span class="p">),</span> <span class="s1">&#39;first link&#39;</span><span class="p">,</span> <span class="n">paths</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+        <span class="k">return</span> <span class="bp">cls</span><span class="o">.</span><span class="n">paths_to_level3</span><span class="p">(</span>
+            <span class="n">paths</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span> <span class="n">griddims</span><span class="o">=</span><span class="n">griddims</span><span class="p">,</span> <span class="n">weighting</span><span class="o">=</span><span class="n">weighting</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span>
+            <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">varkeys</span><span class="o">=</span><span class="n">varkeys</span><span class="p">,</span> <span class="n">as_dataset</span><span class="o">=</span><span class="n">as_dataset</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+        <span class="p">)</span></div>
+
+
+<div class="viewcode-block" id="satellite.paths_to_level3">
+<a class="viewcode-back" href="../../../api/cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite.paths_to_level3">[docs]</a>
+    <span class="nd">@classmethod</span>
+    <span class="k">def</span><span class="w"> </span><span class="nf">paths_to_level3</span><span class="p">(</span>
+        <span class="bp">cls</span><span class="p">,</span> <span class="n">paths</span><span class="p">,</span> <span class="n">grid</span><span class="p">,</span> <span class="n">griddims</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">weighting</span><span class="o">=</span><span class="s1">&#39;area&#39;</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span>
+        <span class="n">verbose</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">varkeys</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">as_dataset</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span>
+    <span class="p">):</span>
+<span class="w">        </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Iteratively apply</span>
+<span class="sd">        output = `cls(path).to_level3(*args, path=path, **kwds)`</span>
+<span class="sd">        and then `grouped_weighted_avg(output[dims])` for each dimset.</span>
+
+<span class="sd">        For description of keywords, see `to_level3`.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+        <span class="kn">import</span><span class="w"> </span><span class="nn">pandas</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">pd</span>
+        <span class="kn">from</span><span class="w"> </span><span class="nn">copy</span><span class="w"> </span><span class="kn">import</span> <span class="n">copy</span>
+
+        <span class="k">if</span> <span class="n">varkeys</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">varkeys</span> <span class="o">=</span> <span class="p">()</span>
+
+        <span class="n">withdata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">nodata</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">if</span> <span class="n">griddims</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">griddims</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">grid</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+
+        <span class="k">for</span> <span class="n">path</span> <span class="ow">in</span> <span class="n">paths</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                <span class="nb">print</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+            <span class="k">try</span><span class="p">:</span>
+                <span class="n">sat</span> <span class="o">=</span> <span class="bp">cls</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">path</span><span class="p">,</span> <span class="n">bbox</span><span class="o">=</span><span class="n">bbox</span><span class="p">,</span> <span class="o">**</span><span class="n">kwargs</span><span class="p">)</span>
+                <span class="n">withdata</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="n">sat</span><span class="o">.</span><span class="n">to_level3</span><span class="p">(</span>
+                    <span class="o">*</span><span class="n">varkeys</span><span class="p">,</span> <span class="n">grid</span><span class="o">=</span><span class="n">grid</span><span class="p">,</span> <span class="n">griddims</span><span class="o">=</span><span class="n">griddims</span><span class="p">,</span>
+                    <span class="n">weighting</span><span class="o">=</span><span class="n">weighting</span><span class="p">,</span> <span class="n">verbose</span><span class="o">=</span><span class="n">verbose</span><span class="p">,</span> <span class="n">as_dataset</span><span class="o">=</span><span class="kc">False</span>
+                <span class="p">)</span>
+            <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                <span class="n">nodata</span><span class="p">[</span><span class="n">path</span><span class="p">]</span> <span class="o">=</span> <span class="nb">repr</span><span class="p">(</span><span class="n">e</span><span class="p">)</span>
+                <span class="k">if</span> <span class="n">verbose</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="n">nodata</span><span class="p">[</span><span class="n">path</span><span class="p">])</span>
+
+        <span class="n">keys</span> <span class="o">=</span> <span class="nb">sorted</span><span class="p">(</span><span class="n">withdata</span><span class="p">)</span>
+        <span class="n">dimdatasets</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="n">dimpaths</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">path</span><span class="p">,</span> <span class="n">output</span> <span class="ow">in</span> <span class="n">withdata</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="k">for</span> <span class="n">key</span><span class="p">,</span> <span class="n">valdf</span> <span class="ow">in</span> <span class="n">output</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">dimdatasets</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">valdf</span><span class="p">)</span>
+                <span class="n">dimpaths</span><span class="o">.</span><span class="n">setdefault</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="p">[])</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">path</span><span class="p">)</span>
+        <span class="n">outputs</span> <span class="o">=</span> <span class="p">{}</span>
+        <span class="k">for</span> <span class="n">dimks</span><span class="p">,</span> <span class="n">dimdfs</span> <span class="ow">in</span> <span class="n">dimdatasets</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+            <span class="n">keys</span> <span class="o">=</span> <span class="n">dimpaths</span><span class="p">[</span><span class="n">dimks</span><span class="p">]</span>
+            <span class="n">attrs</span> <span class="o">=</span> <span class="p">{</span>
+                <span class="n">key</span><span class="p">:</span> <span class="n">copy</span><span class="p">(</span><span class="n">dimdfs</span><span class="p">[</span><span class="mi">0</span><span class="p">][</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span> <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">dimdfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">columns</span>
+            <span class="p">}</span>
+            <span class="n">combinedf</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span>
+                <span class="n">dimdfs</span><span class="p">,</span> <span class="n">keys</span><span class="o">=</span><span class="n">keys</span><span class="p">,</span> <span class="n">names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;path&#39;</span><span class="p">]</span>
+            <span class="p">)</span>
+            <span class="n">outdims</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">dimdfs</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">names</span><span class="p">)</span>
+            <span class="k">if</span> <span class="s1">&#39;weight_sum&#39;</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">combinedf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="n">combinedf</span> <span class="o">=</span> <span class="n">combinedf</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="n">outdims</span><span class="p">)</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="n">combinedf</span> <span class="o">=</span> <span class="n">grouped_weighted_avg</span><span class="p">(</span>
+                    <span class="n">combinedf</span><span class="p">,</span> <span class="n">combinedf</span><span class="p">[</span><span class="s1">&#39;weight_sum&#39;</span><span class="p">],</span> <span class="n">outdims</span>
+                <span class="p">)</span>
+
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">combinedf</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">attrs</span><span class="p">:</span>
+                    <span class="n">combinedf</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">attrs</span><span class="p">[</span><span class="n">key</span><span class="p">])</span>
+            <span class="n">outputs</span><span class="p">[</span><span class="n">dimks</span><span class="p">]</span> <span class="o">=</span> <span class="n">combinedf</span>
+
+        <span class="k">if</span> <span class="n">as_dataset</span><span class="p">:</span>
+            <span class="kn">import</span><span class="w"> </span><span class="nn">xarray</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">xr</span>
+            <span class="kn">from</span><span class="w"> </span><span class="nn">datetime</span><span class="w"> </span><span class="kn">import</span> <span class="n">datetime</span>
+            <span class="c1"># dss = {}</span>
+            <span class="n">outds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="p">()</span>
+            <span class="k">for</span> <span class="n">dimks</span><span class="p">,</span> <span class="n">outdf</span> <span class="ow">in</span> <span class="n">outputs</span><span class="o">.</span><span class="n">items</span><span class="p">():</span>
+                <span class="n">dimds</span> <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">Dataset</span><span class="o">.</span><span class="n">from_dataframe</span><span class="p">(</span><span class="n">outdf</span><span class="p">)</span>
+                <span class="c1"># dss[dimks] = dimds</span>
+                <span class="k">for</span> <span class="n">vk</span> <span class="ow">in</span> <span class="n">dimds</span><span class="o">.</span><span class="n">data_vars</span><span class="p">:</span>
+                    <span class="n">outds</span><span class="p">[</span><span class="n">vk</span><span class="p">]</span> <span class="o">=</span> <span class="n">dimds</span><span class="p">[</span><span class="n">vk</span><span class="p">]</span>
+
+            <span class="c1"># outds = xr.merge(dss.values())</span>
+            <span class="n">outds</span> <span class="o">=</span> <span class="n">outds</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="o">**</span><span class="p">{</span>
+                <span class="n">griddim</span><span class="p">:</span> <span class="n">grid</span><span class="o">.</span><span class="n">index</span><span class="o">.</span><span class="n">get_level_values</span><span class="p">(</span><span class="n">griddim</span><span class="p">)</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span>
+                <span class="k">for</span> <span class="n">griddim</span> <span class="ow">in</span> <span class="n">griddims</span>
+            <span class="p">})</span>
+            <span class="k">for</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">outds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                <span class="k">if</span> <span class="n">key</span> <span class="ow">in</span> <span class="n">sat</span><span class="o">.</span><span class="n">ds</span><span class="o">.</span><span class="n">variables</span><span class="p">:</span>
+                    <span class="n">outds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="o">.</span><span class="n">update</span><span class="p">(</span><span class="n">sat</span><span class="o">.</span><span class="n">ds</span><span class="p">[</span><span class="n">key</span><span class="p">]</span><span class="o">.</span><span class="n">attrs</span><span class="p">)</span>
+            <span class="n">docstr</span> <span class="o">=</span> <span class="nb">getattr</span><span class="p">(</span><span class="bp">cls</span><span class="p">,</span> <span class="s1">&#39;__doc__&#39;</span><span class="p">,</span> <span class="kc">None</span><span class="p">)</span>
+            <span class="k">if</span> <span class="n">docstr</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="n">docstr</span> <span class="o">=</span> <span class="s2">&quot;&quot;</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;description&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span>
+                <span class="n">docstr</span>
+                <span class="o">+</span> <span class="s1">&#39;</span><span class="se">\n</span><span class="s1"> - &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">rootremover</span><span class="p">(</span><span class="n">paths</span><span class="p">,</span> <span class="n">insert</span><span class="o">=</span><span class="kc">True</span><span class="p">)[</span><span class="mi">1</span><span class="p">])</span>
+            <span class="p">)</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;history&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">nodata</span><span class="p">)</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;updated&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">datetime</span><span class="o">.</span><span class="n">now</span><span class="p">()</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;</span><span class="si">%F</span><span class="s1">T%H:%M:%S%z&#39;</span><span class="p">)</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;crs&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">grid</span><span class="o">.</span><span class="n">crs</span><span class="o">.</span><span class="n">srs</span>
+            <span class="n">outds</span><span class="o">.</span><span class="n">attrs</span><span class="p">[</span><span class="s1">&#39;cmaqsatproc_version&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">csp_version</span><span class="p">()</span>
+            <span class="k">return</span> <span class="n">outds</span>
+
+        <span class="k">return</span> <span class="n">outputs</span><span class="p">,</span> <span class="n">nodata</span></div>
+</div>
+
+</pre></div>
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../../../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../../../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../api/cmaqsatproc.html">cmaqsatproc package</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../../../index.html">Documentation overview</a><ul>
+  <li><a href="../../index.html">Module code</a><ul>
+  <li><a href="../readers.html">cmaqsatproc.readers</a><ul>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+    </div>
+
+    
+
+    
+  </body>
+</html>

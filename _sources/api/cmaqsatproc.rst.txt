@@ -1,0 +1,41 @@
+cmaqsatproc package
+===================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 1
+
+   cmaqsatproc.daacs
+   cmaqsatproc.drivers
+   cmaqsatproc.readers
+   cmaqsatproc.tests
+   cmaqsatproc.utils
+
+Submodules
+----------
+
+cmaqsatproc.cmaq module
+-----------------------
+
+.. automodule:: cmaqsatproc.cmaq
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+cmaqsatproc.config module
+-------------------------
+
+.. automodule:: cmaqsatproc.config
+   :members:
+   :show-inheritance:
+   :undoc-members:
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc
+   :members:
+   :show-inheritance:
+   :undoc-members:

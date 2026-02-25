@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+
+<html lang="en" data-content_root="../">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>cmaqsatproc.readers.tropomi package &#8212; cmaqsatproc &#39;0.5.2&#39;
+ documentation</title>
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=5ecbeea2" />
+    <link rel="stylesheet" type="text/css" href="../_static/basic.css?v=b08954a9" />
+    <link rel="stylesheet" type="text/css" href="../_static/alabaster.css?v=27fed22d" />
+    <link rel="stylesheet" type="text/css" href="../_static/plot_directive.css" />
+    <link rel="stylesheet" type="text/css" href="../_static/copybutton.css?v=76b2166b" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery.css?v=d2d258e8" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-binder.css?v=f4aeca0c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-dataframe.css?v=2082cf3c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sg_gallery-rendered-html.css?v=1277b6f3" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+    <script src="../_static/documentation_options.js?v=6a8ba589"></script>
+    <script src="../_static/doctools.js?v=fd6eb6e6"></script>
+    <script src="../_static/sphinx_highlight.js?v=6ffebe34"></script>
+    <script src="../_static/clipboard.min.js?v=a7894cd8"></script>
+    <script src="../_static/copybutton.js?v=f281be69"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="cmaqsatproc.readers.viirs package" href="cmaqsatproc.readers.viirs.html" />
+    <link rel="prev" title="cmaqsatproc.readers.tempo package" href="cmaqsatproc.readers.tempo.html" />
+   
+  <link rel="stylesheet" href="../_static/custom.css" type="text/css" />
+  
+
+  
+  
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <section id="cmaqsatproc-readers-tropomi-package">
+<h1>cmaqsatproc.readers.tropomi package<a class="headerlink" href="#cmaqsatproc-readers-tropomi-package" title="Link to this heading">¶</a></h1>
+<section id="module-cmaqsatproc.readers.tropomi">
+<span id="module-contents"></span><h2>Module contents<a class="headerlink" href="#module-cmaqsatproc.readers.tropomi" title="Link to this heading">¶</a></h2>
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CH4___">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.tropomi.</span></span><span class="sig-name descname"><span class="pre">S5P_L2__CH4___</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CH4___"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CH4___" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.tropomi.TropOMI" title="cmaqsatproc.readers.tropomi.TropOMI"><code class="xref py py-class docutils literal notranslate"><span class="pre">TropOMI</span></code></a></p>
+<p>TropOMICH4 satellite processor.
+* bbox subsets the scanline dimensions
+* valid = qa_value &gt;= threshold (default 0.75)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CH4___.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CH4'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CH4___.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CH4___.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by TropOMI, which is simply
+based on the overpass time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., ECH4)</p></li>
+<li><p><strong>l3</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CH4___.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CH4___.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CH4___.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C2087216530-GES_DISC”, which is the HiR v2 product. The HiR product
+started 2018-04-30.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CO____">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.tropomi.</span></span><span class="sig-name descname"><span class="pre">S5P_L2__CO____</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CO____"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CO____" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.tropomi.TropOMI" title="cmaqsatproc.readers.tropomi.TropOMI"><code class="xref py py-class docutils literal notranslate"><span class="pre">TropOMI</span></code></a></p>
+<p>TropOMICO satellite processor.
+* bbox subsets the scanline dimensions
+* valid = qa_value &gt;= threshold (default 0.75)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CO____.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l3</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'CO'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CO____.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CO____.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by TropOMI, which is simply
+based on the overpass time.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., CO)</p></li>
+<li><p><strong>l3</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__CO____.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__CO____.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__CO____.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C2087132178-GES_DISC”, which is the HiR product v2. The HiR v2
+product starts 2018-04-30.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.tropomi.</span></span><span class="sig-name descname"><span class="pre">S5P_L2__HCHO__</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.tropomi.TropOMI" title="cmaqsatproc.readers.tropomi.TropOMI"><code class="xref py py-class docutils literal notranslate"><span class="pre">TropOMI</span></code></a></p>
+<p>TropOMIHCHO satellite processor.
+* bbox subsets the scanline dimensions
+* valid = qa_value &gt;= threshold (default 0.75)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_ak">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_ak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__.cmaq_ak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_ak" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an averaging kernel (AK) that would process CMAQ as though
+it were observed by the satellite. In this case, the averaging kernel
+is the scattering weights divided by the tropospheric air mass factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_ak</strong> – Averaging kernel on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_amf">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_amf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'formaldehyde_tropospheric_air_mass_factor'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FORM_PER_M2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__.cmaq_amf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_amf" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an alternative Air Mass Factor (AMF) using satellite
+scattering weights and the CMAQ vertical profile as a partial column
+density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key of the total air mass factor</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key of the partial column density variable from CMAQ, which must
+have a LAY dimension that describes teh vertical coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cmaqamf</strong> – Air Mass Factor on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'FORM'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by OMI and recalculate TropOMI
+tropospheric columns with the CMAQ AMF. This process relies on cmaq_ak
+and cmaq_amf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., FORM), PRES, DENS, and ZF
+variables with a LAY dimension describing the vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Composition key</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ and CMAQ-like satellite.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_sw">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'formaldehyde_tropospheric_air_mass_factor'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__.cmaq_sw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmaq_sw" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate scattering weights as averaging kernel multiplied by the
+total air mass factor. Then, interpolate to CMAQ vertical grid, based
+on PRES (pressure in Pa). The scattering weights are set to 0 above
+the tropopause.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key for the total air mass factor.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_sw_trop</strong> – Tropospheric scattering Weights on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__HCHO__.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__HCHO__.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C1918210023-GES_DISC”, which is the HiR v2 product. The HiR v2 product
+starts in 2018-05-07.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.tropomi.</span></span><span class="sig-name descname"><span class="pre">S5P_L2__NO2___</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#cmaqsatproc.readers.tropomi.TropOMI" title="cmaqsatproc.readers.tropomi.TropOMI"><code class="xref py py-class docutils literal notranslate"><span class="pre">TropOMI</span></code></a></p>
+<p>TropOMINO2 satellite processor.
+* bbox subsets the scanline dimensions
+* valid = qa_value &gt;= threshold (default 0.75)</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_ak">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_ak</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'air_mass_factor_total'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amftropkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'air_mass_factor_troposphere'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___.cmaq_ak"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_ak" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an averaging kernel (AK) that would process CMAQ as though
+it were observed by the satellite. In this case, the averaging kernel
+is the scattering weights divided by the tropospheric air mass factor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – amfkey should points to the total column amf, which is used to
+convert the averaging kernel to scattering weights. The scattering
+weights</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_ak</strong> – Averaging kernel on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_amf">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_amf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'air_mass_factor_total'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NO2_PER_M2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___.cmaq_amf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_amf" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an alternative Air Mass Factor (AMF) using satellite
+scattering weights and the CMAQ vertical profile as a partial column
+density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key of the total air mass factor</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key of the partial column density variable from CMAQ, which must
+have a LAY dimension that describes teh vertical coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cmaqamf</strong> – Air Mass Factor on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_process">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_process</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">qf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'NO2'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___.cmaq_process"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_process" title="Link to this definition">¶</a></dt>
+<dd><p>Process CMAQ as though it were observed by TropOMI and recalculate
+TropOMI tropospheric columns with the CMAQ AMF. This process relies
+on cmaq_ak and cmaq_amf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>qf</strong> (<em>xarray.Dataset</em>) – CMAQ file that has composition (e.g., NO2), PRES, DENS, and ZF
+variables with a LAY dimension describing the vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Composition key</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>overf</strong> – An overpass file with satellite-like CMAQ and CMAQ-like satellite.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_sw">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'air_mass_factor_total'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tropopausekey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'tm5_tropopause_layer_index'</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___.cmaq_sw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmaq_sw" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate scattering weights as averaging kernel multiplied by the
+total air mass factor. Then, interpolate to CMAQ vertical grid, based
+on PRES (pressure in Pa). The scattering weights are set to 0 above
+the tropopause.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key for the total air mass factor.</p></li>
+<li><p><strong>tropopausekey</strong> (<em>str</em>) – Key for the tropopause index.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_sw_trop</strong> – Tropospheric scattering Weights on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmr_links">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmr_links</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'opendap'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#S5P_L2__NO2___.cmr_links"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.S5P_L2__NO2___.cmr_links" title="Link to this definition">¶</a></dt>
+<dd><p>Thin wrapper around satellite.cmr_links where concept_id is set to
+“C2089270961-GES_DISC”, which is the HiR v2 product. The HiR v2
+product starts 2018-05-01.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>method</strong> (<em>str</em>) – ‘opendap’, ‘download’, or ‘s3’.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>links</strong> – List of links for download or OpenDAP</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>list</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI">
+<span class="property"><span class="k"><span class="pre">class</span></span><span class="w"> </span></span><span class="sig-prename descclassname"><span class="pre">cmaqsatproc.readers.tropomi.</span></span><span class="sig-name descname"><span class="pre">TropOMI</span></span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="cmaqsatproc.readers.html#cmaqsatproc.readers.core.satellite" title="cmaqsatproc.readers.core.satellite"><code class="xref py py-class docutils literal notranslate"><span class="pre">satellite</span></code></a></p>
+<p>Default TropOMI satellite processor.
+* bbox subsets the scanline dimensions</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI.cmaq_amf">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_amf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI.cmaq_amf"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI.cmaq_amf" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate an alternative Air Mass Factor (AMF) using satellite
+scattering weights and the CMAQ vertical profile as a partial column
+density.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key of the total air mass factor</p></li>
+<li><p><strong>key</strong> (<em>str</em>) – Key of the partial column density variable from CMAQ, which must
+have a LAY dimension that describes teh vertical coordinate.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>cmaqamf</strong> – Air Mass Factor on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI.cmaq_sw">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">cmaq_sw</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">overf</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">satl3f</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">amfkey</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tropopausekey</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI.cmaq_sw"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI.cmaq_sw" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate scattering weights as averaging kernel multiplied by the
+total air mass factor. Then, interpolate to CMAQ vertical grid, based
+on PRES (pressure in Pa). The scattering weights are set to 0 above
+the tropopause.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>overf</strong> (<em>xarray.Dataset</em>) – Must have PRES variable with LAY dimension that describes the
+vertical coordinate.</p></li>
+<li><p><strong>satl3f</strong> (<em>xarray.Dataset</em>) – Output from to_level3, paths_to_level3, or cmr_to_level3 with
+as_dataset=True (the default).</p></li>
+<li><p><strong>amfkey</strong> (<em>str</em>) – Key for the total air mass factor.</p></li>
+<li><p><strong>tropopauskey</strong> (<em>str</em>) – Key for the tropopause when available. Otherwise, use None.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>q_sw_trop</strong> – Tropospheric scattering Weights on the CMAQ grid</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xr.DataArray</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI.open_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">open_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">path</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isvalid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI.open_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI.open_dataset" title="Link to this definition">¶</a></dt>
+<dd><dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>path</strong> (<em>str</em>) – Path to a TropOMI OpenDAP-style file</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North
+of 0, 0</p></li>
+<li><p><strong>isvalid</strong> (<em>float</em>) – Value of qa_value to use for valid pixels</p></li>
+<li><p><strong>kwargs</strong> (<em>mappable</em>) – Passed to xarray.open_dataset</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>sat</strong> – Satellite processing instance</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p><a class="reference internal" href="#cmaqsatproc.readers.tropomi.TropOMI" title="cmaqsatproc.readers.tropomi.TropOMI">TropOMI</a></p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI.prep_dataset">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">prep_dataset</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ds</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">bbox</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">isvalid</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.75</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">path</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI.prep_dataset"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI.prep_dataset" title="Link to this definition">¶</a></dt>
+<dd><p>Defines pixels as valid when they are within bbox and interpolates
+latitude and longitude from pixel centers to corners.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ds</strong> (<em>xarray.Dataset</em>) – Satellite dataset</p></li>
+<li><p><strong>bbox</strong> (<em>iterable</em>) – swlon, swlat, nelon, nelat in decimal degrees East and North</p></li>
+<li><p><strong>isvalid</strong> (<em>float</em>) – When qa_value is greater than isvalid, the pixel is valid.</p></li>
+<li><p><strong>path</strong> (<em>str</em>) – Unused.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ds</strong></p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>xarray.Dataset</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="cmaqsatproc.readers.tropomi.TropOMI.shorten_name">
+<span class="property"><span class="k"><span class="pre">classmethod</span></span><span class="w"> </span></span><span class="sig-name descname"><span class="pre">shorten_name</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">key</span></span></em><span class="sig-paren">)</span><a class="reference internal" href="../_modules/cmaqsatproc/readers/tropomi.html#TropOMI.shorten_name"><span class="viewcode-link"><span class="pre">[source]</span></span></a><a class="headerlink" href="#cmaqsatproc.readers.tropomi.TropOMI.shorten_name" title="Link to this definition">¶</a></dt>
+<dd><p>Provide a short name for long keys. This is useful for renaming
+variables to fit IOAPI 16 character restrictions.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>key</strong> (<em>str</em>) – Original variable name.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>shortkey</strong> – Shortened key</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>str</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+</section>
+</section>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="Main">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="../index.html">cmaqsatproc</a></h1>
+
+
+
+
+
+
+
+
+
+<search id="searchbox" style="display: none" role="search">
+    <div class="searchformwrapper">
+    <form class="search" action="../search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" placeholder="Search"/>
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</search>
+<script>document.getElementById('searchbox').style.display = "block"</script><h3>Navigation</h3>
+<p class="caption" role="heading"><span class="caption-text">Table of Contents</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="../index.html">User’s Guide</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../auto_examples/index.html">Example Gallery</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="cmaqsatproc.html">cmaqsatproc package</a><ul class="current">
+<li class="toctree-l2 current"><a class="reference internal" href="cmaqsatproc.html#subpackages">Subpackages</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#submodules">Submodules</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.cmaq">cmaqsatproc.cmaq module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc.config">cmaqsatproc.config module</a></li>
+<li class="toctree-l2"><a class="reference internal" href="cmaqsatproc.html#module-cmaqsatproc">Module contents</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="../index.html">Documentation overview</a><ul>
+  <li><a href="cmaqsatproc.html">cmaqsatproc package</a><ul>
+  <li><a href="cmaqsatproc.readers.html">cmaqsatproc.readers package</a><ul>
+      <li>Previous: <a href="cmaqsatproc.readers.tempo.html" title="previous chapter">cmaqsatproc.readers.tempo package</a></li>
+      <li>Next: <a href="cmaqsatproc.readers.viirs.html" title="next chapter">cmaqsatproc.readers.viirs package</a></li>
+  </ul></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &#169;2023, Barron H. Henderson.
+      
+      |
+      Powered by <a href="https://www.sphinx-doc.org/">Sphinx 9.1.0</a>
+      &amp; <a href="https://alabaster.readthedocs.io">Alabaster 1.0.0</a>
+      
+      |
+      <a href="../_sources/api/cmaqsatproc.readers.tropomi.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

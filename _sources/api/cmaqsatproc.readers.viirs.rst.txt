@@ -1,0 +1,10 @@
+cmaqsatproc.readers.viirs package
+=================================
+
+Module contents
+---------------
+
+.. automodule:: cmaqsatproc.readers.viirs
+   :members:
+   :show-inheritance:
+   :undoc-members:
