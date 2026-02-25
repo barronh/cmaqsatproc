@@ -257,7 +257,7 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
         i = 0
         for idx, x in newx.iterrows():
             if progress:
-                print(f'\r{i/newx.shape[0]:8.3%}', end='')
+                print(f'\r{i / newx.shape[0]:8.3%}', end='')
             y = newy.loc[idx]
             polys.append(Polygon(np.asarray([x, y]).T))
             i += 1
@@ -265,7 +265,7 @@ def EasyDataFramePolygon(df, wrap=True, progress=False, lowmem=False):
         xys = np.stack([newx.values, newy.values], axis=2)
         for i, xy in enumerate(xys):
             if progress:
-                print(f'\r{i/xys.shape[0]:8.3%}', end='')
+                print(f'\r{i / xys.shape[0]:8.3%}', end='')
             polys.append(Polygon(xy))
     if progress:
         print('\r100.000%')
