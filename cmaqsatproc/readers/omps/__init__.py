@@ -208,6 +208,7 @@ class OMPS_NPP_NMNO2_L2(OMPS_NPP_L2):
     )
     __doc__ = """
     Default OMPS NO2 satellite processor.
+
     * valid when
       * GroundPixelQualityFlags == 0
       * PixelQualityFlags == 0
@@ -271,6 +272,7 @@ class OMPS_NPP_NMTO3_L2(OMPS_NPP_L2):
     _defaultkeys = ('ColumnAmountO3')
     __doc__ = """
     Default OMPS O3 satellite processor.
+
     * valid when
       * GroundPixelQualityFlags == 0
       * QualityFlags == 0

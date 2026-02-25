@@ -514,15 +514,17 @@ class satellite:
         verbose=0, varkeys=None, as_dataset=True, link_kwargs=None, **kwargs
     ):
         """
-        Wrapper around cmr_links and paths_to_level3. For description of
+        Wrapper around `cmr_links` and `paths_to_level3`. For description of
         keywords, see those methods.
+
         Arguments
         ---------
         link_kwargs: mappable
             The method keyword of link_kwargs defaults to 'download', but can
-            also be 'opendap'. When 'opendap', cmr_to_level3 opens the files
+            also be 'opendap'. When 'opendap', `cmr_to_level3` opens the files
             directly from the daac. When 'download', the files are downloaded
             and read from local disk.
+
         """
         from copy import copy
         if link_kwargs is None:
@@ -555,10 +557,10 @@ class satellite:
     ):
         """
         Iteratively apply
-        output = cls(path).to_level3(*args, path=path, **kwds)
-        and then grouped_weighted_avg(output[dims]) for each dimset.
+        output = `cls(path).to_level3(*args, path=path, **kwds)`
+        and then `grouped_weighted_avg(output[dims])` for each dimset.
 
-        For description of keywords, see to_level3.
+        For description of keywords, see `to_level3`.
         """
         import pandas as pd
         from copy import copy

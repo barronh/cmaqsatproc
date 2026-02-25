@@ -7,16 +7,20 @@ from ...utils import EasyDataFramePolygon
 class goes_aod(satellite):
     __doc__ = """
     goes_aod processor
+
     * valid if DQF < dqflt (default = 1)
     * pixel corners are interpolated in projected space.
 
-    Note 1: Qualities are 0: high; 1: medium; 2: low; 3 not retrieved.
-    Note 2: The default requires the highest quality only. This is based
-            on experience. Because we are gridding, high and medium would get
-            spatially mixed. This makes it hard to see if a monthly average is
-            a bunch of isolated medium quality pixels with no repeat
-            measurements or many of the same pixel. Thus, the higher quality
-            requirement.
+    Notes:
+
+    1. Qualities are 0: high; 1: medium; 2: low; 3 not retrieved.
+    2. The default requires the highest quality only. This is based
+       on experience. Because we are gridding, high and medium would get
+       spatially mixed. This makes it hard to see if a monthly average is
+       a bunch of isolated medium quality pixels with no repeat
+       measurements or many of the same pixel. Thus, the higher quality
+       requirement.
+
     """
     _defaultkeys = ('AOD', 'DQF')
 
@@ -144,7 +148,8 @@ class goes_aod(satellite):
 
         Returns
         -------
-        sat : satellite
+        sat : goes_aod
+            Class instance of goes_aod
         """
         import xarray as xr
         dss = []
@@ -185,8 +190,8 @@ class goes_aod(satellite):
 
         Returns
         -------
-        sat : satellite
-            Satellite processing object.
+        sat : goes_aod
+            Class instance of goes_aod
         """
         import xarray as xr
         import copy

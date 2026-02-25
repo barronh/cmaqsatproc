@@ -5,7 +5,10 @@ from ...utils import EasyDataFramePoint
 
 
 class IASI_NH3(satellite):
-    __doc__ = """IASI Ammonia Processor
+    __doc__ = """
+    IASI Ammonia Processor
+    ----------------------
+
     * bbox subsets each pixel
     * valid = (nh3_total_column > -999) & (AMPM == 0)
     * geometry is a 0.1 degree buffer

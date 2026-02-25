@@ -164,12 +164,12 @@ def _isopendap(x):
 def getcmrlinks(*args, filterfunc=None, **kwds):
     """
     Return all links from the Common Metadata Repository for the product
-    granules with *args and **kwds are passed thru to getcmrgranules
+    granules with args and kwds passed thru to getcmrgranules
 
     Arguments
     ---------
-    *args, **kwds :
-        See getcmrgranules.
+    args, kwds :
+        Passed to getcmrgranules as arguments and keywords (see getcmrgranules)
     filterfunc : function
         Takes a link dictionary from CMR and returns True if it should be
         retained

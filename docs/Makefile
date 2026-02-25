@@ -20,4 +20,9 @@ help:
 	@$(SPHINXBUILD) -M $@ "$(SOURCEDIR)" "$(BUILDDIR)" $(SPHINXOPTS) $(O)
 
 api:
-	sphinx-apidoc -f --maxdepth=1 -o ./source ../cmaqsatproc
+	sphinx-apidoc -f --maxdepth=1 -o "$(SOURCEDIR)/api" "../cmaqsatproc"
+	rm "$(SOURCEDIR)/api/modules.rst"
+
+realclean:
+	make clean
+	rm -rf source/api source/auto_examples

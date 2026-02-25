@@ -9,10 +9,11 @@ Overview
 
 cmaqsatproc provides satellite data processing for CMAQ. This has four
 basic steps:
-  1. Create a custom level 3 gridded satellite product on CMAQ grid,
-  2. Subset CMAQ consistent with satellite overpass and valid samples,
-  3. integrate CMAQ mixing ratios to number density (or other metric), and
-  4. apply CMAQ air mass factor to the satellite.
+
+   1. Create a custom level 3 gridded satellite product on CMAQ grid,
+   2. Subset CMAQ consistent with satellite overpass and valid samples,
+   3. integrate CMAQ mixing ratios to number density (or other metric), and
+   4. apply CMAQ air mass factor to the satellite.
 
 Core Objects
 ============
@@ -24,6 +25,8 @@ Core Objects
 
 By TropOMI NO2 Example
 ======================
+
+.. code::python
 
     # Import Libraries
     import cmaqsatproc as csp

@@ -6,6 +6,7 @@ from .. import satellite
 class L2_VIIRS_SNPP(satellite):
     __doc__ = """
     VIIRS SNPP
+
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
     """
@@ -143,6 +144,7 @@ class L2_VIIRS_SNPP(satellite):
 class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     __doc__ = """
     AERDT_L2_VIIRS_SNPP
+
     * valid = Land_Ocean_Quality_Flag > isvalid (default 2)
     * pixel corners are based on interpolated lat/lon
     """
@@ -173,8 +175,9 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         """
         Applies spatial subset based on Latitude and Longitude, also
         interpolates pixel centers to corners and applies valid flags:
-            * Land_Ocean_Quality_Flag >= isvalid
-            * ~Optical_Depth_Land_And_Ocean.isnull()
+
+        * Land_Ocean_Quality_Flag >= isvalid
+        * ~Optical_Depth_Land_And_Ocean.isnull()
 
         Arguments
         ---------
@@ -279,6 +282,7 @@ class AERDT_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
 class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
     __doc__ = """
     AERDB_L2_VIIRS_SNPP
+
     * valid = Aerosol_Optical_Thickness_550_Land_Ocean_Best_Estimate not None
     * pixel corners are based on interpolated lat/lon
     """
@@ -317,10 +321,11 @@ class AERDB_L2_VIIRS_SNPP(L2_VIIRS_SNPP):
         """
         Applies spatial subset based on Latitude and Longitude, also
         interpolates pixel centers to corners and applies valid flags:
-            * AOT_QA_Flag_Land >= isvalid, or
-            * AOT_QA_Flag_Ocean >= isvalid
-            * and ~AOT_550_Land_Ocean_Best_Estimate.isnull()
-            * where AOT = Aerosol_Optical_Thickness
+
+        * AOT_QA_Flag_Land >= isvalid, or
+        * AOT_QA_Flag_Ocean >= isvalid
+        * and ~AOT_550_Land_Ocean_Best_Estimate.isnull()
+        * where AOT = Aerosol_Optical_Thickness
 
         Arguments
         ---------

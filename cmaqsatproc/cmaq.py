@@ -276,7 +276,7 @@ def open_ioapi(path, **kwargs):
     path : str
         Path to the IOAPI file in NetCDF format
     kwargs : mappable
-        Passed to xr.open_dataset(path, **kwargs)
+        Passed to xarray.open_dataset as keyword arguments
 
     Returns
     ---------

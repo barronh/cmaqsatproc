@@ -24,11 +24,11 @@ What makes it simple?
 `cmaqsatproc` has an easy full suite approach
 
 1. Operates on local files or dynamically finds remote files
-  1. User can specify input files from their disk.
-  2. Queries NASA's Common Metadata Repository (CMR) or NOAA AWS
+    1. User can specify input files from their disk.
+    2. Queries NASA's Common Metadata Repository (CMR) or NOAA AWS
 2. Allows for spatial subsetting based on a simple box.
-  1. User can specify the box based on lat/lon
-  2. The CMAQ grid can be used to automatically define the box.
+    1. User can specify the box based on lat/lon
+    2. The CMAQ grid can be used to automatically define the box.
 3. Provides L2 access as a dataframe or makes Level 3 data as a dataset
 4. `Simple instructions <https://github.com/barronh/cmaqsatproc/blob/main/COLABINSTALL.md>`_ are provided to configure Google Colab.
 
@@ -69,7 +69,7 @@ Quick Links
 -----------
 
 * :doc:`auto_examples/index`
-* :doc:`cmaqsatproc`
+* :doc:`api/cmaqsatproc`
 
 .. toctree::
    :maxdepth: 2
@@ -78,4 +78,4 @@ Quick Links
 
    self
    auto_examples/index
-   cmaqsatproc
+   api/cmaqsatproc

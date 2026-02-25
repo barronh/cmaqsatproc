@@ -6,6 +6,8 @@ backup/
 examples/*.nc
 # C extensions
 *.so
+docs/source/api
+docs/source/auto_examples
 
 # Distribution / packaging
 .Python

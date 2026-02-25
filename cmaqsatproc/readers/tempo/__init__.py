@@ -389,15 +389,13 @@ class TEMPO_L2(satellite):
         """
         Add an AMF using an alternate shape factor from the partial vertical
         column density (pvcd) calculated from CMAQ met and conc data
-        interpolated to the TEMPO grid. This should be done before to_level3
+        interpolated to the TEMPO grid. This should be done before `to_level3`
 
         Arguments
         ---------
         qf : xr.Dataset
             Must contain DENS, TA, PRES, and qkey. If DENS is not present, then
             PRES/TA/Q can be used. If Q is missing, just PRES and TA.
-                area_density = qf.csp.moles_per_m2()
-                pvcd = qf[qkey] * 1e6 * area_density
         qkey : str
             Model variable to be used for shape factor.
         extent : str
@@ -408,8 +406,8 @@ class TEMPO_L2(satellite):
         swopt : str
             The scattering weight option determines if the scattering weight is
             interpolated to CMAQ or if CMAQ is interpolated to tempo. Options:
-             - 'tempo': calculate AMF on native TEMPO coordinate
-             - 'cmaq': calculate AMF on native CMAQ coordinate
+            'tempo' calculates the AMF on native TEMPO coordinate. 'cmaq'
+            calculates the AMF on native CMAQ coordinate
 
         Returns
         -------

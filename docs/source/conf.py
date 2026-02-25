@@ -48,8 +48,7 @@ extensions = [
     'matplotlib.sphinxext.plot_directive',
     'sphinx_copybutton',
     'sphinx_design',
-    #'sphinx_rtd_theme',
-    'myst_nb',
+    'myst_parser',
     'sphinx_gallery.gen_gallery',
     'sphinx.ext.napoleon',
 ]
@@ -58,6 +57,7 @@ sphinx_gallery_conf = {
     'examples_dirs': '../../examples',
     'gallery_dirs': 'auto_examples',
     'within_subsection_order': FileNameSortKey,
+    'filename_pattern': '/plot_',
 }
 
 # Generate the API documentation when building

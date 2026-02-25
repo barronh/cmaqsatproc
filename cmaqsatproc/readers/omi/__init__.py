@@ -26,6 +26,7 @@ def cloudleq(cldf, thresh):
 class OMIL2(satellite):
     __doc__ = """
     Default OMI satellite processor.
+
     * bbox subsets the nTimes and nTimes_1  dimensions
     """
 
@@ -239,6 +240,7 @@ class OMIL2(satellite):
 class OMNO2(OMIL2):
     __doc__ = """
     OMNO2 satellite processor.
+
     * bbox subsets the nTimes and nTimes_1 dimensions
     * valid based three conditions
       * (VcdQualityFlags & 1) == 0
@@ -468,6 +470,7 @@ class OMNO2(OMIL2):
 class OMHCHO(OMIL2):
     __doc__ = """
     OMHCHO satellite processor.
+
     * bbox subsets the nTimes and nTimes_1 dimensions
     * valid based three conditions
       * MainDataQualityFlag == 0
@@ -705,6 +708,7 @@ class OMHCHO(OMIL2):
 class OMO3PR(OMIL2):
     __doc__ = """
     OMO3PR satellite processor.
+
     * bbox subsets the nTimes and nTimes_1 dimensions
     * valid based three conditions
       * MainDataQualityFlag == 0
@@ -834,6 +838,7 @@ class OMO3PR(OMIL2):
 class OMPROFOZ(OMIL2):
     __doc__ = """
     OMPROFOZ satellite processor.
+
     * bbox subsets the nTimes and nTimes_1 dimensions
     * valid based three conditions
       * 0 < ExitStatus < 10
