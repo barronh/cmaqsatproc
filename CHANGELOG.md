@@ -1,3 +1,6 @@
+2026-02-25 v0.5.1:
+* Added support for Python3.12 https://github.com/pandas-dev/pandas/issues/57500
+
 2026-02-15 v0.5.0:
 * Added cmr_download method to retrieve files based on cmr keywords.
 * Added TEMPO support for NO2 and HCHO

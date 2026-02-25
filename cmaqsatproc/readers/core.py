@@ -323,6 +323,7 @@ class satellite:
             Dictionary of outputs by output dimensions
             or Dataset of outputs as a dataset
         """
+        import numpy as np
         import pandas as pd
         import geopandas as gpd
         import time
@@ -408,14 +409,28 @@ class satellite:
                     if verbose > 1:
                         print(f'   - Unstacking {notgeodims}', flush=True)
                     mjustweight = justweight.copy()
-                    ckey = ('count',) + ('',) * len(notgeodims)
-                    wkey = ('weight',) + ('',) * len(notgeodims)
-                    wskey = ('weight_sum',) + ('',) * len(notgeodims)
-                    wmkey = ('weight_mean',) + ('',) * len(notgeodims)
+                    laymis = ('',)
+                    ckey = ('count',) + laymis * len(notgeodims)
+                    wkey = ('weight',) + laymis * len(notgeodims)
+                    wskey = ('weight_sum',) + laymis * len(notgeodims)
+                    wmkey = ('weight_mean',) + laymis * len(notgeodims)
+                    minames = ['var'] + notgeodims
                     mjustweight.columns = pd.MultiIndex.from_tuples(
-                        [wkey], names=[None] + notgeodims
+                        [wkey], names=minames
                     )
-                    df = mjustweight.join(df.unstack(notgeodims))
+                    udf = df.unstack(notgeodims)
+                    udf.columns.set_names(minames, inplace=True)
+                    df = mjustweight.join(udf)
+                    # In Python3.12 the concatenation of a MultiIndex columns
+                    # is unreliable. The indices of each object are known, so
+                    # the expected multi-level column structure is known.
+                    # Forcing a fix by exporting
+                    # See https://github.com/pandas-dev/pandas/issues/57500
+                    colvals = np.concatenate([
+                        tmp.columns.to_numpy() for tmp in [mjustweight, df]
+                    ])
+                    colidx = pd.MultiIndex.from_tuples(colvals, names=minames)
+                    df.columns = colidx
                 else:
                     wkey = 'weight'
                     # Adding on keyword, because it is significanly faster for
@@ -442,7 +457,8 @@ class satellite:
                 )
                 if len(notgeodims) > 0:
                     dropkeys = [wkey, wskey, wmkey, ckey]
-                    ngdf = gdf.drop(dropkeys, axis=1).stack(notgeodims)
+                    ngdf = gdf.drop(dropkeys, axis=1)
+                    ngdf = ngdf.stack(notgeodims)
                     ngdf['weight'] = gdf[wkey]
                     ngdf['weight_sum'] = gdf[wskey]
                     ngdf['weight_mean'] = gdf[wmkey]
